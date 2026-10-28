@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host a Cleaner</title>
+
+    <!-- Configurações para PWA e Telemóvel -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f0f4f8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Host a Cleaner">
+    <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+    <style>
+        html, body { min-height: 100%; background: #f0f4f8; }
+        body { margin: 0; background-color: #f0f4f8; }
+        .hidden { display: none !important; }
+        html.app-loading #main-app-container,
+        html.app-loading #set-password-container { visibility: hidden; }
+        #app-loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f4f8;
+        }
+        html:not(.app-loading) #app-loading-screen { display: none; }
+        #app-loading-screen img { width: 64px; height: 64px; }
+    </style>
+    <script>
+        document.documentElement.classList.add('app-loading');
+        window.__appStartupFallback = window.setTimeout(() => {
+            document.documentElement.classList.remove('app-loading');
+        }, 4000);
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div id="app-loading-screen" role="status" aria-label="A carregar Host a Cleaner">
+        <img src="images/icon-192.png" alt="">
+    </div>
+
+    <div id="set-password-container" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 p-4">
+        <div class="w-full max-w-md space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h1 class="text-lg font-bold text-slate-900">Criar palavra-passe</h1>
+            <label for="input-new-password" class="block text-xs font-bold text-slate-700">Nova palavra-passe</label>
+            <input type="password" id="input-new-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" id="btn-save-password" class="w-full rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white transition hover:bg-indigo-700">Guardar e Entrar</button>
+        </div>
+    </div>
+
+    <div id="main-app-container">
+
+    <!-- Ecrã de Autenticação -->
+    <div id="section-login" class="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative">
+
+        <!-- Seletor de Idioma no Login -->
+        <div class="absolute top-4 right-4 bg-white/85 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-md border border-white/40 flex items-center gap-2 text-xs font-bold">
+            <span>🌐</span>
+            <select id="lang-select-login" onchange="changeLanguage(this.value)" class="bg-transparent font-bold focus:outline-none cursor-pointer">
+                <option value="pt">PT (Português)</option>
+                <option value="en">EN (English)</option>
+            </select>
+        </div>
+
+        <div class="max-w-md w-full bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl space-y-6 border border-white/25">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 rounded-2xl gradient-bg text-white flex items-center justify-center font-extrabold text-2xl mx-auto shadow-lg shadow-indigo-500/30">✨</div>
+                <h2 id="auth-title" class="text-xl font-bold text-slate-900">Host a Cleaner</h2>
+                <p id="auth-subtitle" data-i18n="login_subtitle" class="text-xs text-slate-500 font-medium">Gestão inteligente e automatizada de alojamentos</p>
+            </div>
+
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl text-xs font-bold">
+                <button type="button" onclick="setAuthMode('login')" id="btn-mode-login" data-i18n="btn_login_tab" class="flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition">Fazer Login</button>
+                <button type="button" onclick="setAuthMode('signup')" id="btn-mode-signup" data-i18n="btn_signup_tab" class="flex-1 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 transition">Criar Conta</button>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label data-i18n="label_email" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email</label>
+                    <input type="email" id="auth-email" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <div>
+                    <label data-i18n="label_password" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Palavra-passe</label>
+                    <div class="relative">
+                        <input type="password" id="auth-password" required minlength="6" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon-login')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
+                            <span id="eye-icon-login">👁️</span>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" id="auth-submit-btn" data-i18n="btn_submit_login" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Entrar na Plataforma</button>
+            </form>
+
+            <div class="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
+                <button type="button" onclick="handleForgotPassword()" data-i18n="btn_forgot_pwd" class="text-slate-500 hover:text-indigo-600 font-semibold">Esqueceu-se da palavra-passe?</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="team-invite-signup" class="min-h-screen hidden flex items-center justify-center p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        <form onsubmit="handleTeamInviteSignup(event)" class="w-full max-w-md space-y-5 rounded-3xl border border-white/25 bg-white/95 p-8 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl gradient-bg text-2xl font-extrabold text-white">✨</div>
+                <h1 data-i18n="invite_signup_title" class="text-xl font-bold text-slate-900">Ativar acesso à equipa</h1>
+                <p data-i18n="invite_signup_subtitle" class="text-xs text-slate-500">Defina o email e a palavra-passe para entrar na PWA de Limpezas.</p>
+            </div>
+            <div>
+                <label for="invite-signup-email" data-i18n="label_email" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Email</label>
+                <input type="email" id="invite-signup-email" required autocomplete="email" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="invite-signup-password" data-i18n="label_password" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Palavra-passe</label>
+                <input type="password" id="invite-signup-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="invite-signup-password-confirm" data-i18n="invite_signup_confirm_password" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Confirmar palavra-passe</label>
+                <input type="password" id="invite-signup-password-confirm" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <button type="submit" id="btn-team-invite-signup" data-i18n="invite_signup_submit" class="w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Criar conta e entrar</button>
+            <p id="team-invite-signup-message" role="status" class="hidden text-center text-xs font-semibold text-slate-600"></p>
+        </form>
+    </div>
+
+    <!-- Aplicação Principal -->
+    <div id="app-layout" class="min-h-screen flex flex-col md:flex-row relative hidden">
+
+        <!-- BARRA FIXA SUPERIOR NO TELEMÓVEL -->
+        <header class="fixed top-0 left-0 right-0 h-14 bg-slate-900 text-white flex items-center justify-between px-4 z-40 md:hidden shadow-md">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="toggleMobileDrawer()" class="p-2 text-slate-300 hover:text-white font-bold text-lg focus:outline-none" aria-label="Abrir menu">
+                    ☰
+                </button>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <select id="lang-select-mobile" onchange="changeLanguage(this.value)" class="bg-slate-800 text-slate-200 text-xs font-bold px-2 py-1 rounded-lg border border-slate-700">
+                    <option value="pt">PT</option>
+                    <option value="en">EN</option>
+                </select>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center font-black text-sm shadow-md">H</div>
+                    <span class="text-xs font-bold text-white">Host a Cleaner</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- BACKDROP ESCURO NO TELEMÓVEL -->
+        <div id="mobile-backdrop" onclick="toggleMobileDrawer()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
+
+        <!-- Sidebar / Menu Lateral -->
+        <aside id="sidebar-menu" class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 -translate-x-full md:translate-x-0 md:relative md:inset-auto md:w-72 md:shadow-xl border-r border-slate-800">
+
+            <button type="button" onclick="toggleDesktopSidebar()" id="sidebar-toggle-btn" class="hidden md:flex absolute -right-3.5 top-8 w-7 h-7 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full items-center justify-center text-xs shadow-md border-2 border-slate-900 transition z-40" title="Expandir/Recolher Menu">
+                ◀
+            </button>
+
+            <div class="space-y-8 overflow-y-auto">
+                <div class="flex items-center justify-between md:justify-start gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/40 shrink-0">H</div>
+                        <div class="sidebar-text transition-opacity">
+                            <h1 class="text-sm font-extrabold tracking-tight text-white whitespace-nowrap">Host a Cleaner</h1>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30" id="sidebar-role-subtitle">Admin Hub</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="toggleMobileDrawer()" class="md:hidden text-slate-400 hover:text-white font-bold text-lg p-1">✕</button>
+                </div>
+
+                <nav class="space-y-6">
+                    <div class="space-y-2">
+                        <div data-i18n="nav_cat_calendar" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📅 Calendário & Agendamento</div>
+                        <div class="space-y-1 pl-1">
+                            <button type="button" onclick="switchTab('sub-calendar-daily')" id="btn-sub-calendar-daily" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📌 <span class="sidebar-text" data-i18n="nav_daily_tasks">Tarefas Diárias (Lista)</span></button>
+                            <button type="button" onclick="switchTab('sub-calendar-overview')" id="btn-sub-calendar-overview" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📆 <span class="sidebar-text" data-i18n="nav_overview_cal">Vista Semanal / Mensal</span></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <button type="button" onclick="toggleSettingsMenu()" id="btn-settings-menu" aria-expanded="false" aria-controls="settings-menu-items" class="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">
+                            <span class="flex items-center gap-2.5">⚙️ <span class="sidebar-text" data-i18n="nav_settings">Definições</span></span>
+                            <span id="settings-menu-chevron" class="sidebar-text transition-transform">⌄</span>
+                        </button>
+                        <div id="settings-menu-items" class="hidden space-y-1 pl-3 border-l border-slate-700 ml-4">
+                            <button type="button" onclick="switchTab('sub-properties-add')" id="btn-sub-properties-add" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">➕ <span class="sidebar-text" data-i18n="nav_add_property">Adicionar Alojamento</span></button>
+                            <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">🏠 <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
+                            <button type="button" onclick="openProfileModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👤 <span class="sidebar-text" data-i18n="nav_profile">Perfil</span></button>
+                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div data-i18n="nav_cat_history" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📜 Histórico & Pagamentos</div>
+                        <div class="space-y-1 pl-1">
+                            <button type="button" onclick="switchTab('sub-history')" id="btn-sub-history" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="nav_history_accounts">Histórico & Contas</span></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2 border-t border-slate-800 admin-only">
+                        <button type="button" onclick="forceSyncICalNow()" id="btn-force-sync-sidebar" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition whitespace-nowrap">
+                            <span id="sync-icon">🔄</span> <span class="sidebar-text" data-i18n="btn_sync_ical">Sincronizar Agenda</span>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+
+            <div class="pt-6 border-t border-slate-800 space-y-2 overflow-hidden">
+                <div class="px-2 sidebar-text">
+                    <span id="user-email-display" class="block text-[11px] font-semibold text-slate-400 truncate"></span>
+                </div>
+                <button type="button" onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 text-xs font-bold p-2.5 rounded-xl transition whitespace-nowrap">🚪 <span class="sidebar-text" data-i18n="btn_logout">Sair da Conta</span></button>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="flex-1 p-3 sm:p-4 md:p-10 pt-20 md:pt-10 space-y-6 md:space-y-8 overflow-y-auto max-w-7xl transition-all">
+            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80">
+                <div>
+                    <h2 id="page-title" class="text-base md:text-lg font-bold text-slate-900">Host a Cleaner</h2>
+                    <p id="page-subtitle" data-i18n="header_subtitle" class="text-[11px] md:text-xs text-slate-500 font-medium">Acompanhe as limpezas e gira a sua equipa.</p>
+                </div>
+                <!-- Seletor de Idioma no Desktop -->
+                <div class="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
+                    <span>🌐</span>
+                    <select id="lang-select-desktop" onchange="changeLanguage(this.value)" class="bg-transparent font-bold focus:outline-none cursor-pointer">
+                        <option value="pt">Português (PT)</option>
+                        <option value="en">English (EN)</option>
+                    </select>
+                </div>
+            </header>
+
+            <!-- SUBTEMA: Tarefas Diárias Simplificadas (Lista) -->
+            <div id="view-sub-calendar-daily" class="space-y-6">
+                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                            <span data-i18n="label_date" class="text-xs font-bold text-slate-500 uppercase">Data:</span>
+                            <input type="date" id="calendar-date-picker" onchange="onDateFilterChange(this.value)" class="border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <select id="filter-property-select" onchange="onCalendarPropertyFilterChange(this.value)" class="flex-1 sm:w-auto border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="all" data-i18n="opt_all_properties">🏠 Todos os Alojamentos</option>
+                            </select>
+                            <button type="button" onclick="openAddCleaningModal(selectedDate)" data-i18n="btn_add_cleaning" class="admin-only bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md shrink-0">
+                                ➕ Adicionar Limpeza
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tasks-list-container" class="space-y-2">
+                        <p class="text-slate-400 text-xs">A carregar tarefas...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTEMA: Vista Semanal / Mensal com Navegação -->
+            <div id="view-sub-calendar-overview" class="space-y-6 hidden">
+                <div class="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-center border-b border-slate-100 pb-4 gap-4">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <button onclick="changeCalendarPeriod(-1)" data-i18n="btn_prev" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">◀ Anterior</button>
+                            <h3 id="calendar-period-title" class="text-xs sm:text-sm font-bold text-slate-900 min-w-[130px] text-center">---</h3>
+                            <button onclick="changeCalendarPeriod(1)" data-i18n="btn_next" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">Seguinte ▶</button>
+                        </div>
+                        <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                            <button type="button" onclick="setCalendarMode('week')" id="btn-mode-week" data-i18n="btn_mode_week" class="px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm">Semanal</button>
+                            <button type="button" onclick="setCalendarMode('month')" id="btn-mode-month" data-i18n="btn_mode_month" class="px-3 py-1.5 rounded-lg text-slate-500">Mensal</button>
+                        </div>
+                    </div>
+
+                    <!-- Contentor com Scroll Horizontal adaptado para Telemóveis -->
+                    <div class="overflow-x-auto pb-2">
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2 min-w-[650px] md:min-w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTEMA: Meus Alojamentos -->
+            <div id="view-sub-properties-list" class="space-y-6 hidden">
+                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <h3 data-i18n="title_registered_properties" class="text-sm font-bold text-slate-900">Alojamentos Registados</h3>
+                    <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <p class="text-slate-400 text-xs">A carregar alojamentos...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTEMA: Adicionar / Editar Alojamento -->
+            <div id="view-sub-properties-add" class="space-y-6 hidden">
+                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6 max-w-3xl">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                        <h3 id="property-form-title" data-i18n="title_add_property" class="text-base font-bold text-slate-900">Adicionar Novo Alojamento</h3>
+                        <button type="button" id="cancel-edit-btn" onclick="resetPropertyForm()" data-i18n="btn_cancel_edit" class="text-xs text-rose-600 font-bold hidden hover:underline">Cancelar Edição</button>
+                    </div>
+
+                    <form id="property-form" onsubmit="handlePropertySubmit(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label data-i18n="label_prop_name" class="block text-xs font-bold text-slate-700 mb-1">Nome do Imóvel</label>
+                            <input type="text" id="prop-name" placeholder="ex: Apartamento Lagos Centro" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label data-i18n="label_prop_address" class="block text-xs font-bold text-slate-700 mb-1">Morada Completa</label>
+                            <input type="text" id="prop-address" placeholder="ex: Rua 25 de Abril, Lagos" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label data-i18n="label_prop_keybox" class="block text-xs font-bold text-slate-700 mb-1">Código Keybox / Acesso</label>
+                            <input type="text" id="prop-access" placeholder="ex: Keybox 1234" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label data-i18n="label_prop_rate" class="block text-xs font-bold text-slate-700 mb-1">Valor por Hora (€/h)</label>
+                            <input type="number" step="0.5" id="prop-rate" placeholder="ex: 12.00" value="10.00" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label data-i18n="label_prop_ical" class="block text-xs font-bold text-slate-700 mb-1">Link iCal do Airbnb / Booking (.ics)</label>
+                            <input type="url" id="prop-ical" placeholder="https://www.airbnb.com/calendar/ical/..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label data-i18n="label_prop_instructions" class="block text-xs font-bold text-slate-700 mb-1">Instruções Específicas de Limpeza</label>
+                            <textarea id="prop-instructions" placeholder="ex: Mudança total de lençóis, lavar varanda..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24"></textarea>
+                        </div>
+
+                        <button type="submit" id="prop-submit-btn" data-i18n="btn_save_property" class="md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Guardar Alojamento</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- SUBTEMA: Histórico & Pagamentos -->
+            <div id="view-sub-history" class="space-y-6 hidden">
+                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 data-i18n="title_history" class="text-sm font-bold text-slate-900">Histórico de Serviços & Contas a Pagar</h3>
+                            <p class="text-slate-400 text-xs" id="history-subtitle" data-i18n="subtitle_history">Cálculo automático de horas, valores e estado de pagamento</p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                            <div id="total-hours-badge" class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3.5 py-2 rounded-2xl text-xs font-bold">Total: 0h</div>
+                            <div id="total-amount-badge" class="bg-emerald-50 border border-emerald-100 text-emerald-700 px-3.5 py-2 rounded-2xl text-xs font-bold">Total: 0.00€</div>
+                        </div>
+                    </div>
+                    <div id="history-tasks-list" class="space-y-3"><p class="text-slate-400 text-xs">A carregar histórico...</p></div>
+                </div>
+            </div>
+
+            <!-- GESTÃO DA EQUIPA -->
+            <div id="view-sub-team-management" class="space-y-6 hidden">
+                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6 max-w-3xl">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h3 data-i18n="title_invite_member" class="text-base font-bold text-slate-900">Convidar Membro para a Equipa</h3>
+                        <p data-i18n="subtitle_invite_member" class="text-xs text-slate-500">Crie um convite para o membro definir o email e a palavra-passe no primeiro acesso.</p>
+                    </div>
+
+                    <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label data-i18n="team_name" for="team-name" class="block text-xs font-bold text-slate-700 mb-1">Nome</label>
+                            <input type="text" id="team-name" required autocomplete="name" placeholder="Nome do membro" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label data-i18n="team_phone" for="team-phone" class="block text-xs font-bold text-slate-700 mb-1">Telemóvel</label>
+                            <input type="tel" id="team-phone" required autocomplete="tel" value="+351 " placeholder="+351 912 345 678" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="team-track-hours" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span data-i18n="team_track_hours">Ativar registo de horas</span>
+                            </label>
+                            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="team-require-photos" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span data-i18n="team_require_photos">Exigir fotos antes e depois</span>
+                            </label>
+                        </div>
+                        <button type="submit" id="btn-add-team" data-i18n="btn_send_invite" class="sm:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">
+                            ✉️ Criar Convite
+                        </button>
+                    </form>
+
+                    <div class="pt-6 border-t border-slate-100 space-y-4">
+                        <h4 data-i18n="title_team_list" class="text-xs font-bold text-slate-900 uppercase tracking-wider">Membros da Sua Equipa</h4>
+                        <div id="team-members-list" class="space-y-2">
+                            <p class="text-slate-400 text-xs">A carregar membros...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- QUESTIONÁRIO DE ADICIONAR LIMPEZA -->
+    <div id="add-cleaning-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <h3 data-i18n="modal_add_cleaning_title" class="text-sm font-bold text-slate-900">Adicionar Limpeza</h3>
+                    <p data-i18n="modal_add_cleaning_sub" class="text-[11px] text-slate-500">Selecione a listagem e o dia pretendido</p>
+                </div>
+                <button onclick="closeAddCleaningModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
+            </div>
+
+            <form id="add-cleaning-form" onsubmit="handleAddCleaningSubmit(event)" class="space-y-4">
+                <div>
+                    <label data-i18n="label_select_prop" class="block text-xs font-bold text-slate-700 mb-1">1. Escolha a Listagem / Alojamento</label>
+                    <select id="modal-cleaning-prop" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </select>
+                </div>
+
+                <div>
+                    <label data-i18n="label_select_date" class="block text-xs font-bold text-slate-700 mb-1">2. Escolha o Dia da Limpeza</label>
+                    <input type="date" id="modal-cleaning-date" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label data-i18n="label_notes_optional" class="block text-xs font-bold text-slate-700 mb-1">3. Observações / Instruções para a Equipa (Opcional)</label>
+                    <input type="text" id="modal-cleaning-notes" placeholder="ex: Check-in direto às 15h, trocar atoalhados" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <button type="submit" id="btn-submit-add-cleaning" data-i18n="btn_schedule_cleaning" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">
+                    Agendar Limpeza
+                </button>
+            </form>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeAddCleaningModal()" data-i18n="btn_cancel" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO DIA DO CALENDÁRIO -->
+    <div id="day-tasks-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900" id="day-modal-title">Limpezas do Dia</h3>
+                    <p class="text-[11px] text-slate-500" id="day-modal-date-subtitle">---</p>
+                </div>
+                <button onclick="closeDayTasksModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
+            </div>
+
+            <div id="day-modal-tasks-container" class="space-y-2">
+                <p class="text-slate-400 text-xs">A carregar...</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 admin-only">
+                <button type="button" onclick="openAddCleaningModal(selectedModalDate); closeDayTasksModal();" data-i18n="btn_add_cleaning" class="w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold p-3 rounded-2xl border border-indigo-200/80 transition">
+                    ➕ Adicionar Limpeza
+                </button>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeDayTasksModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE DETALHES DA TAREFA -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-sm font-bold text-slate-900" id="modal-prop-name">Detalhes da Limpeza</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs" id="task-assignment-notes">
+                <div id="task-assignment-control" class="hidden">
+                    <label for="task-assigned-member" class="block font-bold text-slate-700 mb-1">Membro da equipa responsável</label>
+                    <select id="task-assigned-member" class="w-full border border-slate-200 p-2.5 rounded-xl bg-white text-xs">
+                        <option value="">Sem atribuição</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="task-notes" class="block font-bold text-slate-700 mb-1">Notas / Observações</label>
+                    <textarea id="task-notes" rows="3" placeholder="Notas ou observações sobre esta limpeza..." class="w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white"></textarea>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-xs" id="modal-content"></div>
+
+            <!-- Central de Mensagens e Notificações (Admin) -->
+            <div class="pt-3 border-t border-slate-100 admin-only space-y-2">
+                <label data-i18n="label_notify_team" class="block text-xs font-bold text-slate-700">📢 Notificar Funcionário / Equipa</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="btn-whatsapp-notify" onclick="" data-i18n="btn_whatsapp" class="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold p-2.5 rounded-xl border border-emerald-200 transition text-xs">
+                        💬 Enviar WhatsApp
+                    </button>
+                    <button type="button" id="btn-email-notify" onclick="" data-i18n="btn_email" class="flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold p-2.5 rounded-xl border border-indigo-200 transition text-xs">
+                        ✉️ Enviar Email
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-between items-center border-t border-slate-100">
+                <button id="btn-delete-task-modal" onclick="" data-i18n="btn_delete_task" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl text-xs transition border border-rose-200 hidden">🗑️ Apagar Limpeza</button>
+                <button onclick="closeTaskModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition ml-auto">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PERFIL COM SUBSECTOR DE SUBSCRIÇÃO (SAAS) -->
+    <div id="profile-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <h3 data-i18n="modal_profile_title" class="text-sm font-bold text-slate-900">Perfil de Utilizador</h3>
+                    <p data-i18n="modal_profile_sub" class="text-[11px] text-slate-500">Gira os seus dados, segurança e licença da app</p>
+                </div>
+                <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
+            </div>
+
+            <div class="bg-indigo-50 border border-indigo-100 p-3.5 rounded-2xl flex justify-between items-center">
+                <div>
+                    <span data-i18n="label_active_account" class="text-[10px] font-extrabold uppercase text-indigo-500 block">Conta Ativa</span>
+                    <span id="profile-email-val" class="text-xs font-bold text-indigo-900 truncate block">---</span>
+                </div>
+                <span id="profile-role-badge" class="text-[10px] font-extrabold px-2.5 py-1 bg-indigo-600 text-white rounded-full">Admin</span>
+            </div>
+
+            <!-- Navegação Interna do Perfil -->
+            <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                <button type="button" onclick="switchProfileTab('security')" id="btn-profile-tab-security" data-i18n="tab_security" class="flex-1 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition">🔒 Segurança & Acesso</button>
+                <button type="button" onclick="switchProfileTab('subscription')" id="btn-profile-tab-subscription" data-i18n="tab_subscription" class="admin-only flex-1 py-2 rounded-lg text-slate-500 transition">💳 Plano & Subscrição</button>
+            </div>
+
+            <!-- Separador 1: Segurança (Alterar Palavra-passe) -->
+            <div id="profile-subtab-security" class="space-y-4">
+                <form onsubmit="handleChangePassword(event)" class="space-y-4">
+                    <div>
+                        <label data-i18n="label_new_pwd" class="block text-xs font-bold text-slate-700 mb-1">Nova Palavra-passe</label>
+                        <div class="relative">
+                            <input type="password" id="new-password-input" required minlength="6" placeholder="Mínimo de 6 caracteres" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
+                                <span id="eye-icon-new-pwd">👁️</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label data-i18n="label_confirm_pwd" class="block text-xs font-bold text-slate-700 mb-1">Confirmar Nova Palavra-passe</label>
+                        <div class="relative">
+                            <input type="password" id="confirm-password-input" required minlength="6" placeholder="Repita a palavra-passe" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button type="button" onclick="togglePasswordVisibility('confirm-password-input', 'eye-icon-confirm-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
+                                <span id="eye-icon-confirm-pwd">👁️</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Atualizar Palavra-passe</button>
+                </form>
+            </div>
+
+            <!-- Separador 2: Subscrição / SaaS (Integrado no Perfil) -->
+            <div id="profile-subtab-subscription" class="space-y-4 hidden">
+                <div class="border border-indigo-100 bg-indigo-50/50 p-4 rounded-2xl space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span data-i18n="badge_comm_license" class="text-[10px] font-extrabold uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Licença Comercial</span>
+                        <span data-i18n="badge_active" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">🟢 Ativa</span>
+                    </div>
+                    <h4 data-i18n="plan_title" class="text-sm font-extrabold text-slate-900">Plano Profissional (29.00€/mês)</h4>
+                    <p data-i18n="plan_desc" class="text-[11px] text-slate-600">Acesso ilimitado a alojamentos, sincronização iCal automática e gestão de equipa.</p>
+                </div>
+
+                <button type="button" onclick="handleStripeCheckout()" data-i18n="btn_stripe_portal" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2">
+                    💳 Abrir Portal de Pagamento Stripe
+                </button>
+            </div>
+
+            <div class="pt-2 flex justify-end border-t border-slate-100">
+                <button onclick="closeProfileModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/equipas.js" defer></script>
+    <script src="js/app.js" defer></script>
+</body>
+</html>
