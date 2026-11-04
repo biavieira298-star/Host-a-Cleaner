@@ -17,6 +17,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let pendingTeamInviteToken = null;
         let registrationRole = 'cleaner';
         let registrationRequested = false;
+        let propertyCleaners = [];
         let currentLang = localStorage.getItem('host_cleaner_lang') || 'pt';
         
         let selectedDate = new Date().toISOString().split('T')[0];
@@ -75,6 +76,53 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_mode_week: "Semanal",
                 btn_mode_month: "Mensal",
                 title_registered_properties: "Alojamentos Registados",
+                nav_reports: "Relatórios & Desempenho",
+                reports_by_property: "Desempenho por imóvel",
+                reports_add_entry: "Registar entrada ou saída",
+                reports_property: "Imóvel",
+                reports_type: "Tipo de movimento",
+                reports_income: "Ganho",
+                reports_expense: "Gasto",
+                reports_amount: "Valor (€)",
+                reports_date: "Data",
+                reports_description: "Descrição",
+                reports_save: "Guardar movimento",
+                reports_loading: "A carregar métricas...",
+                reports_load_error: "Não foi possível carregar os relatórios",
+                reports_empty: "Ainda não existem imóveis ou movimentos financeiros.",
+                reports_income_total: "Ganhos totais",
+                reports_expense_total: "Gastos totais",
+                reports_net_total: "Lucro líquido",
+                reports_most_requested: "Imóvel mais procurado",
+                reports_cleanings_count: "limpezas registadas",
+                reports_no_cleanings: "Sem limpezas registadas",
+                reports_entry_success: "Movimento registado com sucesso.",
+                reports_entry_error: "Não foi possível registar o movimento",
+                reports_select_property: "Selecione um imóvel",
+                reports_invalid_entry: "Indique um valor superior a zero e uma descrição.",
+                photo_upload: "Tirar ou anexar foto",
+                photo_gallery: "Fotografias da tarefa",
+                photo_uploading: "A carregar fotografia...",
+                photo_upload_success: "Fotografia anexada com sucesso.",
+                photo_upload_error: "Não foi possível anexar a fotografia",
+                photo_upload_type_error: "Selecione um ficheiro de imagem até 10 MB.",
+                photo_empty: "Ainda não há fotografias anexadas.",
+                btn_add_property_new: "➕ Adicionar Nova Propriedade",
+                label_assigned_cleaner: "Cleaner Atribuído",
+                option_no_cleaner: "Sem atribuição",
+                loading_cleaners: "A carregar cleaners...",
+                loading_properties: "A carregar alojamentos...",
+                error_properties: "Erro ao carregar alojamentos",
+                retry: "Tentar novamente",
+                empty_properties: "Ainda não tem propriedades registadas.",
+                property_cleaner_label: "Cleaner:",
+                property_access_label: "🔑 Acesso:",
+                property_team_load_error: "Não foi possível carregar a equipa",
+                property_form_access_error: "Inicie sessão como gestor para guardar propriedades.",
+                property_form_validation_error: "Preencha o nome, a morada e um valor por hora válido.",
+                property_update_success: "Propriedade atualizada com sucesso.",
+                property_add_success: "Propriedade adicionada com sucesso.",
+                property_save_error: "Não foi possível guardar a propriedade",
                 title_add_property: "Adicionar Novo Alojamento",
                 btn_cancel_edit: "Cancelar Edição",
                 label_prop_name: "Nome do Imóvel",
@@ -158,6 +206,53 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_mode_week: "Weekly",
                 btn_mode_month: "Monthly",
                 title_registered_properties: "Registered Properties",
+                nav_reports: "Reports & Performance",
+                reports_by_property: "Performance by property",
+                reports_add_entry: "Record income or expense",
+                reports_property: "Property",
+                reports_type: "Entry type",
+                reports_income: "Income",
+                reports_expense: "Expense",
+                reports_amount: "Amount (€)",
+                reports_date: "Date",
+                reports_description: "Description",
+                reports_save: "Save entry",
+                reports_loading: "Loading metrics...",
+                reports_load_error: "Could not load reports",
+                reports_empty: "No properties or financial entries yet.",
+                reports_income_total: "Total income",
+                reports_expense_total: "Total expenses",
+                reports_net_total: "Net profit",
+                reports_most_requested: "Most requested property",
+                reports_cleanings_count: "recorded cleanings",
+                reports_no_cleanings: "No cleanings recorded",
+                reports_entry_success: "Entry recorded successfully.",
+                reports_entry_error: "Could not record the entry",
+                reports_select_property: "Select a property",
+                reports_invalid_entry: "Enter an amount greater than zero and a description.",
+                photo_upload: "Take or attach photo",
+                photo_gallery: "Task photos",
+                photo_uploading: "Uploading photo...",
+                photo_upload_success: "Photo attached successfully.",
+                photo_upload_error: "Could not attach the photo",
+                photo_upload_type_error: "Select an image file up to 10 MB.",
+                photo_empty: "No photos attached yet.",
+                btn_add_property_new: "➕ Add New Property",
+                label_assigned_cleaner: "Assigned Cleaner",
+                option_no_cleaner: "Unassigned",
+                loading_cleaners: "Loading cleaners...",
+                loading_properties: "Loading properties...",
+                error_properties: "Error loading properties",
+                retry: "Try again",
+                empty_properties: "No properties registered yet.",
+                property_cleaner_label: "Cleaner:",
+                property_access_label: "🔑 Access:",
+                property_team_load_error: "Could not load the team",
+                property_form_access_error: "Sign in as a manager to save properties.",
+                property_form_validation_error: "Enter a name, address, and valid hourly rate.",
+                property_update_success: "Property updated successfully.",
+                property_add_success: "Property added successfully.",
+                property_save_error: "Could not save the property",
                 title_add_property: "Add New Property",
                 btn_cancel_edit: "Cancel Edit",
                 label_prop_name: "Property Name",
@@ -238,11 +333,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (!document.getElementById('view-sub-calendar-overview').classList.contains('hidden')) {
                 renderOverviewCalendar();
             }
+            if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
+                carregarRelatorios();
+            }
         }
 
         async function initApp() {
             changeLanguage(currentLang);
             document.getElementById('calendar-date-picker').value = selectedDate;
+            document.getElementById('financial-date').value = new Date().toISOString().slice(0, 10);
             const { data: { session } } = await supabaseClient.auth.getSession();
             currentUser = session ? session.user : null;
 
@@ -514,7 +613,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             applyRolePermissionsUI();
             
             const savedTab = localStorage.getItem('host_cleaner_active_tab') || 'sub-calendar-daily';
-            const adminTabs = ['sub-properties-add', 'sub-team-management'];
+            const adminTabs = ['sub-properties-add', 'sub-team-management', 'sub-reports'];
             if (userRole === 'cleaner' && adminTabs.includes(savedTab)) {
                 switchTab('sub-calendar-daily');
             } else {
@@ -590,7 +689,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         function switchTab(subtabId) {
             closeMenuAfterAction();
             
-            const adminTabs = ['sub-properties-add', 'sub-team-management'];
+            const adminTabs = ['sub-properties-add', 'sub-team-management', 'sub-reports'];
             if (userRole === 'cleaner' && adminTabs.includes(subtabId)) {
                 subtabId = 'sub-calendar-daily';
             }
@@ -601,7 +700,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-calendar-daily', 'sub-calendar-overview', 'sub-properties-list', 'sub-properties-add', 'sub-history', 'sub-team-management'];
+            const tabs = ['sub-calendar-daily', 'sub-calendar-overview', 'sub-properties-list', 'sub-properties-add', 'sub-history', 'sub-reports', 'sub-team-management'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
@@ -617,18 +716,24 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             if (subtabId === 'sub-calendar-daily') fetchTasks();
             if (subtabId === 'sub-calendar-overview') renderOverviewCalendar();
-            if (subtabId === 'sub-properties-list') fetchProperties();
+            if (subtabId === 'sub-properties-list') carregarPropriedades();
+            if (subtabId === 'sub-properties-add' && !editingPropertyId) carregarCleaners();
             if (subtabId === 'sub-history') fetchHistoryAdmin();
+            if (subtabId === 'sub-reports') carregarRelatorios();
             if (subtabId === 'sub-team-management') fetchTeamMembers();
         }
 
         async function loadData() {
             await fetchPropertiesForSelect();
-            await fetchProperties();
+            await carregarCleaners();
+            await carregarPropriedades();
             await fetchAllTasksCache();
             fetchTasks();
             if (!document.getElementById('view-sub-calendar-overview').classList.contains('hidden')) {
                 renderOverviewCalendar();
+            }
+            if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
+                carregarRelatorios();
             }
         }
 
@@ -639,53 +744,136 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function fetchPropertiesForSelect() {
             const filterSelect = document.getElementById('filter-property-select');
-            let { data } = await supabaseClient.from('properties').select('*');
+            const { data, error } = await supabaseClient.from('properties').select('*');
+            if (error) {
+                console.error('Erro ao carregar alojamentos para o filtro:', error);
+                allPropertiesCache = [];
+                if (filterSelect) filterSelect.replaceChildren(new Option('Erro ao carregar alojamentos', ''));
+                return;
+            }
             allPropertiesCache = data || [];
 
             if (filterSelect) {
-                filterSelect.innerHTML = `<option value="all">${i18n[currentLang].opt_all_properties}</option>` + allPropertiesCache.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                filterSelect.replaceChildren(
+                    new Option(i18n[currentLang].opt_all_properties, 'all'),
+                    ...allPropertiesCache.map(property => new Option(property.name, property.id))
+                );
+                if (!allPropertiesCache.some(property => String(property.id) === String(selectedPropertyFilter))) {
+                    selectedPropertyFilter = 'all';
+                }
                 filterSelect.value = selectedPropertyFilter;
             }
         }
 
-        async function fetchProperties() {
+        function escapePropertyHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
+        function showPropertyMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            element.innerText = message;
+            element.classList.remove('hidden', 'text-rose-600', 'text-emerald-700');
+            element.classList.add(type === 'error' ? 'text-rose-600' : 'text-emerald-700');
+            element.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        }
+
+        function hidePropertyMessage(elementId) {
+            document.getElementById(elementId)?.classList.add('hidden');
+        }
+
+        async function carregarCleaners() {
+            const select = document.getElementById('prop-assigned-cleaner');
+            const status = document.getElementById('property-cleaner-status');
+            if (!select) return;
+            select.disabled = true;
+            select.innerHTML = `<option value="">${i18n[currentLang].loading_cleaners}</option>`;
+            status.classList.add('hidden');
+
+            const { data, error } = await supabaseClient
+                .from('team_members')
+                .select('id, name, email')
+                .eq('role', 'cleaner')
+                .order('name');
+
+            if (error) {
+                console.error('Erro ao carregar cleaners para as propriedades:', error);
+                propertyCleaners = [];
+                select.innerHTML = `<option value="">${i18n[currentLang].option_no_cleaner}</option>`;
+                select.disabled = false;
+                showPropertyMessage('property-cleaner-status', `${i18n[currentLang].property_team_load_error}: ${error.message}`, 'error');
+                return;
+            }
+
+            propertyCleaners = data || [];
+            select.replaceChildren(new Option(i18n[currentLang].option_no_cleaner, ''));
+            propertyCleaners.forEach(cleaner => {
+                select.add(new Option(cleaner.name || cleaner.email || 'Cleaner', cleaner.id));
+            });
+            select.disabled = false;
+        }
+
+        async function carregarPropriedades() {
             const gridEl = document.getElementById('properties-grid');
             if (!gridEl) return;
 
+            gridEl.innerHTML = `<p class="text-slate-400 text-xs col-span-full">${i18n[currentLang].loading_properties}</p>`;
             const { data, error } = await supabaseClient.from('properties').select('*').order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Erro ao carregar alojamentos:', error);
-                gridEl.innerHTML = `<p class="text-rose-600 text-xs col-span-full">Erro ao carregar alojamentos: ${error.message}</p>`;
+                gridEl.innerHTML = `
+                    <div class="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
+                        <p class="text-rose-700 text-xs">${i18n[currentLang].error_properties}: ${escapePropertyHTML(error.message)}</p>
+                        <button type="button" onclick="carregarPropriedades()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].retry}</button>
+                    </div>
+                `;
                 return;
             }
 
             if (!data || data.length === 0) {
-                gridEl.innerHTML = `<p class="text-slate-400 text-xs col-span-full">Ainda não tem alojamentos registados.</p>`;
+                gridEl.innerHTML = `
+                    <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-6 text-center">
+                        <p class="text-slate-500 text-xs">${i18n[currentLang].empty_properties}</p>
+                        ${userRole === 'admin' ? `<button type="button" onclick="abrirFormularioPropriedade()" class="mt-3 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
+                    </div>
+                `;
                 return;
             }
 
-            gridEl.innerHTML = data.map(prop => `
+            gridEl.innerHTML = data.map(prop => {
+                const assignedCleaner = propertyCleaners.find(cleaner => String(cleaner.id) === String(prop.assigned_team_member_id));
+                const cleanerName = assignedCleaner?.name || assignedCleaner?.email || 'Sem atribuição';
+                return `
                 <div class="border border-slate-200/80 bg-slate-50 p-5 rounded-2xl space-y-3 relative group hover:border-indigo-300 transition">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h4 class="font-bold text-slate-900 text-sm">${prop.name}</h4>
-                            <p class="text-xs text-slate-500">${prop.address || 'Sem morada'}</p>
+                            <h4 class="font-bold text-slate-900 text-sm">${escapePropertyHTML(prop.name)}</h4>
+                            <p class="text-xs text-slate-500">${escapePropertyHTML(prop.address || 'Sem morada')}</p>
                         </div>
                         ${userRole === 'admin' ? `
                             <div class="flex items-center gap-1">
-                                <button type="button" data-property-id="${prop.id}" title="Editar" aria-label="Editar ${prop.name}" class="edit-property-button p-2 text-slate-400 hover:text-indigo-600 transition">✏️</button>
-                                <button type="button" data-property-id="${prop.id}" title="Apagar" aria-label="Apagar ${prop.name}" class="delete-property-button p-2 text-slate-400 hover:text-rose-600 transition">🗑️</button>
+                                <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button p-2 text-slate-400 hover:text-indigo-600 transition">✏️</button>
+                                <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Apagar" aria-label="Apagar ${escapePropertyHTML(prop.name)}" class="delete-property-button p-2 text-slate-400 hover:text-rose-600 transition">🗑️</button>
                             </div>
                         ` : ''}
                     </div>
                     <div class="flex items-center gap-2 flex-wrap text-[11px]">
-                        <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-bold border border-indigo-100">🔑 Keybox: ${prop.access_code || 'N/A'}</span>
-                        <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold border border-emerald-100">💶 ${prop.hourly_rate || 10.00}€/h</span>
+                        <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-bold border border-indigo-100">${i18n[currentLang].property_access_label} ${escapePropertyHTML(prop.access_code || 'N/A')}</span>
+                        <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold border border-emerald-100">💶 ${escapePropertyHTML(prop.hourly_rate || 10.00)}€/h</span>
                     </div>
-                    ${userRole === 'admin' ? `<div class="text-[10px] text-emerald-700 font-mono truncate bg-white p-2 rounded-lg border border-slate-200">🔗 ${prop.ical_url || 'Sem link iCal'}</div>` : ''}
+                    ${prop.instructions ? `<p class="text-[11px] text-slate-500 break-words">${escapePropertyHTML(prop.instructions)}</p>` : ''}
+                    <p class="text-[11px] text-slate-600"><span class="font-bold">${i18n[currentLang].property_cleaner_label}</span> ${escapePropertyHTML(cleanerName)}</p>
+                    ${userRole === 'admin' ? `<div class="text-[10px] text-emerald-700 font-mono truncate bg-white p-2 rounded-lg border border-slate-200">🔗 ${escapePropertyHTML(prop.ical_url || 'Sem link iCal')}</div>` : ''}
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             gridEl.querySelectorAll('.edit-property-button').forEach(button => {
                 button.addEventListener('click', () => {
@@ -706,9 +894,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('prop-ical').value = property.ical_url || '';
             document.getElementById('prop-instructions').value = property.instructions || '';
             document.getElementById('prop-rate').value = property.hourly_rate || 10;
+            document.getElementById('prop-assigned-cleaner').value = property.assigned_team_member_id || '';
 
             document.getElementById('property-form-title').innerText = "Editar Alojamento";
             document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            hidePropertyMessage('property-form-message');
 
             const submitBtn = document.getElementById('prop-submit-btn');
             submitBtn.innerText = "Atualizar Alojamento";
@@ -721,12 +911,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             editingPropertyId = null;
             document.getElementById('property-form').reset();
             document.getElementById('prop-rate').value = "10.00";
+            document.getElementById('prop-assigned-cleaner').value = '';
             document.getElementById('property-form-title').innerText = i18n[currentLang].title_add_property;
             document.getElementById('cancel-edit-btn').classList.add('hidden');
+            hidePropertyMessage('property-form-message');
 
             const submitBtn = document.getElementById('prop-submit-btn');
             submitBtn.innerText = i18n[currentLang].btn_save_property;
             submitBtn.className = "md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30";
+        }
+
+        function abrirFormularioPropriedade() {
+            resetPropertyForm();
+            switchTab('sub-properties-add');
         }
 
         async function deleteProperty(propId) {
@@ -869,41 +1066,40 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('day-tasks-modal').classList.add('hidden');
         }
 
-        function renderTaskPermissionModules(task, preferences) {
+        function renderTaskPermissionModules(task, preferences, photos = [], photoLoadError = null) {
+            const taskId = escapePropertyHTML(task.id);
+            const legacyPhotos = [
+                task.photo_before_url && { url: task.photo_before_url, label: currentLang === 'pt' ? 'Entrada (antes)' : 'Arrival (before)' },
+                task.photo_after_url && { url: task.photo_after_url, label: currentLang === 'pt' ? 'Saída (depois)' : 'Departure (after)' }
+            ].filter(Boolean);
+            const galleryPhotos = [
+                ...legacyPhotos,
+                ...photos.map(photo => ({
+                    url: photo.photo_url,
+                    label: new Date(photo.created_at).toLocaleDateString(currentLang === 'pt' ? 'pt-PT' : 'en-US')
+                }))
+            ];
             return `
-                ${preferences.require_photos ? `
-                    <div class="space-y-2 pt-2 border-t border-slate-100">
-                        <label class="block font-bold text-slate-700">📸 Fotografias do Imóvel</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="border border-dashed border-slate-300 p-2.5 rounded-xl text-center space-y-2 bg-slate-50">
-                                <span class="block font-bold text-[11px] text-slate-600">Entrada (Antes)</span>
-                                ${task.photo_before_url ? `
-                                    <a href="${task.photo_before_url}" target="_blank" rel="noopener" class="block">
-                                        <img src="${task.photo_before_url}" class="w-full h-24 object-cover rounded-lg border border-slate-200">
-                                    </a>
-                                ` : `
-                                    <label class="cursor-pointer block bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 transition">
-                                        📷 Tirar Foto
-                                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="uploadTaskPhoto(event, '${task.id}', 'photo_before_url')">
-                                    </label>
-                                `}
-                            </div>
-                            <div class="border border-dashed border-slate-300 p-2.5 rounded-xl text-center space-y-2 bg-slate-50">
-                                <span class="block font-bold text-[11px] text-slate-600">Saída (Depois)</span>
-                                ${task.photo_after_url ? `
-                                    <a href="${task.photo_after_url}" target="_blank" rel="noopener" class="block">
-                                        <img src="${task.photo_after_url}" class="w-full h-24 object-cover rounded-lg border border-slate-200">
-                                    </a>
-                                ` : `
-                                    <label class="cursor-pointer block bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-bold text-emerald-600 hover:bg-emerald-50 transition">
-                                        📷 Tirar Foto
-                                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="uploadTaskPhoto(event, '${task.id}', 'photo_after_url')">
-                                    </label>
-                                `}
-                            </div>
-                        </div>
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label for="task-photo-input-${taskId}" class="block font-bold text-slate-700">📸 ${i18n[currentLang].photo_gallery}</label>
+                        <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
+                            ${i18n[currentLang].photo_upload}
+                        </label>
+                        <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
                     </div>
-                ` : ''}
+                    ${preferences.require_photos ? `<p class="text-[11px] text-amber-700">${currentLang === 'pt' ? 'A equipa deve anexar fotografias antes e depois da limpeza.' : 'The team should attach photos before and after cleaning.'}</p>` : ''}
+                    ${photoLoadError ? `<p class="text-[11px] text-rose-600" role="alert">${i18n[currentLang].photo_upload_error}: ${escapePropertyHTML(photoLoadError)}</p>` : ''}
+                    <p id="task-photo-message" role="status" aria-live="polite" class="hidden text-[11px] font-semibold"></p>
+                    <div id="task-photo-gallery" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        ${galleryPhotos.length ? galleryPhotos.map(photo => `
+                            <a href="${escapePropertyHTML(photo.url)}" target="_blank" rel="noopener" class="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                <img src="${escapePropertyHTML(photo.url)}" alt="${escapePropertyHTML(photo.label)}" loading="lazy" class="h-24 w-full object-cover transition group-hover:scale-105">
+                                <span class="block truncate px-2 py-1 text-[10px] text-slate-500">${escapePropertyHTML(photo.label)}</span>
+                            </a>
+                        `).join('') : `<p class="col-span-full text-[11px] text-slate-400">${i18n[currentLang].photo_empty}</p>`}
+                    </div>
+                </div>
                 ${preferences.track_hours ? `
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label for="modal-hours-${task.id}" class="block font-bold text-slate-700">Horas Gastas</label>
@@ -973,6 +1169,20 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return { track_hours: false, require_photos: false };
             };
 
+            let taskPhotos = [];
+            let photoLoadError = null;
+            const { data: photoData, error: photoError } = await supabaseClient
+                .from('cleaning_task_photos')
+                .select('id, photo_url, created_at')
+                .eq('task_id', task.id)
+                .order('created_at', { ascending: false });
+            if (photoError) {
+                console.error('Erro ao carregar fotografias da tarefa:', photoError);
+                photoLoadError = photoError.message;
+            } else {
+                taskPhotos = photoData || [];
+            }
+
             document.getElementById('modal-content').innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
@@ -1003,7 +1213,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             const renderPermissionModules = () => {
                 document.getElementById('task-permission-modules').innerHTML =
-                    renderTaskPermissionModules(task, getAssignedPreferences());
+                    renderTaskPermissionModules(task, getAssignedPreferences(), taskPhotos, photoLoadError);
             };
             renderPermissionModules();
             if (userRole === 'admin') {
@@ -1012,30 +1222,101 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('task-modal').classList.remove('hidden');
         }
 
-        async function uploadTaskPhoto(event, taskId, photoField) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${taskId}_${photoField}_${Date.now()}.${fileExt}`;
-
-            alert('A carregar imagem...');
-
-            const { data, error } = await supabaseClient.storage.from('cleaning-photos').upload(fileName, file);
-
-            if (error) {
-                alert('Erro ao carregar fotografia: ' + error.message + '\nCertifique-se de que criou o bucket "cleaning-photos" no Supabase Storage.');
-                return;
+        async function uploadFotoLimpeza(file, propertyId, taskId) {
+            if (!currentUser) throw new Error('É necessário iniciar sessão para anexar fotografias.');
+            if (!file || !file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+                throw new Error(i18n[currentLang].photo_upload_type_error);
             }
 
-            const { data: publicUrlData } = supabaseClient.storage.from('cleaning-photos').getPublicUrl(fileName);
+            const extensionByType = {
+                'image/jpeg': 'jpg',
+                'image/png': 'png',
+                'image/webp': 'webp',
+                'image/gif': 'gif',
+                'image/heic': 'heic',
+                'image/heif': 'heif'
+            };
+            const extension = extensionByType[file.type.toLowerCase()];
+            if (!extension) throw new Error(i18n[currentLang].photo_upload_type_error);
+
+            const fileName = `${currentUser.id}/${propertyId}/${taskId}/${crypto.randomUUID()}.${extension}`;
+            const storage = supabaseClient.storage.from('cleaning-photos');
+            const { error: uploadError } = await storage.upload(fileName, file, {
+                contentType: file.type,
+                upsert: false
+            });
+            if (uploadError) throw uploadError;
+
+            const { data: publicUrlData } = storage.getPublicUrl(fileName);
             const photoUrl = publicUrlData.publicUrl;
+            const { error: insertError } = await supabaseClient
+                .from('cleaning_task_photos')
+                .insert([{
+                    property_id: propertyId,
+                    task_id: taskId,
+                    uploaded_by: currentUser.id,
+                    photo_url: photoUrl,
+                    storage_path: fileName
+                }]);
+            if (insertError) throw insertError;
 
-            await supabaseClient.from('cleaning_tasks').update({ [photoField]: photoUrl }).eq('id', taskId);
+            return photoUrl;
+        }
 
-            alert('Fotografia guardada com sucesso!');
-            await loadData();
-            closeTaskModal();
+        async function handleTaskPhotoUpload(event, taskId, propertyId) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const input = event.target;
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            const message = document.getElementById('task-photo-message');
+            input.disabled = true;
+            if (message) {
+                message.innerText = i18n[currentLang].photo_uploading;
+                message.className = 'text-[11px] font-semibold text-slate-500';
+            }
+            try {
+                await uploadFotoLimpeza(file, propertyId, taskId);
+                if (!task) throw new Error('A tarefa não está disponível para atualizar a galeria.');
+                await openTaskModal(task);
+                const refreshedMessage = document.getElementById('task-photo-message');
+                if (refreshedMessage) {
+                    refreshedMessage.innerText = i18n[currentLang].photo_upload_success;
+                    refreshedMessage.className = 'text-[11px] font-semibold text-emerald-700';
+                }
+            } catch (error) {
+                console.error('Erro ao anexar fotografia à tarefa:', error);
+                if (message) {
+                    message.innerText = `${i18n[currentLang].photo_upload_error}: ${error.message}`;
+                    message.className = 'text-[11px] font-semibold text-rose-600';
+                } else {
+                    alert(`${i18n[currentLang].photo_upload_error}: ${error.message}`);
+                }
+            } finally {
+                input.disabled = false;
+                input.value = '';
+            }
+        }
+
+        async function uploadTaskPhoto(event, taskId, photoField) {
+            const file = event.target.files?.[0];
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            if (!file || !task) return;
+            try {
+                const photoUrl = await uploadFotoLimpeza(file, task.property_id, taskId);
+                const { error } = await supabaseClient
+                    .from('cleaning_tasks')
+                    .update({ [photoField]: photoUrl })
+                    .eq('id', taskId);
+                if (error) throw error;
+                await loadData();
+                await openTaskModal(task);
+            } catch (error) {
+                console.error('Erro ao guardar fotografia da tarefa:', error);
+                alert(`${i18n[currentLang].photo_upload_error}: ${error.message}`);
+            } finally {
+                event.target.value = '';
+            }
         }
 
         function sendWhatsappNotification(task) {
@@ -1181,6 +1462,172 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (totalAmountBadge) totalAmountBadge.innerText = `Total: ${totalAmount.toFixed(2)}€`;
         }
 
+        function formatFinancialAmount(amount) {
+            return new Intl.NumberFormat(currentLang === 'pt' ? 'pt-PT' : 'en-US', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        async function carregarRelatorios() {
+            const cardsEl = document.getElementById('reports-summary-cards');
+            const propertyListEl = document.getElementById('reports-property-list');
+            const propertySelect = document.getElementById('financial-property');
+            if (!cardsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
+
+            cardsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
+            propertyListEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
+            hidePropertyMessage('reports-summary-message');
+
+            try {
+                const [propertiesResult, entriesResult, tasksResult] = await Promise.all([
+                    supabaseClient
+                        .from('properties')
+                        .select('id, name')
+                        .eq('user_id', currentUser.id),
+                    supabaseClient
+                        .from('property_financial_entries')
+                        .select('property_id, entry_type, amount')
+                        .eq('user_id', currentUser.id),
+                    supabaseClient
+                        .from('cleaning_tasks')
+                        .select('property_id, properties!inner(user_id)')
+                        .eq('properties.user_id', currentUser.id)
+                ]);
+                if (propertiesResult.error) throw propertiesResult.error;
+                if (entriesResult.error) throw entriesResult.error;
+                if (tasksResult.error) throw tasksResult.error;
+
+                const properties = propertiesResult.data || [];
+                const entries = entriesResult.data || [];
+                const tasks = tasksResult.data || [];
+                const metricsByProperty = new Map(properties.map(property => [String(property.id), {
+                    property,
+                    income: 0,
+                    expenses: 0,
+                    cleaningCount: 0
+                }]));
+
+                entries.forEach(entry => {
+                    const metric = metricsByProperty.get(String(entry.property_id));
+                    if (!metric) return;
+                    if (entry.entry_type === 'income') metric.income += Number(entry.amount);
+                    else metric.expenses += Number(entry.amount);
+                });
+                tasks.forEach(task => {
+                    const metric = metricsByProperty.get(String(task.property_id));
+                    if (metric) metric.cleaningCount += 1;
+                });
+
+                const metrics = [...metricsByProperty.values()];
+                const totals = metrics.reduce((sum, metric) => ({
+                    income: sum.income + metric.income,
+                    expenses: sum.expenses + metric.expenses
+                }), { income: 0, expenses: 0 });
+                const mostRequested = metrics.reduce((top, metric) =>
+                    metric.cleaningCount > (top?.cleaningCount || 0) ? metric : top, null);
+
+                cardsEl.innerHTML = `
+                    <article class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                        <p class="text-[11px] font-bold text-emerald-700">${i18n[currentLang].reports_income_total}</p>
+                        <p class="mt-1 text-lg font-extrabold text-emerald-900">${formatFinancialAmount(totals.income)}</p>
+                    </article>
+                    <article class="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+                        <p class="text-[11px] font-bold text-rose-700">${i18n[currentLang].reports_expense_total}</p>
+                        <p class="mt-1 text-lg font-extrabold text-rose-900">${formatFinancialAmount(totals.expenses)}</p>
+                    </article>
+                    <article class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                        <p class="text-[11px] font-bold text-indigo-700">${i18n[currentLang].reports_net_total}</p>
+                        <p class="mt-1 text-lg font-extrabold text-indigo-900">${formatFinancialAmount(totals.income - totals.expenses)}</p>
+                    </article>
+                    <article class="rounded-2xl border border-amber-100 bg-amber-50 p-4 sm:col-span-3">
+                        <p class="text-[11px] font-bold text-amber-700">${i18n[currentLang].reports_most_requested}</p>
+                        <p class="mt-1 text-sm font-extrabold text-amber-900">${escapePropertyHTML(mostRequested?.cleaningCount ? mostRequested.property.name : i18n[currentLang].reports_no_cleanings)}</p>
+                        ${mostRequested?.cleaningCount ? `<p class="mt-1 text-[11px] text-amber-800">${mostRequested.cleaningCount} ${i18n[currentLang].reports_cleanings_count}</p>` : ''}
+                    </article>
+                `;
+
+                if (!metrics.length) {
+                    propertyListEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_empty}</p>`;
+                } else {
+                    propertyListEl.innerHTML = metrics.map(metric => `
+                        <article class="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <h5 class="text-xs font-bold text-slate-900">${escapePropertyHTML(metric.property.name)}</h5>
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <p class="text-emerald-700">${i18n[currentLang].reports_income_total}: <strong>${formatFinancialAmount(metric.income)}</strong></p>
+                                <p class="text-rose-700">${i18n[currentLang].reports_expense_total}: <strong>${formatFinancialAmount(metric.expenses)}</strong></p>
+                                <p class="font-bold text-indigo-700">${i18n[currentLang].reports_net_total}: <strong>${formatFinancialAmount(metric.income - metric.expenses)}</strong></p>
+                                <p class="text-slate-600">${metric.cleaningCount} ${i18n[currentLang].reports_cleanings_count}</p>
+                            </div>
+                        </article>
+                    `).join('');
+                }
+
+                if (propertySelect) {
+                    const selectedId = propertySelect.value;
+                    propertySelect.replaceChildren(
+                        new Option(i18n[currentLang].reports_select_property, ''),
+                        ...properties.map(property => new Option(property.name, property.id))
+                    );
+                    if (properties.some(property => String(property.id) === selectedId)) {
+                        propertySelect.value = selectedId;
+                    }
+                    propertySelect.disabled = properties.length === 0;
+                    document.getElementById('financial-entry-submit').disabled = properties.length === 0;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar métricas financeiras:', error);
+                cardsEl.replaceChildren();
+                propertyListEl.innerHTML = `<p class="text-rose-600 text-xs">${i18n[currentLang].reports_load_error}: ${escapePropertyHTML(error.message)}</p>`;
+                showPropertyMessage('reports-summary-message', `${i18n[currentLang].reports_load_error}: ${error.message}`, 'error');
+            }
+        }
+
+        async function registarMovimentoFinanceiro(event) {
+            event.preventDefault();
+            if (!currentUser || userRole !== 'admin') {
+                showPropertyMessage('financial-entry-message', i18n[currentLang].property_form_access_error, 'error');
+                return;
+            }
+
+            const propertyId = document.getElementById('financial-property').value;
+            const entryType = document.getElementById('financial-type').value;
+            const amount = Number(document.getElementById('financial-amount').value);
+            const description = document.getElementById('financial-description').value.trim();
+            const occurredOn = document.getElementById('financial-date').value;
+            if (!propertyId || !['income', 'expense'].includes(entryType) || !Number.isFinite(amount) || amount <= 0 || !description || !occurredOn) {
+                showPropertyMessage('financial-entry-message', i18n[currentLang].reports_invalid_entry, 'error');
+                return;
+            }
+
+            const submitButton = document.getElementById('financial-entry-submit');
+            submitButton.disabled = true;
+            hidePropertyMessage('financial-entry-message');
+            try {
+                const { error } = await supabaseClient
+                    .from('property_financial_entries')
+                    .insert([{
+                        property_id: propertyId,
+                        user_id: currentUser.id,
+                        entry_type: entryType,
+                        amount,
+                        description,
+                        occurred_on: occurredOn
+                    }]);
+                if (error) throw error;
+
+                document.getElementById('financial-entry-form').reset();
+                document.getElementById('financial-date').value = new Date().toISOString().slice(0, 10);
+                await carregarRelatorios();
+                showPropertyMessage('financial-entry-message', i18n[currentLang].reports_entry_success, 'success');
+            } catch (error) {
+                console.error('Erro ao registar movimento financeiro:', error);
+                showPropertyMessage('financial-entry-message', `${i18n[currentLang].reports_entry_error}: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
         async function togglePaymentStatus(taskId, currentStatus) {
             if (userRole !== 'admin') return;
             const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
@@ -1323,24 +1770,67 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function handlePropertySubmit(e) {
             e.preventDefault();
-            if (!currentUser || userRole !== 'admin') return;
-
-            const name = document.getElementById('prop-name').value;
-            const address = document.getElementById('prop-address').value;
-            const access_code = document.getElementById('prop-access').value;
-            const ical_url = document.getElementById('prop-ical').value;
-            const instructions = document.getElementById('prop-instructions').value;
-            const hourly_rate = parseFloat(document.getElementById('prop-rate').value) || 10.00;
-
-            if (editingPropertyId) {
-                const { error } = await supabaseClient.from('properties').update({ name, address, access_code, ical_url, instructions, hourly_rate }).eq('id', editingPropertyId);
-                if (error) alert('Erro ao atualizar: ' + error.message);
-                else { alert('Alojamento atualizado!'); resetPropertyForm(); await loadData(); switchTab('sub-properties-list'); }
-            } else {
-                const { error } = await supabaseClient.from('properties').insert([{ name, address, access_code, ical_url, instructions, hourly_rate, user_id: currentUser.id }]);
-                if (error) alert('Erro ao registar: ' + error.message);
-                else { document.getElementById('property-form').reset(); await loadData(); alert('Alojamento guardado!'); switchTab('sub-properties-list'); }
+            if (!currentUser || userRole !== 'admin') {
+                showPropertyMessage('property-form-message', i18n[currentLang].property_form_access_error, 'error');
+                return;
             }
+
+            const submitButton = document.getElementById('prop-submit-btn');
+            const dados = {
+                name: document.getElementById('prop-name').value.trim(),
+                address: document.getElementById('prop-address').value.trim(),
+                access_code: document.getElementById('prop-access').value.trim(),
+                ical_url: document.getElementById('prop-ical').value.trim(),
+                instructions: document.getElementById('prop-instructions').value.trim(),
+                hourly_rate: Number(document.getElementById('prop-rate').value),
+                assigned_team_member_id: document.getElementById('prop-assigned-cleaner').value || null
+            };
+
+            if (!dados.name || !dados.address || !Number.isFinite(dados.hourly_rate) || dados.hourly_rate <= 0) {
+                showPropertyMessage('property-form-message', i18n[currentLang].property_form_validation_error, 'error');
+                return;
+            }
+
+            submitButton.disabled = true;
+            hidePropertyMessage('property-form-message');
+            const wasEditing = Boolean(editingPropertyId);
+            try {
+                if (editingPropertyId) {
+                    const { error } = await supabaseClient
+                        .from('properties')
+                        .update(dados)
+                        .eq('id', editingPropertyId)
+                        .eq('user_id', currentUser.id);
+                    if (error) throw error;
+                } else {
+                    await adicionarPropriedade(dados);
+                }
+
+                await loadData();
+                resetPropertyForm();
+                showPropertyMessage(
+                    'properties-list-message',
+                    wasEditing ? i18n[currentLang].property_update_success : i18n[currentLang].property_add_success,
+                    'success'
+                );
+                switchTab('sub-properties-list');
+            } catch (error) {
+                console.error('Erro ao guardar propriedade:', error);
+                showPropertyMessage('property-form-message', `${i18n[currentLang].property_save_error}: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        async function adicionarPropriedade(dados) {
+            if (!currentUser || userRole !== 'admin') {
+                throw new Error('É necessário iniciar sessão como gestor para adicionar uma propriedade.');
+            }
+
+            const { error } = await supabaseClient
+                .from('properties')
+                .insert([{ ...dados, user_id: currentUser.id }]);
+            if (error) throw error;
         }
 
         document.addEventListener('DOMContentLoaded', () => {

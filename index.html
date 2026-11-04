@@ -206,6 +206,7 @@
                         <div data-i18n="nav_cat_history" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📜 Histórico & Pagamentos</div>
                         <div class="space-y-1 pl-1">
                             <button type="button" onclick="switchTab('sub-history')" id="btn-sub-history" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="nav_history_accounts">Histórico & Contas</span></button>
+                            <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📊 <span class="sidebar-text" data-i18n="nav_reports">Relatórios & Desempenho</span></button>
                         </div>
                     </div>
 
@@ -291,7 +292,13 @@
             <!-- SUBTEMA: Meus Alojamentos -->
             <div id="view-sub-properties-list" class="space-y-6 hidden">
                 <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
-                    <h3 data-i18n="title_registered_properties" class="text-sm font-bold text-slate-900">Alojamentos Registados</h3>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <h3 data-i18n="title_registered_properties" class="text-sm font-bold text-slate-900">Alojamentos Registados</h3>
+                        <button type="button" onclick="abrirFormularioPropriedade()" data-i18n="btn_add_property_new" class="admin-only w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md">
+                            ➕ Adicionar Nova Propriedade
+                        </button>
+                    </div>
+                    <p id="properties-list-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
                     <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <p class="text-slate-400 text-xs">A carregar alojamentos...</p>
                     </div>
@@ -313,15 +320,22 @@
                         </div>
                         <div>
                             <label data-i18n="label_prop_address" class="block text-xs font-bold text-slate-700 mb-1">Morada Completa</label>
-                            <input type="text" id="prop-address" placeholder="ex: Rua 25 de Abril, Lagos" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="prop-address" placeholder="ex: Rua 25 de Abril, Lagos" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
                             <label data-i18n="label_prop_keybox" class="block text-xs font-bold text-slate-700 mb-1">Código Keybox / Acesso</label>
-                            <input type="text" id="prop-access" placeholder="ex: Keybox 1234" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="prop-access" placeholder="ex: Cofre 1234, porta azul" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
                             <label data-i18n="label_prop_rate" class="block text-xs font-bold text-slate-700 mb-1">Valor por Hora (€/h)</label>
                             <input type="number" step="0.5" id="prop-rate" placeholder="ex: 12.00" value="10.00" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="prop-assigned-cleaner" data-i18n="label_assigned_cleaner" class="block text-xs font-bold text-slate-700 mb-1">Cleaner Atribuído</label>
+                            <select id="prop-assigned-cleaner" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="" data-i18n="option_no_cleaner">Sem atribuição</option>
+                            </select>
+                            <p id="property-cleaner-status" role="status" class="hidden mt-1 text-[11px] text-rose-600"></p>
                         </div>
                         <div class="md:col-span-2">
                             <label data-i18n="label_prop_ical" class="block text-xs font-bold text-slate-700 mb-1">Link iCal do Airbnb / Booking (.ics)</label>
@@ -332,6 +346,7 @@
                             <textarea id="prop-instructions" placeholder="ex: Mudança total de lençóis, lavar varanda..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24"></textarea>
                         </div>
 
+                        <p id="property-form-message" role="status" aria-live="polite" class="hidden md:col-span-2 text-xs font-semibold"></p>
                         <button type="submit" id="prop-submit-btn" data-i18n="btn_save_property" class="md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Guardar Alojamento</button>
                     </form>
                 </div>
@@ -352,6 +367,58 @@
                     </div>
                     <div id="history-tasks-list" class="space-y-3"><p class="text-slate-400 text-xs">A carregar histórico...</p></div>
                 </div>
+            </div>
+
+            <!-- SUBTEMA: Relatórios & Desempenho -->
+            <div id="view-sub-reports" class="space-y-6 hidden">
+                <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h3 data-i18n="nav_reports" class="text-sm font-bold text-slate-900">Relatórios & Desempenho</h3>
+                    </div>
+                    <p id="reports-summary-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
+                    <div id="reports-summary-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <p class="text-slate-400 text-xs">A carregar métricas...</p>
+                    </div>
+                    <div>
+                        <h4 data-i18n="reports_by_property" class="mb-3 text-xs font-bold text-slate-700">Desempenho por imóvel</h4>
+                        <div id="reports-property-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <p class="text-slate-400 text-xs">A carregar relatórios...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h4 data-i18n="reports_add_entry" class="text-sm font-bold text-slate-900">Registar entrada ou saída</h4>
+                    </div>
+                    <form id="financial-entry-form" onsubmit="registarMovimentoFinanceiro(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label for="financial-property" data-i18n="reports_property" class="mb-1 block text-xs font-bold text-slate-700">Imóvel</label>
+                            <select id="financial-property" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                        </div>
+                        <div>
+                            <label for="financial-type" data-i18n="reports_type" class="mb-1 block text-xs font-bold text-slate-700">Tipo de movimento</label>
+                            <select id="financial-type" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="income" data-i18n="reports_income">Ganho</option>
+                                <option value="expense" data-i18n="reports_expense">Gasto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="financial-amount" data-i18n="reports_amount" class="mb-1 block text-xs font-bold text-slate-700">Valor (€)</label>
+                            <input type="number" id="financial-amount" min="0.01" step="0.01" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="financial-date" data-i18n="reports_date" class="mb-1 block text-xs font-bold text-slate-700">Data</label>
+                            <input type="date" id="financial-date" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="financial-description" data-i18n="reports_description" class="mb-1 block text-xs font-bold text-slate-700">Descrição</label>
+                            <input type="text" id="financial-description" maxlength="200" required placeholder="Limpeza, estadia ou manutenção" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <p id="financial-entry-message" role="status" aria-live="polite" class="hidden sm:col-span-2 text-xs font-semibold"></p>
+                        <button id="financial-entry-submit" type="submit" data-i18n="reports_save" class="sm:col-span-2 w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Guardar movimento</button>
+                    </form>
+                </section>
             </div>
 
             <!-- GESTÃO DA EQUIPA -->
