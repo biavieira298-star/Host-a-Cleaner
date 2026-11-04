@@ -14,19 +14,29 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let taskTeamMembers = [];
         let currentAuthMode = 'login';
         let currentUser = null;
+        let currentTeamManagerId = null;
         let pendingTeamInviteToken = null;
         let registrationRole = 'cleaner';
         let registrationRequested = false;
         let propertyCleaners = [];
         let currentLang = localStorage.getItem('host_cleaner_lang') || 'pt';
         
-        let selectedDate = new Date().toISOString().split('T')[0];
+        function getLocalDateString(date = new Date()) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        let selectedDate = getLocalDateString();
         let selectedPropertyFilter = 'all';
         let editingPropertyId = null;
         
-        let calendarMode = 'week';
+        let calendarMode = 'day';
         let currentCalendarDate = new Date();
         let allTasksCache = [];
+        let agendaTasksCache = [];
+        let agendaRequestId = 0;
         let allPropertiesCache = [];
         let isDesktopSidebarCollapsed = false;
         let isMobileDrawerOpen = false;
@@ -44,14 +54,36 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_submit_signup: "Criar Nova Conta",
                 btn_forgot_pwd: "Esqueceu-se da palavra-passe?",
                 header_subtitle: "Acompanhe as limpezas e gira a sua equipa.",
-                nav_cat_calendar: "📅 Calendário & Agendamento",
+                nav_cat_calendar: "📅 Agenda",
+                nav_agenda: "Agenda",
                 nav_daily_tasks: "Tarefas Diárias (Lista)",
                 nav_overview_cal: "Vista Semanal / Mensal",
                 nav_settings: "Definições",
                 nav_add_property: "Adicionar Alojamento",
                 nav_manage_properties: "Gestão de Alojamento",
+                nav_team_directory: "Equipa (consulta)",
+                nav_time_entries: "Registo de Horas",
+                team_read_only_title: "Equipa",
+                time_entries_submitted: "Registos submetidos",
                 nav_profile: "Perfil",
                 nav_add_team: "Gestão de Equipa",
+                role_locked: "Acesso reservado ao administrador",
+                role_read_only: "Modo de consulta",
+                time_entries_title: "Registo de Horas Trabalhadas",
+                time_entry_date: "Data",
+                time_entry_property: "Alojamento",
+                time_entry_task: "Tarefa / descrição",
+                time_entry_no_property: "Sem alojamento associado",
+                time_entry_hours: "Horas trabalhadas",
+                time_entry_submit: "Registar horas",
+                time_entry_saved: "Horas registadas com sucesso.",
+                time_entry_error: "Não foi possível registar as horas",
+                time_entry_validation: "Indique a data, a tarefa e um total de horas entre 0 e 24.",
+                time_entry_member_error: "Esta conta não está associada a um membro de equipa ativo.",
+                time_entries_loading: "A carregar registos...",
+                time_entries_empty: "Ainda não existem horas registadas.",
+                time_entries_team_member: "Membro",
+                time_entry_description_placeholder: "Descreva a tarefa realizada",
                 team_track_hours: "Ativar registo de horas",
                 team_require_photos: "Exigir fotos antes e depois",
                 team_phone: "Telemóvel",
@@ -75,6 +107,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_next: "Seguinte ▶",
                 btn_mode_week: "Semanal",
                 btn_mode_month: "Mensal",
+                btn_mode_day: "Diária",
+                agenda_total: "Limpezas hoje",
+                agenda_completed: "Concluídas hoje",
+                agenda_pending: "Pendentes hoje",
+                agenda_no_tasks: "Sem limpezas agendadas para esta data.",
+                agenda_loading: "A carregar agenda...",
+                agenda_load_error: "Erro ao carregar a agenda",
+                agenda_today: "Hoje",
                 title_registered_properties: "Alojamentos Registados",
                 nav_reports: "Relatórios & Desempenho",
                 reports_by_property: "Desempenho por imóvel",
@@ -174,14 +214,36 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_submit_signup: "Create New Account",
                 btn_forgot_pwd: "Forgot password?",
                 header_subtitle: "Track cleanings and manage your team.",
-                nav_cat_calendar: "📅 Calendar & Schedule",
+                nav_cat_calendar: "📅 Agenda",
+                nav_agenda: "Agenda",
                 nav_daily_tasks: "Daily Tasks (List)",
                 nav_overview_cal: "Weekly / Monthly View",
                 nav_settings: "Settings",
                 nav_add_property: "Add Property",
                 nav_manage_properties: "Property Management",
+                nav_team_directory: "Team (read-only)",
+                nav_time_entries: "Work Hours",
+                team_read_only_title: "Team",
+                time_entries_submitted: "Submitted entries",
                 nav_profile: "Profile",
                 nav_add_team: "Team Management",
+                role_locked: "Administrator access only",
+                role_read_only: "Read-only",
+                time_entries_title: "Work Hours Log",
+                time_entry_date: "Date",
+                time_entry_property: "Property",
+                time_entry_task: "Task / description",
+                time_entry_no_property: "No property",
+                time_entry_hours: "Hours worked",
+                time_entry_submit: "Log hours",
+                time_entry_saved: "Hours logged successfully.",
+                time_entry_error: "Could not log hours",
+                time_entry_validation: "Enter the date, task, and hours between 0 and 24.",
+                time_entry_member_error: "This account is not linked to an active team member.",
+                time_entries_loading: "Loading entries...",
+                time_entries_empty: "No work hours have been logged yet.",
+                time_entries_team_member: "Team member",
+                time_entry_description_placeholder: "Describe the work completed",
                 team_track_hours: "Enable time tracking",
                 team_require_photos: "Require before and after photos",
                 team_phone: "Phone number",
@@ -205,6 +267,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_next: "Next ▶",
                 btn_mode_week: "Weekly",
                 btn_mode_month: "Monthly",
+                btn_mode_day: "Daily",
+                agenda_total: "Cleanings today",
+                agenda_completed: "Completed today",
+                agenda_pending: "Pending today",
+                agenda_no_tasks: "No cleanings scheduled for this date.",
+                agenda_loading: "Loading agenda...",
+                agenda_load_error: "Error loading agenda",
+                agenda_today: "Today",
                 title_registered_properties: "Registered Properties",
                 nav_reports: "Reports & Performance",
                 reports_by_property: "Performance by property",
@@ -328,13 +398,18 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     el.innerText = i18n[lang][key];
                 }
             });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (i18n[lang] && i18n[lang][key]) el.placeholder = i18n[lang][key];
+            });
 
             // Re-renderiza o calendário para atualizar os dias da semana
-            if (!document.getElementById('view-sub-calendar-overview').classList.contains('hidden')) {
-                renderOverviewCalendar();
-            }
+            if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
             if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
                 carregarRelatorios();
+            }
+            if (!document.getElementById('view-sub-time-entries').classList.contains('hidden')) {
+                carregarRegistosHoras();
             }
         }
 
@@ -342,6 +417,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             changeLanguage(currentLang);
             document.getElementById('calendar-date-picker').value = selectedDate;
             document.getElementById('financial-date').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('time-entry-date').value = getLocalDateString();
             const { data: { session } } = await supabaseClient.auth.getSession();
             currentUser = session ? session.user : null;
 
@@ -375,36 +451,91 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function checkUserRole() {
             if (!currentUser) return;
-            const { data, error } = await supabaseClient.from('team_members').select('*').eq('auth_user_id', currentUser.id).maybeSingle();
-            if (error) {
-                console.error('Erro ao carregar o perfil do membro da equipa:', error);
-                throw error;
+            const [{ data: member, error: memberError }, { data: profile, error: profileError }] = await Promise.all([
+                supabaseClient
+                    .from('team_members')
+                    .select('id, role, track_hours, require_photos, manager_id')
+                    .eq('auth_user_id', currentUser.id)
+                    .maybeSingle(),
+                supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', currentUser.id)
+                    .maybeSingle()
+            ]);
+            if (memberError) {
+                console.error('Erro ao carregar o perfil do membro da equipa:', memberError);
+                throw memberError;
             }
-            if (data && data.role === 'cleaner') {
+            if (profileError) {
+                console.warn('Não foi possível ler o papel em profiles; será usado o papel dos metadados.', profileError);
+            }
+
+            currentTeamManagerId = null;
+            currentTeamMemberId = null;
+            if (member?.role === 'cleaner') {
                 userRole = 'cleaner';
-                currentTeamMemberId = data.id;
+                currentTeamMemberId = member.id;
+                currentTeamManagerId = member.manager_id;
                 currentTeamMemberPreferences = {
-                    track_hours: data.track_hours === true,
-                    require_photos: data.require_photos === true
+                    track_hours: member.track_hours === true,
+                    require_photos: member.require_photos === true
                 };
-            } else {
-                userRole = 'admin';
-                currentTeamMemberId = null;
-                currentTeamMemberPreferences = { track_hours: false, require_photos: false };
+                return;
             }
+
+            const validRoles = ['admin', 'cleaner'];
+            const profileRole = validRoles.includes(profile?.role) ? profile.role : null;
+            const appMetadataRole = currentUser.app_metadata?.role;
+            const userMetadataRole = currentUser.user_metadata?.role === 'cleaner' ? 'cleaner' : null;
+            const metadataRole = validRoles.includes(appMetadataRole) ? appMetadataRole : userMetadataRole;
+            const resolvedRole = profileRole || metadataRole;
+            if (resolvedRole) {
+                userRole = resolvedRole;
+            } else {
+                const { count, error: propertyError } = await supabaseClient
+                    .from('properties')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', currentUser.id);
+                if (propertyError) {
+                    console.warn('Não foi possível determinar o papel pela propriedade dos alojamentos.', propertyError);
+                }
+                userRole = count > 0 ? 'admin' : 'cleaner';
+            }
+            currentTeamMemberPreferences = { track_hours: false, require_photos: false };
         }
 
         function applyRolePermissionsUI() {
             const adminElements = document.querySelectorAll('.admin-only');
-            if (userRole === 'cleaner') {
-                adminElements.forEach(el => el.classList.add('hidden'));
+            const cleanerElements = document.querySelectorAll('.cleaner-only');
+            const lockedRoutes = document.querySelectorAll('[data-admin-route]');
+            const isCleaner = userRole === 'cleaner';
+            adminElements.forEach(el => el.classList.toggle('hidden', isCleaner));
+            cleanerElements.forEach(el => el.classList.toggle('hidden', !isCleaner));
+            lockedRoutes.forEach(button => {
+                button.disabled = isCleaner;
+                button.setAttribute('aria-disabled', String(isCleaner));
+                button.title = isCleaner ? i18n[currentLang].role_locked : '';
+                button.querySelector('.role-lock-icon')?.classList.toggle('hidden', !isCleaner);
+                button.classList.toggle('cursor-not-allowed', isCleaner);
+                button.classList.toggle('opacity-70', isCleaner);
+            });
+            document.getElementById('team-admin-panel')?.classList.toggle('hidden', isCleaner);
+            document.getElementById('team-readonly-notice')?.classList.toggle('hidden', !isCleaner);
+            document.getElementById('time-entry-form')?.classList.toggle('hidden', !isCleaner);
+            if (isCleaner) {
                 document.getElementById('sidebar-role-subtitle').innerText = "Equipa de Limpeza";
                 document.getElementById('profile-role-badge').innerText = "Limpeza";
             } else {
-                adminElements.forEach(el => el.classList.remove('hidden'));
                 document.getElementById('sidebar-role-subtitle').innerText = "Admin Hub";
                 document.getElementById('profile-role-badge').innerText = "Admin";
             }
+        }
+
+        function requireAdminAction() {
+            if (userRole === 'admin' && currentUser) return true;
+            alert(i18n[currentLang].role_locked);
+            return false;
         }
 
         function toggleMobileDrawer() {
@@ -486,7 +617,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     emailRedirectTo: 'https://host-a-cleaner.pages.dev/#login',
                     data: {
                         full_name: nome,
-                        role
+                        role: role === 'co-host' ? 'co-host' : 'cleaner'
                     }
                 }
             });
@@ -612,10 +743,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             applyRolePermissionsUI();
             
-            const savedTab = localStorage.getItem('host_cleaner_active_tab') || 'sub-calendar-daily';
-            const adminTabs = ['sub-properties-add', 'sub-team-management', 'sub-reports'];
-            if (userRole === 'cleaner' && adminTabs.includes(savedTab)) {
-                switchTab('sub-calendar-daily');
+            const previousTab = localStorage.getItem('host_cleaner_active_tab');
+            const savedTab = ['sub-calendar-daily', 'sub-calendar-overview'].includes(previousTab) ? 'sub-agenda' : previousTab || 'sub-agenda';
+            const restrictedTabs = ['sub-properties-add', 'sub-reports'];
+            if (userRole === 'cleaner' && restrictedTabs.includes(savedTab)) {
+                switchTab('sub-agenda');
             } else {
                 switchTab(savedTab);
             }
@@ -689,9 +821,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         function switchTab(subtabId) {
             closeMenuAfterAction();
             
-            const adminTabs = ['sub-properties-add', 'sub-team-management', 'sub-reports'];
-            if (userRole === 'cleaner' && adminTabs.includes(subtabId)) {
-                subtabId = 'sub-calendar-daily';
+            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports'].includes(subtabId)) {
+                alert(i18n[currentLang].role_locked);
+                return;
             }
 
             if (['sub-properties-list', 'sub-properties-add', 'sub-team-management'].includes(subtabId)) {
@@ -700,38 +832,45 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-calendar-daily', 'sub-calendar-overview', 'sub-properties-list', 'sub-properties-add', 'sub-history', 'sub-reports', 'sub-team-management'];
+            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-history', 'sub-reports', 'sub-team-management', 'sub-time-entries'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
                 const btn = document.getElementById(`btn-${t}`);
                 if (btn) {
-                    if (t === subtabId) {
+                    if (t === subtabId && !(userRole === 'cleaner' && t === 'sub-team-management')) {
                         btn.className = "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-lg transition whitespace-nowrap";
                     } else {
                         btn.className = "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap";
                     }
                 }
             });
+            const teamDirectoryButton = document.getElementById('btn-sub-team-directory');
+            if (teamDirectoryButton) {
+                const directoryStateClass = userRole !== 'cleaner'
+                    ? 'hidden text-slate-300'
+                    : subtabId === 'sub-team-management'
+                        ? 'bg-indigo-600 text-white shadow-lg'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white';
+                teamDirectoryButton.className = `cleaner-only ${directoryStateClass} w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap`;
+            }
 
-            if (subtabId === 'sub-calendar-daily') fetchTasks();
-            if (subtabId === 'sub-calendar-overview') renderOverviewCalendar();
+            if (subtabId === 'sub-agenda') fetchAgendaTasks();
             if (subtabId === 'sub-properties-list') carregarPropriedades();
             if (subtabId === 'sub-properties-add' && !editingPropertyId) carregarCleaners();
             if (subtabId === 'sub-history') fetchHistoryAdmin();
             if (subtabId === 'sub-reports') carregarRelatorios();
             if (subtabId === 'sub-team-management') fetchTeamMembers();
+            if (subtabId === 'sub-time-entries') carregarRegistosHoras();
         }
 
         async function loadData() {
             await fetchPropertiesForSelect();
-            await carregarCleaners();
+            await fetchTeamMembers();
+            if (userRole === 'admin') await carregarCleaners();
             await carregarPropriedades();
             await fetchAllTasksCache();
-            fetchTasks();
-            if (!document.getElementById('view-sub-calendar-overview').classList.contains('hidden')) {
-                renderOverviewCalendar();
-            }
+            await fetchAgendaTasks();
             if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
                 carregarRelatorios();
             }
@@ -887,6 +1026,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function loadPropertyForEdit(property) {
+            if (!requireAdminAction()) return;
             editingPropertyId = property.id;
             document.getElementById('prop-name').value = property.name || '';
             document.getElementById('prop-address').value = property.address || '';
@@ -908,6 +1048,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function resetPropertyForm() {
+            if (!requireAdminAction()) return;
             editingPropertyId = null;
             document.getElementById('property-form').reset();
             document.getElementById('prop-rate').value = "10.00";
@@ -922,11 +1063,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function abrirFormularioPropriedade() {
+            if (!requireAdminAction()) return;
             resetPropertyForm();
             switchTab('sub-properties-add');
         }
 
         async function deleteProperty(propId) {
+            if (!requireAdminAction()) return;
             if (!confirm('Deseja mesmo apagar este alojamento?')) return;
             const { error } = await supabaseClient.from('properties').delete().eq('id', propId);
             if (error) {
@@ -936,26 +1079,98 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             await loadData();
         }
 
-        function onCalendarPropertyFilterChange(val) { selectedPropertyFilter = val; fetchTasks(); }
-        function onDateFilterChange(val) { if (val) { selectedDate = val; fetchTasks(); } }
+        function parseLocalDate(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            return new Date(year, month - 1, day, 12);
+        }
 
-        async function fetchTasks() {
+        function getAgendaDateRange() {
+            const date = calendarMode === 'day' ? parseLocalDate(selectedDate) : new Date(currentCalendarDate);
+            if (calendarMode === 'day') return { start: selectedDate, end: selectedDate };
+            if (calendarMode === 'month') {
+                return {
+                    start: getLocalDateString(new Date(date.getFullYear(), date.getMonth(), 1, 12)),
+                    end: getLocalDateString(new Date(date.getFullYear(), date.getMonth() + 1, 0, 12))
+                };
+            }
+            const startDate = new Date(date);
+            startDate.setDate(startDate.getDate() - startDate.getDay());
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6);
+            return { start: getLocalDateString(startDate), end: getLocalDateString(endDate) };
+        }
+
+        function onCalendarPropertyFilterChange(val) {
+            selectedPropertyFilter = val;
+            fetchAgendaTasks();
+        }
+
+        function onDateFilterChange(val) {
+            if (!val) return;
+            selectedDate = val;
+            currentCalendarDate = parseLocalDate(val);
+            fetchAgendaTasks();
+        }
+
+        function renderAgendaSummary() {
+            const today = getLocalDateString();
+            const todayTasks = allTasksCache.filter(task =>
+                task.scheduled_date === today &&
+                (selectedPropertyFilter === 'all' || String(task.property_id) === String(selectedPropertyFilter))
+            );
+            document.getElementById('agenda-today-total').innerText = String(todayTasks.length);
+            document.getElementById('agenda-today-completed').innerText =
+                String(todayTasks.filter(task => task.status === 'completed').length);
+            document.getElementById('agenda-today-pending').innerText =
+                String(todayTasks.filter(task => task.status === 'pending').length);
+        }
+
+        async function fetchAgendaTasks() {
+            const listContainer = document.getElementById('tasks-list-container');
+            const calendarContainer = document.getElementById('calendar-grid-container');
+            if (!listContainer || !calendarContainer) return;
+            const requestId = ++agendaRequestId;
+            const { start, end } = getAgendaDateRange();
+            listContainer.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].agenda_loading}</p>`;
+            document.getElementById('calendar-grid').innerHTML =
+                `<div class="col-span-7 py-6 text-center text-slate-400 text-xs">${i18n[currentLang].agenda_loading}</div>`;
+
+            let query = supabaseClient
+                .from('cleaning_tasks')
+                .select('*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)')
+                .gte('scheduled_date', start)
+                .lte('scheduled_date', end)
+                .order('scheduled_date', { ascending: true });
+            if (selectedPropertyFilter !== 'all') query = query.eq('property_id', selectedPropertyFilter);
+
+            const { data, error } = await query;
+            if (requestId !== agendaRequestId) return;
+            if (error) {
+                console.error('Erro ao carregar tarefas da agenda:', error);
+                const errorHTML = `<div class="py-6 text-center" role="alert"><p class="text-rose-600 text-xs">${i18n[currentLang].agenda_load_error}: ${escapePropertyHTML(error.message)}</p></div>`;
+                listContainer.innerHTML = errorHTML;
+                document.getElementById('calendar-grid').innerHTML = `<div class="col-span-7">${errorHTML}</div>`;
+                renderAgendaSummary();
+                return;
+            }
+
+            agendaTasksCache = data || [];
+            renderAgendaSummary();
+            renderAgendaView();
+        }
+
+        function renderAgendaTasks() {
             const container = document.getElementById('tasks-list-container');
             if (!container) return;
-
-            let filtered = allTasksCache.filter(task => {
-                const matchDate = task.scheduled_date === selectedDate;
-                const matchProp = selectedPropertyFilter === 'all' || task.property_id === selectedPropertyFilter;
-                return matchDate && matchProp;
-            });
+            const filtered = agendaTasksCache;
 
             if (filtered.length === 0) {
                 container.innerHTML = `
                     <div class="py-6 text-center space-y-3">
-                        <p class="text-slate-400 text-xs">Sem limpezas agendadas para esta data.</p>
+                        <p class="text-slate-400 text-xs">${i18n[currentLang].agenda_no_tasks}</p>
                         ${userRole === 'admin' ? `
-                            <button onclick="openAddCleaningModal('${selectedDate}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl text-xs border border-indigo-200 transition">
-                                ➕ Adicionar Limpeza para ${selectedDate}
+                            <button type="button" onclick="openAddCleaningModal('${selectedDate}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl text-xs border border-indigo-200 transition">
+                                ➕ ${i18n[currentLang].btn_add_cleaning} ${selectedDate}
                             </button>
                         ` : ''}
                     </div>
@@ -982,6 +1197,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function openAddCleaningModal(defaultDate) {
+            if (!requireAdminAction()) return;
             const propSelect = document.getElementById('modal-cleaning-prop');
             if (allPropertiesCache.length === 0) {
                 propSelect.innerHTML = `<option value="">Nenhum alojamento registado</option>`;
@@ -1000,6 +1216,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function handleAddCleaningSubmit(e) {
             e.preventDefault();
+            if (!requireAdminAction()) return;
             const property_id = document.getElementById('modal-cleaning-prop').value;
             const scheduled_date = document.getElementById('modal-cleaning-date').value;
             const cleaner_notes = document.getElementById('modal-cleaning-notes').value;
@@ -1026,6 +1243,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 alert('Limpeza adicionada com sucesso!');
                 closeAddCleaningModal();
                 selectedDate = scheduled_date;
+                currentCalendarDate = parseLocalDate(scheduled_date);
                 document.getElementById('calendar-date-picker').value = scheduled_date;
                 await loadData();
             }
@@ -1082,11 +1300,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `
                 <div class="space-y-3 pt-2 border-t border-slate-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <label for="task-photo-input-${taskId}" class="block font-bold text-slate-700">📸 ${i18n[currentLang].photo_gallery}</label>
-                        <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
-                            ${i18n[currentLang].photo_upload}
-                        </label>
-                        <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
+                        <span class="block font-bold text-slate-700">📸 ${i18n[currentLang].photo_gallery}</span>
+                        ${userRole === 'admin' ? `
+                            <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
+                                ${i18n[currentLang].photo_upload}
+                            </label>
+                            <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
+                        ` : ''}
                     </div>
                     ${preferences.require_photos ? `<p class="text-[11px] text-amber-700">${currentLang === 'pt' ? 'A equipa deve anexar fotografias antes e depois da limpeza.' : 'The team should attach photos before and after cleaning.'}</p>` : ''}
                     ${photoLoadError ? `<p class="text-[11px] text-rose-600" role="alert">${i18n[currentLang].photo_upload_error}: ${escapePropertyHTML(photoLoadError)}</p>` : ''}
@@ -1100,7 +1320,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         `).join('') : `<p class="col-span-full text-[11px] text-slate-400">${i18n[currentLang].photo_empty}</p>`}
                     </div>
                 </div>
-                ${preferences.track_hours ? `
+                ${preferences.track_hours && userRole === 'admin' ? `
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label for="modal-hours-${task.id}" class="block font-bold text-slate-700">Horas Gastas</label>
                         <input type="number" step="0.5" id="modal-hours-${task.id}" value="${task.hours_spent || ''}" placeholder="ex: 2.5" class="w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white">
@@ -1151,7 +1371,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 assignmentSelect.value = task.assigned_team_member_id || '';
             }
 
-            document.getElementById('task-notes').value = task.cleaner_notes || '';
+            const taskNotes = document.getElementById('task-notes');
+            taskNotes.value = task.cleaner_notes || '';
+            taskNotes.readOnly = userRole !== 'admin';
+            taskNotes.classList.toggle('bg-slate-100', userRole !== 'admin');
             const getAssignedPreferences = () => {
                 const assignedId = userRole === 'admin'
                     ? assignmentSelect.value
@@ -1199,7 +1422,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label class="block font-bold text-slate-700">Estado da Tarefa</label>
-                        <select id="modal-status-${task.id}" class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs">
+                        <select id="modal-status-${task.id}" ${userRole !== 'admin' ? 'disabled' : ''} class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs disabled:bg-slate-100 disabled:text-slate-500">
                             <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>⏳ Pendente</option>
                             <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>🔄 Em Andamento</option>
                             <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>🟢 Concluída</option>
@@ -1207,7 +1430,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     </div>
 
                     <div id="task-permission-modules"></div>
-                    <button onclick="saveTaskModalDetails('${task.id}')" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md mt-3">Guardar Alterações</button>
+                    ${userRole === 'admin' ? `<button onclick="saveTaskModalDetails('${task.id}')" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md mt-3">Guardar Alterações</button>` : ''}
                 </div>
             `;
 
@@ -1223,6 +1446,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function uploadFotoLimpeza(file, propertyId, taskId) {
+            if (!requireAdminAction()) throw new Error(i18n[currentLang].role_locked);
             if (!currentUser) throw new Error('É necessário iniciar sessão para anexar fotografias.');
             if (!file || !file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
                 throw new Error(i18n[currentLang].photo_upload_type_error);
@@ -1264,6 +1488,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function handleTaskPhotoUpload(event, taskId, propertyId) {
+            if (userRole !== 'admin') {
+                alert(i18n[currentLang].role_locked);
+                return;
+            }
             const file = event.target.files?.[0];
             if (!file) return;
 
@@ -1299,6 +1527,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function uploadTaskPhoto(event, taskId, photoField) {
+            if (!requireAdminAction()) return;
             const file = event.target.files?.[0];
             const task = allTasksCache.find(item => String(item.id) === String(taskId));
             if (!file || !task) return;
@@ -1365,6 +1594,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function deleteTask(taskId) {
+            if (!requireAdminAction()) return;
             if (!confirm('Tem a certeza que deseja apagar esta limpeza?')) return;
             await supabaseClient.from('cleaning_tasks').delete().eq('id', taskId);
             alert('Limpeza apagada!');
@@ -1378,6 +1608,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function saveTaskModalDetails(taskId) {
+            if (!requireAdminAction()) return;
             const status = document.getElementById(`modal-status-${taskId}`).value;
             const cleaner_notes = document.getElementById('task-notes').value;
             const hoursInput = document.getElementById(`modal-hours-${taskId}`);
@@ -1467,6 +1698,94 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 style: 'currency',
                 currency: 'EUR'
             }).format(amount);
+        }
+
+        async function carregarRegistosHoras() {
+            const listEl = document.getElementById('time-entries-list');
+            const propertySelect = document.getElementById('time-entry-property');
+            if (!listEl || !currentUser) return;
+
+            listEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].time_entries_loading}</p>`;
+            if (propertySelect) {
+                propertySelect.replaceChildren(
+                    new Option(i18n[currentLang].time_entry_no_property, ''),
+                    ...allPropertiesCache.map(property => new Option(property.name, property.id))
+                );
+            }
+
+            let query = supabaseClient
+                .from('work_time_entries')
+                .select('id, work_date, hours, description, team_members(name), properties(name)')
+                .order('work_date', { ascending: false })
+                .order('created_at', { ascending: false });
+            query = userRole === 'admin'
+                ? query.eq('manager_id', currentUser.id)
+                : query.eq('user_id', currentUser.id);
+
+            const { data, error } = await query;
+            if (error) {
+                console.error('Erro ao carregar registos de horas:', error);
+                listEl.innerHTML = `<p class="text-rose-600 text-xs" role="alert">${i18n[currentLang].time_entry_error}: ${escapePropertyHTML(error.message)}</p>`;
+                return;
+            }
+            if (!data || data.length === 0) {
+                listEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].time_entries_empty}</p>`;
+                return;
+            }
+
+            listEl.innerHTML = data.map(entry => `
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <strong class="text-slate-900">${escapePropertyHTML(entry.properties?.name || i18n[currentLang].time_entry_property)}</strong>
+                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">${escapePropertyHTML(entry.hours)}h</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-slate-500">${escapePropertyHTML(entry.work_date)}${userRole === 'admin' && entry.team_members?.name ? ` · ${escapePropertyHTML(entry.team_members.name)}` : ''}</p>
+                    <p class="mt-2 whitespace-pre-wrap text-slate-700">${escapePropertyHTML(entry.description)}</p>
+                </article>
+            `).join('');
+        }
+
+        async function registarHorasTrabalhadas(event) {
+            event.preventDefault();
+            if (!currentUser || userRole !== 'cleaner' || !currentTeamMemberId || !currentTeamManagerId) {
+                showPropertyMessage('time-entry-message', i18n[currentLang].time_entry_member_error, 'error');
+                return;
+            }
+
+            const submitButton = document.getElementById('time-entry-submit');
+            const hours = Number(document.getElementById('time-entry-hours').value);
+            const description = document.getElementById('time-entry-description').value.trim();
+            const workDate = document.getElementById('time-entry-date').value;
+            const propertyId = document.getElementById('time-entry-property').value || null;
+            if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || !description || !workDate) {
+                showPropertyMessage('time-entry-message', i18n[currentLang].time_entry_validation, 'error');
+                return;
+            }
+
+            submitButton.disabled = true;
+            hidePropertyMessage('time-entry-message');
+            try {
+                const { error } = await supabaseClient.from('work_time_entries').insert([{
+                    team_member_id: currentTeamMemberId,
+                    user_id: currentUser.id,
+                    manager_id: currentTeamManagerId,
+                    property_id: propertyId,
+                    work_date: workDate,
+                    hours,
+                    description
+                }]);
+                if (error) throw error;
+
+                document.getElementById('time-entry-form').reset();
+                document.getElementById('time-entry-date').value = getLocalDateString();
+                await carregarRegistosHoras();
+                showPropertyMessage('time-entry-message', i18n[currentLang].time_entry_saved, 'success');
+            } catch (error) {
+                console.error('Erro ao registar horas trabalhadas:', error);
+                showPropertyMessage('time-entry-message', `${i18n[currentLang].time_entry_error}: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+            }
         }
 
         async function carregarRelatorios() {
@@ -1637,19 +1956,74 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function setCalendarMode(mode) {
+            if (!['day', 'week', 'month'].includes(mode)) return;
             calendarMode = mode;
-            document.getElementById('btn-mode-week').className = mode === 'week' ? "px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm font-bold" : "px-3 py-1.5 rounded-lg text-slate-500 font-bold";
-            document.getElementById('btn-mode-month').className = mode === 'month' ? "px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm font-bold" : "px-3 py-1.5 rounded-lg text-slate-500 font-bold";
-            renderOverviewCalendar();
+            if (mode === 'day') currentCalendarDate = parseLocalDate(selectedDate);
+            else selectedDate = getLocalDateString(currentCalendarDate);
+            document.getElementById('calendar-date-picker').value = selectedDate;
+            renderAgendaView();
+            fetchAgendaTasks();
         }
 
         function changeCalendarPeriod(direction) {
-            if (calendarMode === 'week') {
+            currentCalendarDate = calendarMode === 'day'
+                ? parseLocalDate(selectedDate)
+                : new Date(currentCalendarDate);
+            if (calendarMode === 'day') {
+                currentCalendarDate.setDate(currentCalendarDate.getDate() + direction);
+            } else if (calendarMode === 'week') {
                 currentCalendarDate.setDate(currentCalendarDate.getDate() + (direction * 7));
             } else {
+                currentCalendarDate.setDate(1);
                 currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
             }
+            selectedDate = getLocalDateString(currentCalendarDate);
+            document.getElementById('calendar-date-picker').value = selectedDate;
+            renderAgendaView();
+            fetchAgendaTasks();
+        }
+
+        function selectAgendaDate(dateString) {
+            selectedDate = dateString;
+            currentCalendarDate = parseLocalDate(dateString);
+            setCalendarMode('day');
+        }
+
+        function renderAgendaView() {
+            const listContainer = document.getElementById('tasks-list-container');
+            const calendarContainer = document.getElementById('calendar-grid-container');
+            const titleEl = document.getElementById('calendar-period-title');
+            if (!listContainer || !calendarContainer || !titleEl) return;
+
+            const locale = currentLang === 'pt' ? 'pt-PT' : 'en-US';
+            const activeDate = calendarMode === 'day' ? parseLocalDate(selectedDate) : currentCalendarDate;
+            document.getElementById('calendar-date-picker').value = selectedDate;
+            document.getElementById('btn-mode-day').className = modeButtonClass(calendarMode === 'day');
+            document.getElementById('btn-mode-week').className = modeButtonClass(calendarMode === 'week');
+            document.getElementById('btn-mode-month').className = modeButtonClass(calendarMode === 'month');
+
+            if (calendarMode === 'day') {
+                titleEl.innerText = activeDate.toLocaleDateString(locale, {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+                listContainer.classList.remove('hidden');
+                calendarContainer.classList.add('hidden');
+                renderAgendaTasks();
+                return;
+            }
+
+            listContainer.classList.add('hidden');
+            calendarContainer.classList.remove('hidden');
             renderOverviewCalendar();
+        }
+
+        function modeButtonClass(active) {
+            return active
+                ? 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm font-bold'
+                : 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500 font-bold';
         }
 
         function renderOverviewCalendar() {
@@ -1689,11 +2063,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
                 for (let day = 1; day <= totalDays; day++) {
                     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const dayTasks = allTasksCache.filter(t => t.scheduled_date === formattedDate);
+                    const dayTasks = agendaTasksCache.filter(t => t.scheduled_date === formattedDate);
+                    const isToday = formattedDate === getLocalDateString();
 
                     grid.innerHTML += `
-                        <div onclick="openDayTasksModal('${formattedDate}')" class="border border-slate-200/80 bg-white p-1.5 rounded-xl min-h-[75px] md:min-h-[100px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1">
-                            <span class="text-xs font-bold text-slate-700 block text-right pr-0.5">${day}</span>
+                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-300' : 'border-slate-200/80 bg-white'} p-1.5 rounded-xl min-h-[75px] md:min-h-[100px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1">
+                            <span class="text-xs font-bold ${isToday ? 'text-indigo-700' : 'text-slate-700'} block text-right pr-0.5">${day}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
                             <div class="space-y-1 overflow-y-auto max-h-[50px] md:max-h-[70px]">
                                 ${dayTasks.map(t => `
                                     <div class="text-[9px] bg-indigo-50 text-indigo-700 p-1 rounded-md font-bold truncate border border-indigo-100/60">
@@ -1701,7 +2076,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                                     </div>
                                 `).join('')}
                             </div>
-                        </div>
+                        </button>
                     `;
                 }
             } else {
@@ -1718,13 +2093,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 for (let i = 0; i < 7; i++) {
                     const loopDate = new Date(startOfWeek);
                     loopDate.setDate(loopDate.getDate() + i);
-                    const formattedDate = loopDate.toISOString().split('T')[0];
-                    const dayTasks = allTasksCache.filter(t => t.scheduled_date === formattedDate);
+                    const formattedDate = getLocalDateString(loopDate);
+                    const dayTasks = agendaTasksCache.filter(t => t.scheduled_date === formattedDate);
+                    const isToday = formattedDate === getLocalDateString();
 
                     grid.innerHTML += `
-                        <div onclick="openDayTasksModal('${formattedDate}')" class="border border-slate-200/80 bg-white p-2 rounded-2xl min-h-[180px] md:min-h-[220px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1.5">
+                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-300' : 'border-slate-200/80 bg-white'} p-2 rounded-2xl min-h-[180px] md:min-h-[220px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1.5">
                             <div class="text-center border-b border-slate-100 pb-1">
-                                <span class="text-xs font-extrabold text-slate-800">${loopDate.getDate()}</span>
+                                <span class="text-xs font-extrabold ${isToday ? 'text-indigo-700' : 'text-slate-800'}">${loopDate.getDate()}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
                             </div>
                             <div class="space-y-1 overflow-y-auto max-h-[140px] md:max-h-[170px] pr-0.5">
                                 ${dayTasks.map(t => `
@@ -1733,13 +2109,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                                     </div>
                                 `).join('')}
                             </div>
-                        </div>
+                        </button>
                     `;
                 }
             }
         }
 
         async function forceSyncICalNow() {
+            if (!requireAdminAction()) return;
             const btn = document.getElementById('btn-force-sync-sidebar');
             const syncIcon = document.getElementById('sync-icon');
             btn.disabled = true;
