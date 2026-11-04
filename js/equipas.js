@@ -2,22 +2,29 @@ const teamInviteTokens = new Map();
 
 async function fetchTeamMembers() {
     const listEl = document.getElementById('team-members-list');
-    if (!listEl) return;
+    if (!listEl) return true;
 
-    const { data, error } = await supabaseClient
-        .from('team_members')
-        .select('id, name, email, phone, role, auth_user_id, track_hours, require_photos, created_at')
-        .order('created_at', { ascending: false });
+    let data = allTeamMembersCache;
+    let error = null;
+    if (navigator.onLine) {
+        const result = await supabaseClient
+            .from('team_members')
+            .select('id, name, email, phone, role, auth_user_id, track_hours, require_photos, created_at')
+            .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+    }
 
     if (error) {
         console.error('Erro ao carregar membros da equipa:', error);
         listEl.innerHTML = `<p class="text-rose-600 text-xs py-2">Erro ao carregar os membros da equipa: ${escapeTeamMemberAttribute(error.message)}</p>`;
-        return;
+        return false;
     }
-    propertyCleaners = (data || []).filter(member => member.role === 'cleaner');
+    allTeamMembersCache = data || [];
+    propertyCleaners = allTeamMembersCache.filter(member => member.role === 'cleaner');
     if (!data || data.length === 0) {
         listEl.innerHTML = `<p class="text-slate-400 text-xs py-2">${userRole === 'cleaner' ? 'Ainda não existem membros visíveis na equipa.' : 'Ainda não adicionou membros à sua equipa.'}</p>`;
-        return;
+        return true;
     }
 
     if (userRole === 'cleaner') {
@@ -27,7 +34,7 @@ async function fetchTeamMembers() {
                 <span class="text-[10px] font-bold text-indigo-700">${member.role === 'admin' ? '👑 Administrador' : '🧹 Equipa de Limpeza'}</span>
             </div>
         `).join('');
-        return;
+        return true;
     }
 
     listEl.innerHTML = data.map(member => `
@@ -89,6 +96,7 @@ async function fetchTeamMembers() {
         button.addEventListener('click', () => removeTeamMember(button.dataset.teamRemoveId));
     });
     changeLanguage(currentLang);
+    return true;
 }
 
 async function handleAddTeamMember(event) {
