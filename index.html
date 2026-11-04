@@ -182,10 +182,9 @@
 
                 <nav class="space-y-6">
                     <div class="space-y-2">
-                        <div data-i18n="nav_cat_calendar" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📅 Calendário & Agendamento</div>
+                        <div data-i18n="nav_cat_calendar" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📅 Agenda</div>
                         <div class="space-y-1 pl-1">
-                            <button type="button" onclick="switchTab('sub-calendar-daily')" id="btn-sub-calendar-daily" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📌 <span class="sidebar-text" data-i18n="nav_daily_tasks">Tarefas Diárias (Lista)</span></button>
-                            <button type="button" onclick="switchTab('sub-calendar-overview')" id="btn-sub-calendar-overview" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📆 <span class="sidebar-text" data-i18n="nav_overview_cal">Vista Semanal / Mensal</span></button>
+                            <button type="button" onclick="switchTab('sub-agenda')" id="btn-sub-agenda" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📅 <span class="sidebar-text" data-i18n="nav_agenda">Agenda</span></button>
                         </div>
                     </div>
 
@@ -195,10 +194,11 @@
                             <span id="settings-menu-chevron" class="sidebar-text transition-transform">⌄</span>
                         </button>
                         <div id="settings-menu-items" class="hidden space-y-1 pl-3 border-l border-slate-700 ml-4">
-                            <button type="button" onclick="switchTab('sub-properties-add')" id="btn-sub-properties-add" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">➕ <span class="sidebar-text" data-i18n="nav_add_property">Adicionar Alojamento</span></button>
+                            <button type="button" onclick="switchTab('sub-properties-add')" id="btn-sub-properties-add" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">➕ <span class="sidebar-text" data-i18n="nav_add_property">Adicionar Alojamento</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">🏠 <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
                             <button type="button" onclick="openProfileModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👤 <span class="sidebar-text" data-i18n="nav_profile">Perfil</span></button>
-                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span></button>
+                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
+                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-directory" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_team_directory">Equipa (consulta)</span></button>
                         </div>
                     </div>
 
@@ -206,7 +206,8 @@
                         <div data-i18n="nav_cat_history" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📜 Histórico & Pagamentos</div>
                         <div class="space-y-1 pl-1">
                             <button type="button" onclick="switchTab('sub-history')" id="btn-sub-history" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="nav_history_accounts">Histórico & Contas</span></button>
-                            <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📊 <span class="sidebar-text" data-i18n="nav_reports">Relatórios & Desempenho</span></button>
+                            <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📊 <span class="sidebar-text" data-i18n="nav_reports">Relatórios & Desempenho</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
+                            <button type="button" onclick="switchTab('sub-time-entries')" id="btn-sub-time-entries" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">⏱️ <span class="sidebar-text" data-i18n="nav_time_entries">Registo de Horas</span></button>
                         </div>
                     </div>
 
@@ -243,50 +244,55 @@
                 </div>
             </header>
 
-            <!-- SUBTEMA: Tarefas Diárias Simplificadas (Lista) -->
-            <div id="view-sub-calendar-daily" class="space-y-6">
-                <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-                            <span data-i18n="label_date" class="text-xs font-bold text-slate-500 uppercase">Data:</span>
-                            <input type="date" id="calendar-date-picker" onchange="onDateFilterChange(this.value)" class="border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <!-- Agenda unificada: resumo diário e vistas diária, semanal e mensal -->
+            <div id="view-sub-agenda" class="space-y-6">
+                <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <article class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                        <p data-i18n="agenda_total" class="text-[11px] font-bold text-indigo-700">Limpezas hoje</p>
+                        <p id="agenda-today-total" class="mt-1 text-xl font-extrabold text-indigo-900">0</p>
+                    </article>
+                    <article class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                        <p data-i18n="agenda_completed" class="text-[11px] font-bold text-emerald-700">Concluídas hoje</p>
+                        <p id="agenda-today-completed" class="mt-1 text-xl font-extrabold text-emerald-900">0</p>
+                    </article>
+                    <article class="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                        <p data-i18n="agenda_pending" class="text-[11px] font-bold text-amber-700">Pendentes hoje</p>
+                        <p id="agenda-today-pending" class="mt-1 text-xl font-extrabold text-amber-900">0</p>
+                    </article>
+                </section>
+
+                <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="changeCalendarPeriod(-1)" data-i18n="btn_prev" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">◀ Anterior</button>
+                            <h3 id="calendar-period-title" class="text-xs sm:text-sm font-bold text-slate-900 min-w-[130px] text-center">---</h3>
+                            <button type="button" onclick="changeCalendarPeriod(1)" data-i18n="btn_next" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">Seguinte ▶</button>
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <select id="filter-property-select" onchange="onCalendarPropertyFilterChange(this.value)" class="flex-1 sm:w-auto border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="all" data-i18n="opt_all_properties">🏠 Todos os Alojamentos</option>
-                            </select>
-                            <button type="button" onclick="openAddCleaningModal(selectedDate)" data-i18n="btn_add_cleaning" class="admin-only bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md shrink-0">
-                                ➕ Adicionar Limpeza
-                            </button>
+                        <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold w-full sm:w-auto">
+                            <button type="button" onclick="setCalendarMode('day')" id="btn-mode-day" data-i18n="btn_mode_day" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm">Diária</button>
+                            <button type="button" onclick="setCalendarMode('week')" id="btn-mode-week" data-i18n="btn_mode_week" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500">Semanal</button>
+                            <button type="button" onclick="setCalendarMode('month')" id="btn-mode-month" data-i18n="btn_mode_month" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500">Mensal</button>
                         </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <label for="calendar-date-picker" data-i18n="label_date" class="text-xs font-bold text-slate-500 uppercase">Data:</label>
+                        <input type="date" id="calendar-date-picker" onchange="onDateFilterChange(this.value)" class="border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="filter-property-select" onchange="onCalendarPropertyFilterChange(this.value)" class="flex-1 border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="all" data-i18n="opt_all_properties">🏠 Todos os Alojamentos</option>
+                        </select>
+                        <button type="button" onclick="openAddCleaningModal(selectedDate)" data-i18n="btn_add_cleaning" class="admin-only bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md shrink-0">
+                            ➕ Adicionar Limpeza
+                        </button>
                     </div>
 
                     <div id="tasks-list-container" class="space-y-2">
                         <p class="text-slate-400 text-xs">A carregar tarefas...</p>
                     </div>
-                </div>
-            </div>
-
-            <!-- SUBTEMA: Vista Semanal / Mensal com Navegação -->
-            <div id="view-sub-calendar-overview" class="space-y-6 hidden">
-                <div class="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
-                    <div class="flex flex-col sm:flex-row justify-between items-center border-b border-slate-100 pb-4 gap-4">
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <button onclick="changeCalendarPeriod(-1)" data-i18n="btn_prev" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">◀ Anterior</button>
-                            <h3 id="calendar-period-title" class="text-xs sm:text-sm font-bold text-slate-900 min-w-[130px] text-center">---</h3>
-                            <button onclick="changeCalendarPeriod(1)" data-i18n="btn_next" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">Seguinte ▶</button>
-                        </div>
-                        <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
-                            <button type="button" onclick="setCalendarMode('week')" id="btn-mode-week" data-i18n="btn_mode_week" class="px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm">Semanal</button>
-                            <button type="button" onclick="setCalendarMode('month')" id="btn-mode-month" data-i18n="btn_mode_month" class="px-3 py-1.5 rounded-lg text-slate-500">Mensal</button>
-                        </div>
-                    </div>
-
-                    <!-- Contentor com Scroll Horizontal adaptado para Telemóveis -->
-                    <div class="overflow-x-auto pb-2">
+                    <div id="calendar-grid-container" class="overflow-x-auto pb-2 hidden">
                         <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2 min-w-[650px] md:min-w-full"></div>
                     </div>
-                </div>
+                </section>
             </div>
 
             <!-- SUBTEMA: Meus Alojamentos -->
@@ -298,6 +304,7 @@
                             ➕ Adicionar Nova Propriedade
                         </button>
                     </div>
+                    <p class="cleaner-only hidden rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs font-semibold text-indigo-800" data-i18n="role_read_only">Modo de consulta</p>
                     <p id="properties-list-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
                     <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <p class="text-slate-400 text-xs">A carregar alojamentos...</p>
@@ -421,15 +428,53 @@
                 </section>
             </div>
 
-            <!-- GESTÃO DA EQUIPA -->
+            <!-- REGISTO DE HORAS -->
+            <div id="view-sub-time-entries" class="space-y-6 hidden">
+                <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h3 data-i18n="time_entries_title" class="text-sm font-bold text-slate-900">Registo de Horas Trabalhadas</h3>
+                    </div>
+                    <form id="time-entry-form" onsubmit="registarHorasTrabalhadas(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label for="time-entry-date" data-i18n="time_entry_date" class="mb-1 block text-xs font-bold text-slate-700">Data</label>
+                            <input type="date" id="time-entry-date" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="time-entry-hours" data-i18n="time_entry_hours" class="mb-1 block text-xs font-bold text-slate-700">Horas trabalhadas</label>
+                            <input type="number" id="time-entry-hours" min="0.25" max="24" step="0.25" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="time-entry-property" data-i18n="time_entry_property" class="mb-1 block text-xs font-bold text-slate-700">Alojamento</label>
+                            <select id="time-entry-property" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Sem alojamento associado</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="time-entry-description" data-i18n="time_entry_task" class="mb-1 block text-xs font-bold text-slate-700">Tarefa / descrição</label>
+                            <textarea id="time-entry-description" maxlength="500" required data-i18n-placeholder="time_entry_description_placeholder" placeholder="Descreva a tarefa realizada" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        </div>
+                        <p id="time-entry-message" role="status" aria-live="polite" class="hidden sm:col-span-2 text-xs font-semibold"></p>
+                        <button id="time-entry-submit" type="submit" data-i18n="time_entry_submit" class="sm:col-span-2 w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Registar horas</button>
+                    </form>
+                    <div>
+                        <h4 data-i18n="time_entries_submitted" class="mb-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Registos submetidos</h4>
+                        <div id="time-entries-list" class="space-y-3">
+                            <p class="text-slate-400 text-xs">A carregar registos...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- GESTÃO / CONSULTA DA EQUIPA -->
             <div id="view-sub-team-management" class="space-y-6 hidden">
                 <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6 max-w-3xl">
-                    <div class="border-b border-slate-100 pb-4">
+                    <div id="team-admin-panel" class="admin-only">
+                      <div class="border-b border-slate-100 pb-4">
                         <h3 data-i18n="title_invite_member" class="text-base font-bold text-slate-900">Convidar Membro para a Equipa</h3>
                         <p data-i18n="subtitle_invite_member" class="text-xs text-slate-500">Crie um convite para o membro definir o email e a palavra-passe no primeiro acesso.</p>
-                    </div>
+                      </div>
 
-                    <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label data-i18n="team_name" for="team-name" class="block text-xs font-bold text-slate-700 mb-1">Nome</label>
                             <input type="text" id="team-name" required autocomplete="name" placeholder="Nome do membro" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -451,8 +496,11 @@
                         <button type="submit" id="btn-add-team" data-i18n="btn_send_invite" class="sm:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">
                             ✉️ Criar Convite
                         </button>
-                    </form>
+                      </form>
+                    </div>
 
+                    <p id="team-readonly-notice" class="cleaner-only hidden rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs font-semibold text-indigo-800" data-i18n="role_read_only">Modo de consulta</p>
+                    <h3 class="cleaner-only hidden text-sm font-bold text-slate-900" data-i18n="team_read_only_title">Equipa</h3>
                     <div class="pt-6 border-t border-slate-100 space-y-4">
                         <h4 data-i18n="title_team_list" class="text-xs font-bold text-slate-900 uppercase tracking-wider">Membros da Sua Equipa</h4>
                         <div id="team-members-list" class="space-y-2">
@@ -520,7 +568,7 @@
             </div>
 
             <div class="pt-3 border-t border-slate-100 admin-only">
-                <button type="button" onclick="openAddCleaningModal(selectedModalDate); closeDayTasksModal();" data-i18n="btn_add_cleaning" class="w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold p-3 rounded-2xl border border-indigo-200/80 transition">
+                <button type="button" onclick="openAddCleaningModal(selectedModalDate); closeDayTasksModal();" data-i18n="btn_add_cleaning" class="admin-only w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold p-3 rounded-2xl border border-indigo-200/80 transition">
                     ➕ Adicionar Limpeza
                 </button>
             </div>
