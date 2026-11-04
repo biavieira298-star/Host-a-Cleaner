@@ -1,15 +1,31 @@
-const CACHE_NAME = 'host-a-cleaner-v3';
+const CACHE_NAME = 'host-a-cleaner-v4';
 const APP_SHELL = [
     './index.html',
     './styles.css',
+    './manifest.json',
+    './images/icon-192.png',
+    './images/icon-512.png',
     './js/equipas.js',
     './js/app.js'
+];
+const REMOTE_APP_ASSETS = [
+    'https://cdn.tailwindcss.com',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(APP_SHELL))
+            .then(() => Promise.all(REMOTE_APP_ASSETS.map(async assetUrl => {
+                try {
+                    const response = await fetch(assetUrl, { mode: 'no-cors' });
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.put(assetUrl, response);
+                } catch (error) {
+                    console.warn('Não foi possível guardar um recurso remoto para uso offline:', assetUrl, error);
+                }
+            })))
             .then(() => self.skipWaiting())
     );
 });
@@ -26,12 +42,34 @@ self.addEventListener('activate', event => {
     );
 });
 
+self.addEventListener('sync', event => {
+    if (event.tag !== 'host-cleaner-sync') return;
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(clients => clients.forEach(client => {
+                client.postMessage({ type: 'HOST_CLEANER_SYNC_PENDING' });
+            }))
+    );
+});
+
 self.addEventListener('fetch', event => {
     const request = event.request;
     if (request.method !== 'GET') return;
 
     const requestUrl = new URL(request.url);
-    if (requestUrl.origin !== self.location.origin) return;
+    if (requestUrl.origin !== self.location.origin) {
+        if (!REMOTE_APP_ASSETS.includes(requestUrl.href)) return;
+        event.respondWith(caches.open(CACHE_NAME).then(async cache => {
+            const cachedResponse = await cache.match(request);
+            if (cachedResponse) return cachedResponse;
+            const response = await fetch(request);
+            if (response.ok || response.type === 'opaque') {
+                await cache.put(request, response.clone());
+            }
+            return response;
+        }));
+        return;
+    }
 
     const isNavigation = request.mode === 'navigate';
     const isAppAsset = /\.(?:css|js|json|png|svg|ico|webp)$/i.test(requestUrl.pathname);
