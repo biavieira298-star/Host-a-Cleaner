@@ -14,7 +14,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let taskTeamMembers = [];
         let currentAuthMode = 'login';
         let currentUser = null;
-        let pendingTeamInviteToken = new URLSearchParams(window.location.search).get('invite');
+        let pendingTeamInviteToken = null;
+        let registrationRole = 'cleaner';
+        let registrationRequested = false;
         let currentLang = localStorage.getItem('host_cleaner_lang') || 'pt';
         
         let selectedDate = new Date().toISOString().split('T')[0];
@@ -246,6 +248,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             if (pendingTeamInviteToken) {
                 showTeamInviteSignup();
+            } else if (registrationRequested) {
+                showLoginScreen();
+                setAuthMode('signup');
             } else if (currentUser) {
                 await checkUserRole();
                 showAppLayout();
@@ -256,8 +261,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 showLoginScreen();
             }
 
-            supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 currentUser = session ? session.user : null;
+                if (registrationRequested && event === 'INITIAL_SESSION') return;
                 if (currentUser) {
                     await checkUserRole();
                     showAppLayout();
@@ -360,24 +366,64 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('btn-mode-login').className = mode === 'login' ? "flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
             document.getElementById('btn-mode-signup').className = mode === 'signup' ? "flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
             document.getElementById('auth-submit-btn').innerText = mode === 'login' ? i18n[currentLang].btn_submit_login : i18n[currentLang].btn_submit_signup;
+            const nameInput = document.getElementById('auth-name');
+            document.getElementById('auth-name-field').classList.toggle('hidden', mode !== 'signup');
+            nameInput.required = mode === 'signup';
+            document.getElementById('auth-message').classList.add('hidden');
+        }
+
+        function mostrarMensagemAuth(message, type) {
+            const element = document.getElementById('auth-message');
+            element.innerText = message;
+            element.className = `text-center text-xs font-semibold ${type === 'error' ? 'text-red-600' : 'text-emerald-700'}`;
+            element.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        }
+
+        async function registarUtilizador(email, password, nome, role) {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: 'https://host-a-cleaner.pages.dev/#login',
+                    data: {
+                        full_name: nome,
+                        role
+                    }
+                }
+            });
+            if (error) throw error;
+            return data;
         }
 
         async function handleAuthSubmit(e) {
             e.preventDefault();
-            const email = document.getElementById('auth-email').value;
+            const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             const submitBtn = document.getElementById('auth-submit-btn');
             submitBtn.disabled = true;
 
-            if (currentAuthMode === 'login') {
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert('Erro ao entrar: ' + error.message);
-            } else {
-                const { error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) alert('Erro ao criar conta: ' + error.message);
-                else alert('Conta criada com sucesso! Já pode fazer login.');
+            try {
+                if (currentAuthMode === 'login') {
+                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                } else {
+                    const nome = document.getElementById('auth-name').value.trim();
+                    const data = await registarUtilizador(email, password, nome, registrationRole);
+                    mostrarMensagemAuth(
+                        data.session
+                            ? 'Conta criada com sucesso!'
+                            : 'Conta criada com sucesso. Confirme o seu email para ativar a conta.',
+                        'success'
+                    );
+                }
+            } catch (error) {
+                mostrarMensagemAuth(
+                    `${currentAuthMode === 'login' ? 'Erro ao entrar' : 'Erro ao criar conta'}: ${error.message}`,
+                    'error'
+                );
+            } finally {
+                submitBtn.disabled = false;
             }
-            submitBtn.disabled = false;
         }
 
         function showTeamInviteSignup() {
@@ -1297,9 +1343,18 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
-        initApp().finally(() => {
-            window.clearTimeout(window.__appStartupFallback);
-            document.documentElement.classList.remove('app-loading');
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash.toLowerCase();
+            const inviteParam = searchParams.get('invite');
+            pendingTeamInviteToken = inviteParam && inviteParam.toLowerCase() !== 'true' ? inviteParam : null;
+            registrationRole = searchParams.get('role') || 'cleaner';
+            registrationRequested = inviteParam?.toLowerCase() === 'true' || hash === '#register';
+
+            initApp().finally(() => {
+                window.clearTimeout(window.__appStartupFallback);
+                document.documentElement.classList.remove('app-loading');
+            });
         });
 
 const passwordSetupContainer = document.getElementById('set-password-container');
