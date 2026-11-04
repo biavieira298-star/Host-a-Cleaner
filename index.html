@@ -85,6 +85,10 @@
             </div>
 
             <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="auth-name-field" class="hidden">
+                    <label for="auth-name" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Nome completo</label>
+                    <input type="text" id="auth-name" autocomplete="name" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
                 <div>
                     <label data-i18n="label_email" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email</label>
                     <input type="email" id="auth-email" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
@@ -99,6 +103,7 @@
                     </div>
                 </div>
                 <button type="submit" id="auth-submit-btn" data-i18n="btn_submit_login" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Entrar na Plataforma</button>
+                <p id="auth-message" role="status" aria-live="polite" class="hidden text-center text-xs font-semibold"></p>
             </form>
 
             <div class="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
