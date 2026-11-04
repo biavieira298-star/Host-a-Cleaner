@@ -12,6 +12,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let currentTeamMemberPreferences = { track_hours: false, require_photos: false };
         let currentTeamMemberId = null;
         let taskTeamMembers = [];
+        let taskAwaitingTimeConfirmation = null;
+        let incidentTaskContext = null;
+        let incidentRequestId = 0;
+        let offlineDatabasePromise = null;
+        let syncPendingPromise = null;
+        const activeOfflineTaskOperations = new Set();
+        let offlinePendingPhotoUrls = [];
+        let offlinePendingIncidentUrls = [];
+        let isOfflineMode = !navigator.onLine;
         let currentAuthMode = 'login';
         let currentUser = null;
         let currentTeamManagerId = null;
@@ -19,6 +28,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let registrationRole = 'cleaner';
         let registrationRequested = false;
         let propertyCleaners = [];
+        let allTeamMembersCache = [];
         let currentLang = localStorage.getItem('host_cleaner_lang') || 'pt';
         
         function getLocalDateString(date = new Date()) {
@@ -80,6 +90,45 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 time_entry_error: "Não foi possível registar as horas",
                 time_entry_validation: "Indique a data, a tarefa e um total de horas entre 0 e 24.",
                 time_entry_member_error: "Esta conta não está associada a um membro de equipa ativo.",
+                btn_start_cleaning: "Iniciar Limpeza",
+                btn_complete_cleaning: "Concluir Limpeza",
+                time_confirmation_title: "Confirmar tempo da limpeza",
+                time_confirmation_description: "Confirme o tempo calculado ou ajuste-o antes de concluir.",
+                time_confirmation_elapsed: "Tempo decorrido",
+                time_confirmation_hours: "Horas",
+                time_confirmation_minutes: "Minutos",
+                time_confirmation_confirm: "Confirmar Tempo",
+                time_confirmation_saving: "A guardar...",
+                time_confirmation_error: "Não foi possível concluir a limpeza",
+                time_confirmation_invalid: "Indique uma duração válida superior a zero.",
+                time_tracking_started: "Limpeza iniciada. O tempo está a ser contado.",
+                time_tracking_start_error: "Não foi possível iniciar a limpeza",
+                incident_report_button: "⚠️ Reportar Incidente",
+                incident_report_title: "Reportar Ocorrência / Danos",
+                incident_type: "Tipo de ocorrência",
+                incident_damage: "Dano / Avaria",
+                incident_forgotten_item: "Objeto Esquecido",
+                incident_description: "Descrição do problema",
+                incident_description_placeholder: "Descreva brevemente o que aconteceu",
+                incident_photo: "Fotografia (opcional)",
+                incident_submit: "Enviar Incidente",
+                incident_submitting: "A enviar...",
+                incident_saved: "Incidente reportado com sucesso.",
+                incident_error: "Não foi possível reportar o incidente",
+                incident_photo_error: "Selecione uma imagem até 10 MB.",
+                incident_alerts_title: "Alertas Urgentes",
+                incident_alerts_loading: "A carregar alertas...",
+                incident_alerts_empty: "Sem ocorrências pendentes.",
+                incident_alerts_error: "Não foi possível carregar os alertas",
+                incident_resolve: "Marcar como resolvido",
+                incident_resolve_error: "Não foi possível resolver o incidente",
+                incident_pending: "Pendente",
+                incident_resolved: "Resolvido",
+                incident_date: "Reportado em",
+                incident_close: "Fechar",
+                time_task_not_started: "Inicie a limpeza antes de a concluir.",
+                time_started_at: "Iniciada em",
+                time_duration_total: "Duração confirmada",
                 time_entries_loading: "A carregar registos...",
                 time_entries_empty: "Ainda não existem horas registadas.",
                 time_entries_team_member: "Membro",
@@ -98,6 +147,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 invite_signup_submit: "Criar conta e entrar",
                 nav_cat_history: "📜 Histórico & Pagamentos",
                 nav_history_accounts: "Histórico & Contas",
+                offline_status: "Modo Offline — {count} itens pendentes de sincronização",
+                offline_pending_status: "{count} itens pendentes de sincronização",
+                offline_saved: "Guardado neste dispositivo. Será sincronizado quando a ligação regressar.",
+                offline_sync_error: "Sincronização pendente. Os dados continuam guardados neste dispositivo.",
+                offline_sync_account: "Inicie sessão com a conta que criou estes dados para sincronizar.",
+                offline_storage_error: "Não foi possível guardar os dados offline",
+                offline_photo_pending: "Fotografia por sincronizar",
                 btn_sync_ical: "Sincronizar Agenda",
                 btn_logout: "Sair da Conta",
                 label_date: "Data:",
@@ -240,6 +296,45 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 time_entry_error: "Could not log hours",
                 time_entry_validation: "Enter the date, task, and hours between 0 and 24.",
                 time_entry_member_error: "This account is not linked to an active team member.",
+                btn_start_cleaning: "Start Cleaning",
+                btn_complete_cleaning: "Complete Cleaning",
+                time_confirmation_title: "Confirm cleaning time",
+                time_confirmation_description: "Confirm the calculated time or adjust it before completing.",
+                time_confirmation_elapsed: "Elapsed time",
+                time_confirmation_hours: "Hours",
+                time_confirmation_minutes: "Minutes",
+                time_confirmation_confirm: "Confirm Time",
+                time_confirmation_saving: "Saving...",
+                time_confirmation_error: "Could not complete the cleaning",
+                time_confirmation_invalid: "Enter a valid duration greater than zero.",
+                time_tracking_started: "Cleaning started. Time is now being tracked.",
+                time_tracking_start_error: "Could not start the cleaning",
+                incident_report_button: "⚠️ Report Incident",
+                incident_report_title: "Report Incident / Damage",
+                incident_type: "Incident type",
+                incident_damage: "Damage / Fault",
+                incident_forgotten_item: "Forgotten Item",
+                incident_description: "Problem description",
+                incident_description_placeholder: "Briefly describe what happened",
+                incident_photo: "Photo (optional)",
+                incident_submit: "Submit Incident",
+                incident_submitting: "Submitting...",
+                incident_saved: "Incident reported successfully.",
+                incident_error: "Could not report the incident",
+                incident_photo_error: "Select an image up to 10 MB.",
+                incident_alerts_title: "Urgent Alerts",
+                incident_alerts_loading: "Loading alerts...",
+                incident_alerts_empty: "No pending incidents.",
+                incident_alerts_error: "Could not load alerts",
+                incident_resolve: "Mark as resolved",
+                incident_resolve_error: "Could not resolve the incident",
+                incident_pending: "Pending",
+                incident_resolved: "Resolved",
+                incident_date: "Reported",
+                incident_close: "Close",
+                time_task_not_started: "Start the cleaning before completing it.",
+                time_started_at: "Started at",
+                time_duration_total: "Confirmed duration",
                 time_entries_loading: "Loading entries...",
                 time_entries_empty: "No work hours have been logged yet.",
                 time_entries_team_member: "Team member",
@@ -258,6 +353,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 invite_signup_submit: "Create account and continue",
                 nav_cat_history: "📜 History & Billing",
                 nav_history_accounts: "History & Accounts",
+                offline_status: "Offline Mode — {count} items waiting to sync",
+                offline_pending_status: "{count} items waiting to sync",
+                offline_saved: "Saved on this device. It will sync when your connection returns.",
+                offline_sync_error: "Sync pending. Your data is still saved on this device.",
+                offline_sync_account: "Sign in with the account that created this data to sync it.",
+                offline_storage_error: "Could not save data offline",
+                offline_photo_pending: "Photo waiting to sync",
                 btn_sync_ical: "Sync Calendar Now",
                 btn_logout: "Log Out",
                 label_date: "Date:",
@@ -402,12 +504,17 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const key = el.getAttribute('data-i18n-placeholder');
                 if (i18n[lang] && i18n[lang][key]) el.placeholder = i18n[lang][key];
             });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                const key = el.getAttribute('data-i18n-aria-label');
+                if (i18n[lang] && i18n[lang][key]) el.setAttribute('aria-label', i18n[lang][key]);
+            });
 
             // Re-renderiza o calendário para atualizar os dias da semana
             if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
             if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
                 carregarRelatorios();
             }
+            void updateOfflineIndicator();
             if (!document.getElementById('view-sub-time-entries').classList.contains('hidden')) {
                 carregarRegistosHoras();
             }
@@ -427,11 +534,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 showLoginScreen();
                 setAuthMode('signup');
             } else if (currentUser) {
-                await checkUserRole();
-                showAppLayout();
-                window.clearTimeout(window.__appStartupFallback);
-                document.documentElement.classList.remove('app-loading');
-                await loadData();
+                await initializeAuthenticatedApp();
             } else {
                 showLoginScreen();
             }
@@ -440,13 +543,50 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 currentUser = session ? session.user : null;
                 if (registrationRequested && event === 'INITIAL_SESSION') return;
                 if (currentUser) {
-                    await checkUserRole();
-                    showAppLayout();
-                    loadData();
+                    await initializeAuthenticatedApp();
                 } else {
                     showLoginScreen();
+                    void updateOfflineIndicator();
                 }
             });
+        }
+
+        async function initializeAuthenticatedApp() {
+            if (navigator.onLine) {
+                try {
+                    await checkUserRole();
+                    isOfflineMode = false;
+                } catch (error) {
+                    if (!isOfflineNetworkError(error)) throw error;
+                    console.warn('Sem ligação durante a identificação da conta; a usar o estado guardado localmente.');
+                    isOfflineMode = true;
+                    if (!await restoreOfflineSnapshot()) throw error;
+                }
+            } else {
+                isOfflineMode = true;
+                try {
+                    const restored = await restoreOfflineSnapshot();
+                    if (!restored) {
+                        const metadataRole = currentUser.app_metadata?.role;
+                        userRole = metadataRole === 'admin' ? 'admin' : 'cleaner';
+                    }
+                } catch (error) {
+                    console.error('Não foi possível restaurar o estado offline:', error);
+                    userRole = 'cleaner';
+                    await updateOfflineIndicator(`${i18n[currentLang].offline_storage_error}: ${error.message}`);
+                }
+            }
+            showAppLayout();
+            window.clearTimeout(window.__appStartupFallback);
+            document.documentElement.classList.remove('app-loading');
+            await loadData();
+            if (navigator.onLine) void syncPendingData();
+        }
+
+        function isOfflineNetworkError(error) {
+            return !navigator.onLine
+                || error instanceof TypeError
+                || /failed to fetch|networkerror|internet disconnected/i.test(String(error?.message || error));
         }
 
         async function checkUserRole() {
@@ -865,30 +1005,65 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function loadData() {
-            await fetchPropertiesForSelect();
-            await fetchTeamMembers();
+            if (isOfflineMode || !navigator.onLine) {
+                await restoreOfflineSnapshot();
+                await fetchAgendaTasks();
+                return;
+            }
+            const propertiesLoaded = await fetchPropertiesForSelect();
+            const teamLoaded = await fetchTeamMembers();
             if (userRole === 'admin') await carregarCleaners();
+            const tasksLoaded = await fetchAllTasksCache();
+            if (!propertiesLoaded || !tasksLoaded || teamLoaded === false) {
+                isOfflineMode = true;
+                await restoreOfflineSnapshot();
+                await updateOfflineIndicator();
+                return;
+            }
             await carregarPropriedades();
-            await fetchAllTasksCache();
             await fetchAgendaTasks();
+            try {
+                await saveOfflineSnapshot();
+            } catch (error) {
+                console.error('Não foi possível atualizar a cópia offline:', error);
+            }
             if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
                 carregarRelatorios();
             }
         }
 
         async function fetchAllTasksCache() {
-            let { data } = await supabaseClient.from('cleaning_tasks').select(`*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)`);
+            if (!navigator.onLine) return allTasksCache.length > 0;
+            const { data, error } = await supabaseClient
+                .from('cleaning_tasks')
+                .select('*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)');
+            if (error) {
+                console.error('Erro ao guardar tarefas para uso offline:', error);
+                return false;
+            }
             allTasksCache = data || [];
+            return true;
         }
 
         async function fetchPropertiesForSelect() {
             const filterSelect = document.getElementById('filter-property-select');
+            if (!navigator.onLine) {
+                if (filterSelect) {
+                    filterSelect.replaceChildren(
+                        new Option(i18n[currentLang].opt_all_properties, 'all'),
+                        ...allPropertiesCache.map(property => new Option(property.name, property.id))
+                    );
+                    filterSelect.value = selectedPropertyFilter;
+                }
+                return allPropertiesCache.length > 0;
+            }
             const { data, error } = await supabaseClient.from('properties').select('*');
             if (error) {
                 console.error('Erro ao carregar alojamentos para o filtro:', error);
-                allPropertiesCache = [];
-                if (filterSelect) filterSelect.replaceChildren(new Option('Erro ao carregar alojamentos', ''));
-                return;
+                if (filterSelect && allPropertiesCache.length === 0) {
+                    filterSelect.replaceChildren(new Option('Erro ao carregar alojamentos', ''));
+                }
+                return false;
             }
             allPropertiesCache = data || [];
 
@@ -902,6 +1077,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
                 filterSelect.value = selectedPropertyFilter;
             }
+            return true;
         }
 
         function escapePropertyHTML(value) {
@@ -912,6 +1088,332 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 '"': '&quot;',
                 "'": '&#39;'
             })[character]);
+        }
+
+        function openOfflineDatabase() {
+            if (!('indexedDB' in window)) {
+                return Promise.reject(new Error('Este navegador não suporta armazenamento offline.'));
+            }
+            if (!offlineDatabasePromise) {
+                offlineDatabasePromise = new Promise((resolve, reject) => {
+                    const request = indexedDB.open('host-a-cleaner-offline', 2);
+                    request.onupgradeneeded = () => {
+                        const database = request.result;
+                        if (!database.objectStoreNames.contains('pending')) {
+                            database.createObjectStore('pending', { keyPath: 'sequence', autoIncrement: true });
+                        }
+                        if (!database.objectStoreNames.contains('snapshots')) {
+                            database.createObjectStore('snapshots', { keyPath: 'userId' });
+                        }
+                    };
+                    request.onsuccess = () => {
+                        const database = request.result;
+                        database.onversionchange = () => database.close();
+                        resolve(database);
+                    };
+                    request.onerror = () => reject(request.error || new Error('Não foi possível abrir o armazenamento offline.'));
+                    request.onblocked = () => reject(new Error('O armazenamento offline está ocupado noutra janela.'));
+                }).catch(error => {
+                    offlineDatabasePromise = null;
+                    throw error;
+                });
+            }
+            return offlineDatabasePromise;
+        }
+
+        async function saveOfflineSnapshot() {
+            if (!currentUser) return;
+            const database = await openOfflineDatabase();
+            const snapshot = {
+                userId: currentUser.id,
+                savedAt: new Date().toISOString(),
+                userRole,
+                currentTeamMemberId,
+                currentTeamManagerId,
+                currentTeamMemberPreferences,
+                allProperties: allPropertiesCache,
+                allTasks: allTasksCache,
+                teamMembers: allTeamMembersCache,
+                propertyCleaners
+            };
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction('snapshots', 'readwrite');
+                transaction.objectStore('snapshots').put(snapshot);
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(transaction.error || new Error('Não foi possível guardar a cópia offline.'));
+                transaction.onabort = () => reject(transaction.error || new Error('Não foi possível guardar a cópia offline.'));
+            });
+        }
+
+        async function restoreOfflineSnapshot() {
+            if (!currentUser) return false;
+            const database = await openOfflineDatabase();
+            const snapshot = await new Promise((resolve, reject) => {
+                const transaction = database.transaction('snapshots', 'readonly');
+                const request = transaction.objectStore('snapshots').get(currentUser.id);
+                request.onsuccess = () => resolve(request.result || null);
+                request.onerror = () => reject(request.error || new Error('Não foi possível ler a cópia offline.'));
+            });
+            if (!snapshot) return false;
+
+            userRole = snapshot.userRole === 'admin' ? 'admin' : 'cleaner';
+            currentTeamMemberId = snapshot.currentTeamMemberId || null;
+            currentTeamManagerId = snapshot.currentTeamManagerId || null;
+            currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
+            allPropertiesCache = snapshot.allProperties || [];
+            allTasksCache = snapshot.allTasks || [];
+            allTeamMembersCache = snapshot.teamMembers || [];
+            propertyCleaners = snapshot.propertyCleaners || [];
+            const pending = (await listPendingOfflineItems()).filter(item => item.userId === currentUser.id);
+            pending.forEach(item => {
+                if (item.type === 'task_start') {
+                    updateTaskLocalState(item.taskId, {
+                        started_at: item.startedAt,
+                        status: 'in_progress'
+                    });
+                } else if (item.type === 'task_completion') {
+                    updateTaskLocalState(item.taskId, {
+                        started_at: item.startedAt,
+                        completed_at: item.completedAt,
+                        total_duration_minutes: item.totalDurationMinutes,
+                        checklist_state: item.checklistState || {},
+                        status: 'completed'
+                    });
+                }
+            });
+            const { start, end } = getAgendaDateRange();
+            agendaTasksCache = allTasksCache.filter(task =>
+                task.scheduled_date >= start && task.scheduled_date <= end
+            );
+            renderAgendaSummary();
+            renderAgendaView();
+            if (userRole === 'admin') await carregarAlertasIncidentes();
+            return true;
+        }
+
+        async function listPendingOfflineItems() {
+            const database = await openOfflineDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = database.transaction('pending', 'readonly');
+                const request = transaction.objectStore('pending').getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error || new Error('Não foi possível ler a fila offline.'));
+                transaction.onabort = () => reject(transaction.error || new Error('Não foi possível ler a fila offline.'));
+            });
+        }
+
+        async function savePendingOfflineItem(item) {
+            const database = await openOfflineDatabase();
+            if (navigator.storage?.persist) {
+                try {
+                    await navigator.storage.persist();
+                } catch (error) {
+                    console.warn('O navegador não confirmou o armazenamento persistente:', error);
+                }
+            }
+            const record = {
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                userId: currentUser?.id,
+                createdAt: Date.now()
+            };
+            if (!record.userId) throw new Error('Inicie sessão antes de guardar dados offline.');
+
+            const saved = await new Promise((resolve, reject) => {
+                const transaction = database.transaction('pending', 'readwrite');
+                const request = transaction.objectStore('pending').add(record);
+                let sequence;
+                request.onsuccess = () => { sequence = Number(request.result); };
+                request.onerror = () => reject(request.error || new Error('Não foi possível guardar o item offline.'));
+                transaction.oncomplete = () => resolve({ ...record, sequence });
+                transaction.onabort = () => reject(transaction.error || new Error('Não foi possível guardar o item offline.'));
+            });
+            await updateOfflineIndicator();
+            void requestBackgroundSync();
+            return saved;
+        }
+
+        async function deletePendingOfflineItem(sequence) {
+            const database = await openOfflineDatabase();
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction('pending', 'readwrite');
+                transaction.objectStore('pending').delete(sequence);
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(transaction.error || new Error('Não foi possível atualizar a fila offline.'));
+                transaction.onabort = () => reject(transaction.error || new Error('Não foi possível atualizar a fila offline.'));
+            });
+        }
+
+        async function updatePendingOfflineItem(item) {
+            const database = await openOfflineDatabase();
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction('pending', 'readwrite');
+                transaction.objectStore('pending').put(item);
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(transaction.error || new Error('Não foi possível atualizar a fila offline.'));
+                transaction.onabort = () => reject(transaction.error || new Error('Não foi possível atualizar a fila offline.'));
+            });
+        }
+
+        function offlineLabel(key, count) {
+            return i18n[currentLang][key].replace('{count}', String(count));
+        }
+
+        async function updateOfflineIndicator(messageOverride = null) {
+            const indicator = document.getElementById('offline-sync-indicator');
+            const message = document.getElementById('offline-sync-message');
+            if (!indicator || !message) return;
+            try {
+                const pending = await listPendingOfflineItems();
+                const offline = isOfflineMode || !navigator.onLine;
+                if (!offline && pending.length === 0 && !messageOverride) {
+                    indicator.classList.add('hidden');
+                    return;
+                }
+                indicator.classList.remove('hidden');
+                message.innerText = messageOverride || (offline
+                    ? offlineLabel('offline_status', pending.length)
+                    : offlineLabel('offline_pending_status', pending.length));
+            } catch (error) {
+                console.error('Erro ao atualizar o indicador offline:', error);
+                indicator.classList.remove('hidden');
+                message.innerText = `${i18n[currentLang].offline_storage_error}: ${error.message}`;
+            }
+        }
+
+        async function requestBackgroundSync() {
+            if (!('serviceWorker' in navigator)) return;
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration.sync) await registration.sync.register('host-cleaner-sync');
+            } catch (error) {
+                console.warn('Não foi possível agendar a sincronização em segundo plano:', error);
+            }
+        }
+
+        async function uploadQueuedTaskPhoto(item) {
+            const storage = supabaseClient.storage.from('cleaning-photos');
+            const { error: uploadError } = await storage.upload(item.storagePath, item.file, {
+                contentType: item.file.type,
+                upsert: true
+            });
+            if (uploadError) throw uploadError;
+
+            const photoUrl = storage.getPublicUrl(item.storagePath).data.publicUrl;
+            const { error: photoError } = await supabaseClient
+                .from('cleaning_task_photos')
+                .upsert([{
+                    property_id: item.propertyId,
+                    task_id: item.taskId,
+                    uploaded_by: item.userId,
+                    photo_url: photoUrl,
+                    storage_path: item.storagePath
+                }], { onConflict: 'storage_path', ignoreDuplicates: true });
+            if (photoError) throw photoError;
+            if (item.photoField) {
+                const { error: taskError } = await supabaseClient
+                    .from('cleaning_tasks')
+                    .update({ [item.photoField]: photoUrl })
+                    .eq('id', item.taskId);
+                if (taskError) throw taskError;
+            }
+        }
+
+        async function syncPendingOfflineItem(item) {
+            if (item.type === 'task_photo') {
+                await uploadQueuedTaskPhoto(item);
+                return;
+            }
+            if (item.type === 'task_start') {
+                const { error } = await supabaseClient.rpc('sync_cleaning_task_start', {
+                    p_task_id: item.taskId,
+                    p_started_at: item.startedAt
+                });
+                if (error) throw error;
+                return;
+            }
+            if (item.type === 'task_completion') {
+                const { error } = await supabaseClient.rpc('sync_cleaning_task_completion', {
+                    p_task_id: item.taskId,
+                    p_started_at: item.startedAt,
+                    p_completed_at: item.completedAt,
+                    p_total_duration_minutes: item.totalDurationMinutes,
+                    p_checklist_state: item.checklistState || {}
+                });
+                if (error) throw error;
+                return;
+            }
+            if (item.type === 'incident') {
+                let photoUrl = null;
+                if (item.file && item.storagePath) {
+                    const storage = supabaseClient.storage.from('cleaning-photos');
+                    const { error: uploadError } = await storage.upload(item.storagePath, item.file, {
+                        contentType: item.file.type,
+                        upsert: true
+                    });
+                    if (uploadError) throw uploadError;
+                    photoUrl = storage.getPublicUrl(item.storagePath).data.publicUrl;
+                }
+                const { error } = await supabaseClient
+                    .from('property_incidents')
+                    .upsert([{
+                        id: item.incidentId,
+                        property_id: item.propertyId,
+                        type: item.incidentType,
+                        description: item.description,
+                        photo_url: photoUrl,
+                        created_by: item.userId,
+                        created_at: item.createdAtISO,
+                        status: 'pending'
+                    }], { onConflict: 'id', ignoreDuplicates: true });
+                if (error) throw error;
+                return;
+            }
+            throw new Error(`Tipo de sincronização desconhecido: ${item.type}`);
+        }
+
+        async function syncPendingData() {
+            if (syncPendingPromise) return syncPendingPromise;
+            if (!navigator.onLine || !currentUser) {
+                await updateOfflineIndicator();
+                return false;
+            }
+
+            syncPendingPromise = (async () => {
+                try {
+                    const allPending = await listPendingOfflineItems();
+                    const pending = allPending.filter(item => item.userId === currentUser.id);
+                    for (const item of pending) {
+                        if (!navigator.onLine || !currentUser || item.userId !== currentUser.id) break;
+                        await syncPendingOfflineItem(item);
+                        await deletePendingOfflineItem(item.sequence);
+                        await updateOfflineIndicator();
+                    }
+                    const remaining = await listPendingOfflineItems();
+                    const ownPending = remaining.some(item => item.userId === currentUser.id);
+                    const otherAccountPending = remaining.some(item => item.userId !== currentUser.id);
+                    if (!ownPending && otherAccountPending) {
+                        await updateOfflineIndicator(i18n[currentLang].offline_sync_account);
+                    } else {
+                        await updateOfflineIndicator();
+                    }
+                    if (document.getElementById('view-sub-agenda') && !document.getElementById('view-sub-agenda').classList.contains('hidden')) {
+                        await loadData();
+                    }
+                    if (userRole === 'admin' && !document.getElementById('view-sub-reports').classList.contains('hidden')) {
+                        await carregarRelatorios();
+                    }
+                    return !ownPending;
+                } catch (error) {
+                    console.error('Erro ao sincronizar dados offline:', error);
+                    if (isOfflineNetworkError(error)) isOfflineMode = true;
+                    await updateOfflineIndicator(i18n[currentLang].offline_sync_error);
+                    return false;
+                } finally {
+                    syncPendingPromise = null;
+                }
+            })();
+            return syncPendingPromise;
         }
 
         function showPropertyMessage(elementId, message, type) {
@@ -934,6 +1436,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             select.disabled = true;
             select.innerHTML = `<option value="">${i18n[currentLang].loading_cleaners}</option>`;
             status.classList.add('hidden');
+
+            if (!navigator.onLine) {
+                propertyCleaners = allTeamMembersCache.filter(member => member.role === 'cleaner');
+                select.replaceChildren(new Option(i18n[currentLang].option_no_cleaner, ''));
+                propertyCleaners.forEach(cleaner => {
+                    select.add(new Option(cleaner.name || cleaner.email || 'Cleaner', cleaner.id));
+                });
+                select.disabled = false;
+                return;
+            }
 
             const { data, error } = await supabaseClient
                 .from('team_members')
@@ -962,8 +1474,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const gridEl = document.getElementById('properties-grid');
             if (!gridEl) return;
 
-            gridEl.innerHTML = `<p class="text-slate-400 text-xs col-span-full">${i18n[currentLang].loading_properties}</p>`;
-            const { data, error } = await supabaseClient.from('properties').select('*').order('created_at', { ascending: false });
+            let data = allPropertiesCache;
+            let error = null;
+            if (navigator.onLine) {
+                gridEl.innerHTML = `<p class="text-slate-400 text-xs col-span-full">${i18n[currentLang].loading_properties}</p>`;
+                const result = await supabaseClient.from('properties').select('*').order('created_at', { ascending: false });
+                data = result.data;
+                error = result.error;
+                if (!error) allPropertiesCache = data || [];
+            }
 
             if (error) {
                 console.error('Erro ao carregar alojamentos:', error);
@@ -1125,10 +1644,107 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 String(todayTasks.filter(task => task.status === 'pending').length);
         }
 
+        async function carregarAlertasIncidentes() {
+            const list = document.getElementById('urgent-incidents-list');
+            if (!list || userRole !== 'admin') return;
+            offlinePendingIncidentUrls.forEach(url => URL.revokeObjectURL(url));
+            offlinePendingIncidentUrls = [];
+            const requestId = ++incidentRequestId;
+            list.innerHTML = `<p class="text-xs text-rose-700">${i18n[currentLang].incident_alerts_loading}</p>`;
+
+            let data = [];
+            if (navigator.onLine) {
+                const { data: incidents, error } = await supabaseClient
+                    .from('property_incidents')
+                    .select('id, property_id, type, description, photo_url, created_at, properties!inner(name)')
+                    .eq('status', 'pending')
+                    .order('created_at', { ascending: false });
+                if (requestId !== incidentRequestId) return;
+                if (error) {
+                    console.error('Erro ao carregar incidentes pendentes:', error);
+                    list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(error.message)}</p>`;
+                    return;
+                }
+                data = incidents || [];
+            } else {
+                try {
+                    const queued = (await listPendingOfflineItems()).filter(item =>
+                        item.type === 'incident' && item.userId === currentUser.id
+                    );
+                    data = queued.map(item => ({
+                        id: item.incidentId,
+                        property_id: item.propertyId,
+                        type: item.incidentType,
+                        description: item.description,
+                        photo_url: item.file ? URL.createObjectURL(item.file) : null,
+                        created_at: item.createdAtISO,
+                        properties: {
+                            name: allPropertiesCache.find(property =>
+                                String(property.id) === String(item.propertyId)
+                            )?.name || 'Alojamento'
+                        },
+                        queued: true
+                    }));
+                    offlinePendingIncidentUrls = data.map(item => item.photo_url).filter(Boolean);
+                } catch (error) {
+                    console.error('Erro ao carregar incidentes offline:', error);
+                    list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(error.message)}</p>`;
+                    return;
+                }
+            }
+
+            if (!data?.length) {
+                list.innerHTML = `<p class="text-xs text-rose-700">${i18n[currentLang].incident_alerts_empty}</p>`;
+                return;
+            }
+
+            list.innerHTML = data.map(incident => `
+                <article class="rounded-xl border border-rose-200 bg-white p-3">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}</p>
+                            <span class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">${i18n[currentLang].incident_pending}</span>
+                            <p class="mt-1 whitespace-pre-wrap break-words text-xs text-slate-700">${escapePropertyHTML(incident.description)}</p>
+                            <p class="mt-2 text-[10px] text-slate-500">${i18n[currentLang].incident_date}: ${new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')}</p>
+                        </div>
+                        ${incident.photo_url ? `<a href="${escapePropertyHTML(incident.photo_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}"><img src="${escapePropertyHTML(incident.photo_url)}" alt="" class="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover"></a>` : ''}
+                    </div>
+                    ${incident.queued ? `<span class="mt-3 inline-flex min-h-11 items-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
+                </article>
+            `).join('');
+        }
+
+        async function resolvePropertyIncident(incidentId) {
+            if (!requireAdminAction()) return;
+            const { error } = await supabaseClient
+                .from('property_incidents')
+                .update({ status: 'resolved' })
+                .eq('id', incidentId)
+                .eq('status', 'pending');
+            if (error) {
+                console.error('Erro ao resolver incidente:', error);
+                alert(`${i18n[currentLang].incident_resolve_error}: ${error.message}`);
+                return;
+            }
+            await carregarAlertasIncidentes();
+        }
+
         async function fetchAgendaTasks() {
             const listContainer = document.getElementById('tasks-list-container');
             const calendarContainer = document.getElementById('calendar-grid-container');
             if (!listContainer || !calendarContainer) return;
+            if (!navigator.onLine) {
+                const { start, end } = getAgendaDateRange();
+                agendaTasksCache = allTasksCache.filter(task =>
+                    task.scheduled_date >= start
+                    && task.scheduled_date <= end
+                    && (selectedPropertyFilter === 'all' || String(task.property_id) === String(selectedPropertyFilter))
+                );
+                renderAgendaSummary();
+                renderAgendaView();
+                return;
+            }
+            if (userRole === 'admin') void carregarAlertasIncidentes();
             const requestId = ++agendaRequestId;
             const { start, end } = getAgendaDateRange();
             listContainer.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].agenda_loading}</p>`;
@@ -1146,6 +1762,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const { data, error } = await query;
             if (requestId !== agendaRequestId) return;
             if (error) {
+                if (isOfflineNetworkError(error)) {
+                    isOfflineMode = true;
+                    if (await restoreOfflineSnapshot()) {
+                        await updateOfflineIndicator();
+                        return;
+                    }
+                }
                 console.error('Erro ao carregar tarefas da agenda:', error);
                 const errorHTML = `<div class="py-6 text-center" role="alert"><p class="text-rose-600 text-xs">${i18n[currentLang].agenda_load_error}: ${escapePropertyHTML(error.message)}</p></div>`;
                 listContainer.innerHTML = errorHTML;
@@ -1294,19 +1917,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 ...legacyPhotos,
                 ...photos.map(photo => ({
                     url: photo.photo_url,
-                    label: new Date(photo.created_at).toLocaleDateString(currentLang === 'pt' ? 'pt-PT' : 'en-US')
+                    label: photo.pending
+                        ? i18n[currentLang].offline_photo_pending
+                        : new Date(photo.created_at).toLocaleDateString(currentLang === 'pt' ? 'pt-PT' : 'en-US')
                 }))
             ];
             return `
                 <div class="space-y-3 pt-2 border-t border-slate-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <span class="block font-bold text-slate-700">📸 ${i18n[currentLang].photo_gallery}</span>
-                        ${userRole === 'admin' ? `
-                            <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
-                                ${i18n[currentLang].photo_upload}
-                            </label>
-                            <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
-                        ` : ''}
+                        <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
+                            ${i18n[currentLang].photo_upload}
+                        </label>
+                        <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
                     </div>
                     ${preferences.require_photos ? `<p class="text-[11px] text-amber-700">${currentLang === 'pt' ? 'A equipa deve anexar fotografias antes e depois da limpeza.' : 'The team should attach photos before and after cleaning.'}</p>` : ''}
                     ${photoLoadError ? `<p class="text-[11px] text-rose-600" role="alert">${i18n[currentLang].photo_upload_error}: ${escapePropertyHTML(photoLoadError)}</p>` : ''}
@@ -1330,6 +1953,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function openTaskModal(task) {
+            offlinePendingPhotoUrls.forEach(url => URL.revokeObjectURL(url));
+            offlinePendingPhotoUrls = [];
             document.getElementById('modal-prop-name').innerText = task.properties?.name || 'Detalhes da Limpeza';
             
             const deleteBtn = document.getElementById('btn-delete-task-modal');
@@ -1355,16 +1980,20 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             assignmentControl.classList.toggle('hidden', userRole !== 'admin');
 
             if (userRole === 'admin') {
-                const { data, error } = await supabaseClient
-                    .from('team_members')
-                    .select('id, name, email, role, track_hours, require_photos')
-                    .eq('role', 'cleaner')
-                    .order('name');
-                if (error) {
-                    alert('Erro ao carregar membros para atribuir a limpeza: ' + error.message);
-                    return;
+                let data = allTeamMembersCache.filter(member => member.role === 'cleaner');
+                if (navigator.onLine) {
+                    const result = await supabaseClient
+                        .from('team_members')
+                        .select('id, name, email, role, track_hours, require_photos')
+                        .eq('role', 'cleaner')
+                        .order('name');
+                    if (result.error) {
+                        alert('Erro ao carregar membros para atribuir a limpeza: ' + result.error.message);
+                        return;
+                    }
+                    data = result.data || [];
                 }
-                taskTeamMembers = data || [];
+                taskTeamMembers = data;
                 taskTeamMembers.forEach(member => {
                     assignmentSelect.add(new Option(member.name || member.email || 'Membro da equipa', member.id));
                 });
@@ -1394,16 +2023,36 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             let taskPhotos = [];
             let photoLoadError = null;
-            const { data: photoData, error: photoError } = await supabaseClient
-                .from('cleaning_task_photos')
-                .select('id, photo_url, created_at')
-                .eq('task_id', task.id)
-                .order('created_at', { ascending: false });
-            if (photoError) {
-                console.error('Erro ao carregar fotografias da tarefa:', photoError);
-                photoLoadError = photoError.message;
+            if (navigator.onLine) {
+                const { data: photoData, error: photoError } = await supabaseClient
+                    .from('cleaning_task_photos')
+                    .select('id, photo_url, created_at')
+                    .eq('task_id', task.id)
+                    .order('created_at', { ascending: false });
+                if (photoError) {
+                    console.error('Erro ao carregar fotografias da tarefa:', photoError);
+                    photoLoadError = photoError.message;
+                } else {
+                    taskPhotos = photoData || [];
+                }
             } else {
-                taskPhotos = photoData || [];
+                try {
+                    const pendingPhotos = (await listPendingOfflineItems()).filter(item =>
+                        item.type === 'task_photo'
+                        && item.userId === currentUser.id
+                        && String(item.taskId) === String(task.id)
+                    );
+                    taskPhotos = pendingPhotos
+                        .filter(item => item.file instanceof Blob)
+                        .map(item => {
+                            const photoUrl = URL.createObjectURL(item.file);
+                            offlinePendingPhotoUrls.push(photoUrl);
+                            return { photo_url: photoUrl, created_at: item.createdAt, pending: true };
+                        });
+                } catch (error) {
+                    console.error('Erro ao carregar fotografias offline pendentes:', error);
+                    photoLoadError = error.message;
+                }
             }
 
             document.getElementById('modal-content').innerHTML = `
@@ -1420,6 +2069,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <p class="mt-1">${task.properties?.instructions || 'Nenhuma instrução definida.'}</p>
                     </div>
 
+                    <div id="task-time-actions"></div>
+                    <button type="button" onclick="openIncidentReportModal('${escapePropertyHTML(task.property_id)}')" class="min-h-14 w-full rounded-2xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-left text-sm font-extrabold text-rose-800 shadow-sm transition hover:border-rose-500 hover:bg-rose-100">
+                        ${i18n[currentLang].incident_report_button}
+                    </button>
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label class="block font-bold text-slate-700">Estado da Tarefa</label>
                         <select id="modal-status-${task.id}" ${userRole !== 'admin' ? 'disabled' : ''} class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs disabled:bg-slate-100 disabled:text-slate-500">
@@ -1439,14 +2092,247 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     renderTaskPermissionModules(task, getAssignedPreferences(), taskPhotos, photoLoadError);
             };
             renderPermissionModules();
+            document.getElementById('task-time-actions').innerHTML =
+                renderTaskTimeActions(task, getAssignedPreferences());
             if (userRole === 'admin') {
                 assignmentSelect.onchange = renderPermissionModules;
+                assignmentSelect.addEventListener('change', () => {
+                    document.getElementById('task-time-actions').innerHTML =
+                        renderTaskTimeActions(task, getAssignedPreferences());
+                });
             }
             document.getElementById('task-modal').classList.remove('hidden');
         }
 
+        function renderTaskTimeActions(task, preferences) {
+            const isAssignedCleaner = userRole === 'cleaner'
+                && currentTeamMemberId
+                && String(task.assigned_team_member_id) === String(currentTeamMemberId);
+            const isTrackingAdmin = userRole === 'admin' && preferences.track_hours;
+            if (!isAssignedCleaner && !isTrackingAdmin) return '';
+
+            if (task.status === 'completed') {
+                return task.total_duration_minutes
+                    ? `<p class="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">${i18n[currentLang].time_duration_total}: ${formatTaskDuration(task.total_duration_minutes)}</p>`
+                    : '';
+            }
+
+            if (task.status === 'in_progress' && task.started_at) {
+                return `
+                    <div class="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
+                        <p class="text-[11px] font-semibold text-indigo-800">${i18n[currentLang].time_started_at}: ${new Date(task.started_at).toLocaleTimeString(currentLang === 'pt' ? 'pt-PT' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <button type="button" onclick="requestCleaningCompletion('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-emerald-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-emerald-700">${i18n[currentLang].btn_complete_cleaning}</button>
+                    </div>
+                `;
+            }
+
+            return `<button type="button" onclick="startCleaningTask('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
+        }
+
+        function formatTaskDuration(totalMinutes) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${hours}h ${String(minutes).padStart(2, '0')}min`;
+        }
+
+        async function refreshTaskModal(taskId) {
+            await loadData();
+            const updatedTask = allTasksCache.find(task => String(task.id) === String(taskId));
+            if (updatedTask) await openTaskModal(updatedTask);
+        }
+
+        function updateTaskLocalState(taskId, updates) {
+            [allTasksCache, agendaTasksCache].forEach(tasks => {
+                const task = tasks.find(item => String(item.id) === String(taskId));
+                if (task) Object.assign(task, updates);
+            });
+        }
+
+        async function startCleaningTask(taskId) {
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            const operationKey = `start:${taskId}`;
+            if (!task || activeOfflineTaskOperations.has(operationKey)) return;
+            activeOfflineTaskOperations.add(operationKey);
+            try {
+                if (task.started_at && task.status === 'in_progress') {
+                    throw new Error('Esta limpeza já foi iniciada.');
+                }
+                const pending = await listPendingOfflineItems();
+                const existing = pending.find(item =>
+                    item.type === 'task_start'
+                    && item.userId === currentUser.id
+                    && String(item.taskId) === String(taskId)
+                );
+                const startedAt = existing?.startedAt || new Date().toISOString();
+                const queued = existing || await savePendingOfflineItem({
+                    type: 'task_start',
+                    taskId,
+                    startedAt
+                });
+                updateTaskLocalState(taskId, { started_at: startedAt, status: 'in_progress' });
+                if (navigator.onLine && !isOfflineMode) {
+                    await syncPendingData();
+                    const remaining = await listPendingOfflineItems();
+                    if (remaining.some(item => item.sequence === queued.sequence)) {
+                        showPropertyMessage('task-photo-message', i18n[currentLang].offline_sync_error, 'error');
+                    } else {
+                        await refreshTaskModal(taskId);
+                    }
+                } else {
+                    const assignedMember = taskTeamMembers.find(member =>
+                        String(member.id) === String(task.assigned_team_member_id)
+                    );
+                    const preferences = userRole === 'cleaner'
+                        ? currentTeamMemberPreferences
+                        : { track_hours: assignedMember?.track_hours === true };
+                    const taskTimeActions = document.getElementById('task-time-actions');
+                    if (taskTimeActions) taskTimeActions.innerHTML = renderTaskTimeActions(task, preferences);
+                }
+            } catch (error) {
+                console.error('Erro ao iniciar a limpeza:', error);
+                alert(`${i18n[currentLang].time_tracking_start_error}: ${error.message}`);
+            } finally {
+                activeOfflineTaskOperations.delete(operationKey);
+            }
+        }
+
+        async function queueCleaningCompletion(task, durationMinutes) {
+            const operationKey = `complete:${task.id}`;
+            if (activeOfflineTaskOperations.has(operationKey)) {
+                throw new Error(i18n[currentLang].offline_sync_error);
+            }
+            activeOfflineTaskOperations.add(operationKey);
+            try {
+                if (!task.started_at) throw new Error(i18n[currentLang].time_task_not_started);
+                const pending = await listPendingOfflineItems();
+                const existing = pending.find(item =>
+                    item.type === 'task_completion'
+                    && item.userId === currentUser.id
+                    && String(item.taskId) === String(task.id)
+                );
+                const completedAt = existing?.completedAt || new Date().toISOString();
+                const elapsedMinutes = Math.max(1, Math.round(
+                    (new Date(completedAt).getTime() - new Date(task.started_at).getTime()) / 60000
+                ));
+                const totalDurationMinutes = existing?.totalDurationMinutes ?? durationMinutes ?? elapsedMinutes;
+                if (!Number.isInteger(totalDurationMinutes) || totalDurationMinutes < 1 || totalDurationMinutes > 10080) {
+                    throw new Error(i18n[currentLang].time_confirmation_invalid);
+                }
+                const queued = existing || await savePendingOfflineItem({
+                    type: 'task_completion',
+                    taskId: task.id,
+                    startedAt: task.started_at,
+                    completedAt,
+                    totalDurationMinutes,
+                    checklistState: task.checklist_state || {}
+                });
+                let synced = false;
+                if (navigator.onLine) {
+                    await syncPendingData();
+                    const remaining = await listPendingOfflineItems();
+                    synced = !remaining.some(item => item.sequence === queued.sequence);
+                }
+                if (!synced) {
+                    updateTaskLocalState(task.id, {
+                        status: 'completed',
+                        completed_at: completedAt,
+                        total_duration_minutes: totalDurationMinutes,
+                        checklist_state: task.checklist_state || {}
+                    });
+                }
+                return { completedAt, totalDurationMinutes, synced };
+            } finally {
+                activeOfflineTaskOperations.delete(operationKey);
+            }
+        }
+
+        async function requestCleaningCompletion(taskId) {
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            if (!task) return;
+            const assignedMember = taskTeamMembers.find(member =>
+                String(member.id) === String(task.assigned_team_member_id)
+            );
+            const trackingEnabled = userRole === 'cleaner'
+                ? currentTeamMemberPreferences.track_hours
+                : assignedMember?.track_hours === true;
+
+            if (trackingEnabled) {
+                if (!task.started_at) {
+                    alert(i18n[currentLang].time_task_not_started);
+                    return;
+                }
+                openTimeConfirmation(task);
+                return;
+            }
+
+            try {
+                const { synced } = await queueCleaningCompletion(task, null);
+                closeTaskModal();
+                if (synced) await loadData();
+            } catch (error) {
+                console.error('Erro ao concluir a limpeza:', error);
+                alert(`${i18n[currentLang].time_confirmation_error}: ${error.message}`);
+            }
+        }
+
+        function openTimeConfirmation(task) {
+            const startTimestamp = new Date(task.started_at).getTime();
+            if (!Number.isFinite(startTimestamp)) {
+                alert(i18n[currentLang].time_task_not_started);
+                return;
+            }
+            const elapsedMinutes = Math.max(1, Math.round((Date.now() - startTimestamp) / 60000));
+            taskAwaitingTimeConfirmation = { taskId: task.id, startedAt: task.started_at };
+            document.getElementById('time-confirmation-elapsed').innerText = formatTaskDuration(elapsedMinutes);
+            document.getElementById('time-confirmation-hours').value = String(Math.floor(elapsedMinutes / 60));
+            document.getElementById('time-confirmation-minutes').value = String(elapsedMinutes % 60);
+            document.getElementById('time-confirmation-error').classList.add('hidden');
+            document.getElementById('time-confirmation-modal').classList.remove('hidden');
+            document.getElementById('time-confirmation-submit').focus();
+        }
+
+        async function confirmCleaningTime() {
+            if (!taskAwaitingTimeConfirmation) return;
+            const hours = Number(document.getElementById('time-confirmation-hours').value);
+            const minutes = Number(document.getElementById('time-confirmation-minutes').value);
+            const durationMinutes = (hours * 60) + minutes;
+            const errorMessage = document.getElementById('time-confirmation-error');
+            if (!Number.isInteger(hours) || hours < 0 || hours > 168 ||
+                !Number.isInteger(minutes) || minutes < 0 || minutes > 59 ||
+                durationMinutes < 1 || durationMinutes > 10080) {
+                errorMessage.innerText = i18n[currentLang].time_confirmation_invalid;
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            const submitButton = document.getElementById('time-confirmation-submit');
+            submitButton.disabled = true;
+            submitButton.innerText = i18n[currentLang].time_confirmation_saving;
+            errorMessage.classList.add('hidden');
+            try {
+                const taskId = taskAwaitingTimeConfirmation.taskId;
+                const task = allTasksCache.find(item => String(item.id) === String(taskId));
+                if (!task) throw new Error('A limpeza não está disponível para concluir.');
+                const { synced } = await queueCleaningCompletion(task, durationMinutes);
+                taskAwaitingTimeConfirmation = null;
+                document.getElementById('time-confirmation-modal').classList.add('hidden');
+                closeTaskModal();
+                if (synced) {
+                    await loadData();
+                    const finishedTask = allTasksCache.find(item => String(item.id) === String(taskId));
+                    if (finishedTask) await openTaskModal(finishedTask);
+                }
+            } catch (error) {
+                console.error('Erro ao confirmar o tempo da limpeza:', error);
+                errorMessage.innerText = `${i18n[currentLang].time_confirmation_error}: ${error.message}`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerText = i18n[currentLang].time_confirmation_confirm;
+            }
+        }
+
         async function uploadFotoLimpeza(file, propertyId, taskId) {
-            if (!requireAdminAction()) throw new Error(i18n[currentLang].role_locked);
             if (!currentUser) throw new Error('É necessário iniciar sessão para anexar fotografias.');
             if (!file || !file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
                 throw new Error(i18n[currentLang].photo_upload_type_error);
@@ -1487,11 +2373,155 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return photoUrl;
         }
 
-        async function handleTaskPhotoUpload(event, taskId, propertyId) {
-            if (userRole !== 'admin') {
-                alert(i18n[currentLang].role_locked);
+        async function queueTaskPhoto(file, task, photoField = null) {
+            if (!currentUser) throw new Error('É necessário iniciar sessão para anexar fotografias.');
+            if (!file || !file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+                throw new Error(i18n[currentLang].photo_upload_type_error);
+            }
+            const extensionByType = {
+                'image/jpeg': 'jpg',
+                'image/png': 'png',
+                'image/webp': 'webp',
+                'image/gif': 'gif',
+                'image/heic': 'heic',
+                'image/heif': 'heif'
+            };
+            const extension = extensionByType[file.type.toLowerCase()];
+            if (!extension) throw new Error(i18n[currentLang].photo_upload_type_error);
+
+            const queued = await savePendingOfflineItem({
+                type: 'task_photo',
+                taskId: task.id,
+                propertyId: task.property_id,
+                photoField,
+                file,
+                storagePath: `${currentUser.id}/${task.property_id}/${task.id}/${crypto.randomUUID()}.${extension}`
+            });
+            if (!navigator.onLine) return false;
+            await syncPendingData();
+            const pending = await listPendingOfflineItems();
+            return !pending.some(item => item.sequence === queued.sequence);
+        }
+
+        function openIncidentReportModal(propertyId) {
+            if (!currentUser || !propertyId) {
+                alert(i18n[currentLang].incident_error);
                 return;
             }
+            incidentTaskContext = { propertyId };
+            const form = document.getElementById('incident-report-form');
+            form.reset();
+            document.getElementById('incident-report-message').classList.add('hidden');
+            const preview = document.getElementById('incident-photo-preview');
+            preview.removeAttribute('src');
+            preview.classList.add('hidden');
+            document.getElementById('incident-report-modal').classList.remove('hidden');
+        }
+
+        function closeIncidentReportModal() {
+            document.getElementById('incident-report-modal').classList.add('hidden');
+            const preview = document.getElementById('incident-photo-preview');
+            if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
+            preview.removeAttribute('src');
+            preview.classList.add('hidden');
+            incidentTaskContext = null;
+        }
+
+        async function submitPropertyIncident(event) {
+            event.preventDefault();
+            if (!incidentTaskContext || !currentUser) {
+                showPropertyMessage('incident-report-message', i18n[currentLang].incident_error, 'error');
+                return;
+            }
+
+            const file = document.getElementById('incident-photo').files?.[0] || null;
+            if (file && (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024)) {
+                showPropertyMessage('incident-report-message', i18n[currentLang].incident_photo_error, 'error');
+                return;
+            }
+            const submitButton = document.getElementById('incident-submit-button');
+            const message = document.getElementById('incident-report-message');
+            submitButton.disabled = true;
+            submitButton.innerText = i18n[currentLang].incident_submitting;
+            message.classList.add('hidden');
+
+            try {
+                const incidentId = crypto.randomUUID();
+                let storagePath = null;
+                if (file) {
+                    const extensionByType = {
+                        'image/jpeg': 'jpg',
+                        'image/png': 'png',
+                        'image/webp': 'webp',
+                        'image/gif': 'gif',
+                        'image/heic': 'heic',
+                        'image/heif': 'heif'
+                    };
+                    const extension = extensionByType[file.type.toLowerCase()];
+                    if (!extension) throw new Error(i18n[currentLang].incident_photo_error);
+                    storagePath = `${currentUser.id}/incidents/${incidentTaskContext.propertyId}/${incidentId}.${extension}`;
+                }
+
+                const queued = await savePendingOfflineItem({
+                    type: 'incident',
+                    incidentId,
+                    propertyId: incidentTaskContext.propertyId,
+                    incidentType: document.getElementById('incident-type').value,
+                    description: document.getElementById('incident-description').value.trim(),
+                    file,
+                    storagePath,
+                    createdAtISO: new Date().toISOString()
+                });
+                let synced = false;
+                if (navigator.onLine) {
+                    await syncPendingData();
+                    const pending = await listPendingOfflineItems();
+                    synced = !pending.some(item => item.sequence === queued.sequence);
+                }
+
+                showPropertyMessage(
+                    'incident-report-message',
+                    synced ? i18n[currentLang].incident_saved
+                        : navigator.onLine ? i18n[currentLang].offline_sync_error : i18n[currentLang].offline_saved,
+                    'success'
+                );
+                document.getElementById('incident-report-form').reset();
+                const preview = document.getElementById('incident-photo-preview');
+                if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
+                preview.removeAttribute('src');
+                preview.classList.add('hidden');
+                if (synced && userRole === 'admin') void carregarAlertasIncidentes();
+            } catch (error) {
+                console.error('Erro ao reportar incidente:', error);
+                showPropertyMessage('incident-report-message', `${i18n[currentLang].incident_error}: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerText = i18n[currentLang].incident_submit;
+            }
+        }
+
+        document.getElementById('incident-photo')?.addEventListener('change', event => {
+            const file = event.target.files?.[0];
+            const preview = document.getElementById('incident-photo-preview');
+            if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
+            if (!file) {
+                preview.removeAttribute('src');
+                preview.classList.add('hidden');
+                return;
+            }
+            if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+                showPropertyMessage('incident-report-message', i18n[currentLang].incident_photo_error, 'error');
+                event.target.value = '';
+                preview.removeAttribute('src');
+                preview.classList.add('hidden');
+                return;
+            }
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove('hidden');
+            document.getElementById('incident-report-message').classList.add('hidden');
+        });
+
+        async function handleTaskPhotoUpload(event, taskId, propertyId) {
             const file = event.target.files?.[0];
             if (!file) return;
 
@@ -1504,13 +2534,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 message.className = 'text-[11px] font-semibold text-slate-500';
             }
             try {
-                await uploadFotoLimpeza(file, propertyId, taskId);
                 if (!task) throw new Error('A tarefa não está disponível para atualizar a galeria.');
+                const synced = await queueTaskPhoto(file, task);
                 await openTaskModal(task);
                 const refreshedMessage = document.getElementById('task-photo-message');
                 if (refreshedMessage) {
-                    refreshedMessage.innerText = i18n[currentLang].photo_upload_success;
-                    refreshedMessage.className = 'text-[11px] font-semibold text-emerald-700';
+                    refreshedMessage.innerText = synced
+                        ? i18n[currentLang].photo_upload_success
+                        : navigator.onLine ? i18n[currentLang].offline_sync_error : i18n[currentLang].offline_saved;
+                    refreshedMessage.className = `text-[11px] font-semibold ${synced ? 'text-emerald-700' : 'text-amber-700'}`;
                 }
             } catch (error) {
                 console.error('Erro ao anexar fotografia à tarefa:', error);
@@ -1527,19 +2559,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function uploadTaskPhoto(event, taskId, photoField) {
-            if (!requireAdminAction()) return;
             const file = event.target.files?.[0];
             const task = allTasksCache.find(item => String(item.id) === String(taskId));
             if (!file || !task) return;
             try {
-                const photoUrl = await uploadFotoLimpeza(file, task.property_id, taskId);
-                const { error } = await supabaseClient
-                    .from('cleaning_tasks')
-                    .update({ [photoField]: photoUrl })
-                    .eq('id', taskId);
-                if (error) throw error;
-                await loadData();
+                const synced = await queueTaskPhoto(file, task, photoField);
+                if (synced) {
+                    await loadData();
+                }
                 await openTaskModal(task);
+                const message = document.getElementById('task-photo-message');
+                if (message) {
+                    message.innerText = synced
+                        ? i18n[currentLang].photo_upload_success
+                        : navigator.onLine ? i18n[currentLang].offline_sync_error : i18n[currentLang].offline_saved;
+                    message.className = `text-[11px] font-semibold ${synced ? 'text-emerald-700' : 'text-amber-700'}`;
+                }
             } catch (error) {
                 console.error('Erro ao guardar fotografia da tarefa:', error);
                 alert(`${i18n[currentLang].photo_upload_error}: ${error.message}`);
@@ -1604,12 +2639,31 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function closeTaskModal() {
+            if (taskAwaitingTimeConfirmation) return;
             document.getElementById('task-modal').classList.add('hidden');
+            offlinePendingPhotoUrls.forEach(url => URL.revokeObjectURL(url));
+            offlinePendingPhotoUrls = [];
         }
 
         async function saveTaskModalDetails(taskId) {
             if (!requireAdminAction()) return;
             const status = document.getElementById(`modal-status-${taskId}`).value;
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            const assignedMember = taskTeamMembers.find(member =>
+                String(member.id) === String(task?.assigned_team_member_id)
+            );
+            if (status === 'completed') {
+                if (!task?.started_at) {
+                    alert(i18n[currentLang].time_task_not_started);
+                    return;
+                }
+                if (assignedMember?.track_hours) {
+                    openTimeConfirmation(task);
+                } else {
+                    await requestCleaningCompletion(taskId);
+                }
+                return;
+            }
             const cleaner_notes = document.getElementById('task-notes').value;
             const hoursInput = document.getElementById(`modal-hours-${taskId}`);
             const hours_spent = hoursInput ? hoursInput.value : null;
@@ -2210,7 +3264,43 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (error) throw error;
         }
 
+        document.addEventListener('keydown', event => {
+            if (!taskAwaitingTimeConfirmation) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const modal = document.getElementById('time-confirmation-modal');
+            const focusableElements = [...modal.querySelectorAll('input:not(:disabled), button:not(:disabled)')];
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        }, true);
+
         document.addEventListener('DOMContentLoaded', () => {
+            window.addEventListener('online', () => {
+                isOfflineMode = false;
+                void syncPendingData();
+            });
+            window.addEventListener('offline', () => {
+                isOfflineMode = true;
+                void updateOfflineIndicator();
+            });
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('message', event => {
+                    if (event.data?.type === 'HOST_CLEANER_SYNC_PENDING') void syncPendingData();
+                });
+            }
+            void updateOfflineIndicator();
             const searchParams = new URLSearchParams(window.location.search);
             const hash = window.location.hash.toLowerCase();
             const inviteParam = searchParams.get('invite');
