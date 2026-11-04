@@ -28,3 +28,17 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0f4f8; 
     background: #f59e0b;
     box-shadow: 0 0 0 3px rgb(245 158 11 / 15%);
 }
+
+.finance-panel input,
+.finance-panel select {
+    color-scheme: dark;
+}
+
+.finance-panel .text-rose-600 {
+    color: #fda4af !important;
+}
+
+.hosting-report-dropzone.dragover label {
+    border-color: #818cf8;
+    background: rgb(49 46 129 / 35%);
+}
