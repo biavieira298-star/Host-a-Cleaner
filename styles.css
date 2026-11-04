@@ -1,2 +1,30 @@
 body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0f4f8; }
         .gradient-bg { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+
+.offline-sync-indicator {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 40;
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid #475569;
+    border-radius: 9999px;
+    background: rgb(15 23 42 / 95%);
+    padding: 0.55rem 0.9rem;
+    color: #f8fafc;
+    box-shadow: 0 8px 24px rgb(15 23 42 / 20%);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.offline-sync-indicator.hidden { display: none; }
+.offline-sync-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex: none;
+    border-radius: 9999px;
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgb(245 158 11 / 15%);
+}
