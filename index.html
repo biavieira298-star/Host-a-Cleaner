@@ -244,8 +244,22 @@
                 </div>
             </header>
 
+            <section id="offline-sync-indicator" class="offline-sync-indicator hidden" role="status" aria-live="polite">
+                <span class="offline-sync-dot" aria-hidden="true"></span>
+                <span id="offline-sync-message">Modo Offline</span>
+            </section>
+
             <!-- Agenda unificada: resumo diário e vistas diária, semanal e mensal -->
             <div id="view-sub-agenda" class="space-y-6">
+                <section id="urgent-incidents-section" class="admin-only rounded-2xl border border-rose-300 bg-rose-50 p-4 shadow-sm">
+                    <div class="mb-3 flex items-center gap-2">
+                        <span class="text-xl" aria-hidden="true">🚨</span>
+                        <h3 data-i18n="incident_alerts_title" class="text-sm font-extrabold text-rose-800">Alertas Urgentes</h3>
+                    </div>
+                    <div id="urgent-incidents-list" class="space-y-2" aria-live="polite">
+                        <p class="text-xs text-rose-700" data-i18n="incident_alerts_loading">A carregar alertas...</p>
+                    </div>
+                </section>
                 <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <article class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
                         <p data-i18n="agenda_total" class="text-[11px] font-bold text-indigo-700">Limpezas hoje</p>
@@ -620,6 +634,63 @@
                 <button onclick="closeTaskModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition ml-auto">Fechar</button>
             </div>
         </div>
+    </div>
+
+    <div id="time-confirmation-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="time-confirmation-title">
+        <section class="w-full max-w-md space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7">
+            <header class="space-y-2 border-b border-slate-100 pb-4">
+                <h2 id="time-confirmation-title" data-i18n="time_confirmation_title" class="text-lg font-extrabold text-slate-900">Confirmar tempo da limpeza</h2>
+                <p data-i18n="time_confirmation_description" class="text-sm text-slate-500">Confirme o tempo calculado ou ajuste-o antes de concluir.</p>
+            </header>
+            <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-center">
+                <p data-i18n="time_confirmation_elapsed" class="text-xs font-bold uppercase tracking-wide text-indigo-700">Tempo decorrido</p>
+                <p id="time-confirmation-elapsed" class="mt-1 text-3xl font-extrabold text-indigo-950">0h 00min</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="space-y-2 text-sm font-bold text-slate-700">
+                    <span data-i18n="time_confirmation_hours">Horas</span>
+                    <input id="time-confirmation-hours" type="number" min="0" max="168" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <label class="space-y-2 text-sm font-bold text-slate-700">
+                    <span data-i18n="time_confirmation_minutes">Minutos</span>
+                    <input id="time-confirmation-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </label>
+            </div>
+            <p id="time-confirmation-error" role="alert" class="hidden text-sm font-semibold text-rose-600"></p>
+            <button id="time-confirmation-submit" type="button" onclick="confirmCleaningTime()" data-i18n="time_confirmation_confirm" class="min-h-14 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">Confirmar Tempo</button>
+        </section>
+    </div>
+
+    <div id="incident-report-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="incident-report-title">
+        <section class="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7">
+            <header class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <h2 id="incident-report-title" data-i18n="incident_report_title" class="text-lg font-extrabold text-slate-900">Reportar Ocorrência / Danos</h2>
+                <button type="button" onclick="closeIncidentReportModal()" data-i18n-aria-label="incident_close" aria-label="Fechar" class="rounded-xl p-2 text-slate-500 hover:bg-slate-100">✕</button>
+            </header>
+            <form id="incident-report-form" onsubmit="submitPropertyIncident(event)" class="space-y-4">
+                <div>
+                    <label for="incident-type" data-i18n="incident_type" class="mb-1 block text-sm font-bold text-slate-700">Tipo de ocorrência</label>
+                    <select id="incident-type" required class="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="damage" data-i18n="incident_damage">Dano / Avaria</option>
+                        <option value="forgotten_item" data-i18n="incident_forgotten_item">Objeto Esquecido</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="incident-description" data-i18n="incident_description" class="mb-1 block text-sm font-bold text-slate-700">Descrição do problema</label>
+                    <textarea id="incident-description" required maxlength="1000" data-i18n-placeholder="incident_description_placeholder" placeholder="Descreva brevemente o que aconteceu" class="min-h-24 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                </div>
+                <div>
+                    <label for="incident-photo" data-i18n="incident_photo" class="mb-1 block text-sm font-bold text-slate-700">Fotografia (opcional)</label>
+                    <input id="incident-photo" type="file" accept="image/*" capture="environment" class="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-rose-100 file:px-3 file:py-2 file:font-bold file:text-rose-800">
+                    <img id="incident-photo-preview" alt="" class="mt-3 hidden max-h-48 w-full rounded-xl border border-slate-200 object-contain">
+                </div>
+                <p id="incident-report-message" role="status" aria-live="polite" class="hidden text-sm font-semibold"></p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeIncidentReportModal()" data-i18n="incident_close" class="min-h-14 rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">Fechar</button>
+                    <button id="incident-submit-button" type="submit" data-i18n="incident_submit" class="min-h-14 rounded-xl bg-rose-600 px-4 py-3 text-sm font-extrabold text-white shadow-md hover:bg-rose-700">Enviar Incidente</button>
+                </div>
+            </form>
+        </section>
     </div>
 
     <!-- MODAL DE PERFIL COM SUBSECTOR DE SUBSCRIÇÃO (SAAS) -->
