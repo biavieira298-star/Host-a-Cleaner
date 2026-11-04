@@ -17,6 +17,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let incidentRequestId = 0;
         let offlineDatabasePromise = null;
         let syncPendingPromise = null;
+        let reportsRequestId = 0;
+        let hostingReportsRequestId = 0;
+        let hostingReportsCache = [];
         const activeOfflineTaskOperations = new Set();
         let offlinePendingPhotoUrls = [];
         let offlinePendingIncidentUrls = [];
@@ -73,6 +76,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_manage_properties: "Gestão de Alojamento",
                 nav_team_directory: "Equipa (consulta)",
                 nav_time_entries: "Registo de Horas",
+                nav_my_hours: "As Minhas Horas",
                 team_read_only_title: "Equipa",
                 time_entries_submitted: "Registos submetidos",
                 nav_profile: "Perfil",
@@ -145,7 +149,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 invite_signup_subtitle: "Defina o email e a palavra-passe para entrar na PWA de Limpezas.",
                 invite_signup_confirm_password: "Confirmar palavra-passe",
                 invite_signup_submit: "Criar conta e entrar",
-                nav_cat_history: "📜 Histórico & Pagamentos",
+                nav_cat_finance: "💶 Finanças & Relatórios",
                 nav_history_accounts: "Histórico & Contas",
                 offline_status: "Modo Offline — {count} itens pendentes de sincronização",
                 offline_pending_status: "{count} itens pendentes de sincronização",
@@ -172,7 +176,38 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 agenda_load_error: "Erro ao carregar a agenda",
                 agenda_today: "Hoje",
                 title_registered_properties: "Alojamentos Registados",
-                nav_reports: "Relatórios & Desempenho",
+                finance_overview: "Visão geral",
+                finance_tab_overview: "Visão Geral",
+                finance_tab_reports: "Relatórios",
+                finance_tab_movements: "Movimentos",
+                finance_filter_month: "Mês",
+                finance_filter_property: "Imóvel",
+                finance_transactions: "Transações",
+                finance_status: "Estado",
+                finance_paid: "Pago",
+                finance_pending: "Pendente",
+                finance_no_transactions: "Não existem transações para estes filtros.",
+                finance_transaction_count: "{count} movimentos",
+                finance_service_history: "Histórico de serviços e pagamentos",
+                finance_new_entry: "Novo movimento",
+                finance_metric_month_income: "Receitas Totais (Mês)",
+                finance_metric_expenses: "Despesas de Limpeza/Manutenção",
+                hosting_reports_eyebrow: "Documentos de plataformas",
+                hosting_reports_title: "Relatórios & Documentos de Plataformas",
+                hosting_platform: "Plataforma",
+                hosting_choose_file: "Escolher ou largar um PDF/CSV",
+                hosting_file_limit: "PDF ou CSV · máximo 20 MB",
+                hosting_upload: "Enviar documento",
+                hosting_uploading: "A enviar documento...",
+                hosting_documents: "Documentos enviados",
+                hosting_no_documents: "Ainda não existem documentos enviados.",
+                hosting_file_required: "Selecione um ficheiro PDF ou CSV até 20 MB.",
+                hosting_upload_success: "Documento enviado com sucesso.",
+                hosting_upload_error: "Não foi possível enviar o documento",
+                hosting_download: "Descarregar",
+                hosting_delete: "Eliminar",
+                hosting_delete_confirm: "Tem a certeza de que pretende eliminar este documento?",
+                hosting_delete_error: "Não foi possível eliminar o documento",
                 reports_by_property: "Desempenho por imóvel",
                 reports_add_entry: "Registar entrada ou saída",
                 reports_property: "Imóvel",
@@ -279,6 +314,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_manage_properties: "Property Management",
                 nav_team_directory: "Team (read-only)",
                 nav_time_entries: "Work Hours",
+                nav_my_hours: "My Hours",
                 team_read_only_title: "Team",
                 time_entries_submitted: "Submitted entries",
                 nav_profile: "Profile",
@@ -351,7 +387,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 invite_signup_subtitle: "Set your email and password to access the Cleaning PWA.",
                 invite_signup_confirm_password: "Confirm password",
                 invite_signup_submit: "Create account and continue",
-                nav_cat_history: "📜 History & Billing",
+                nav_cat_finance: "💶 Finance & Reports",
                 nav_history_accounts: "History & Accounts",
                 offline_status: "Offline Mode — {count} items waiting to sync",
                 offline_pending_status: "{count} items waiting to sync",
@@ -378,7 +414,38 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 agenda_load_error: "Error loading agenda",
                 agenda_today: "Today",
                 title_registered_properties: "Registered Properties",
-                nav_reports: "Reports & Performance",
+                finance_overview: "Overview",
+                finance_tab_overview: "Overview",
+                finance_tab_reports: "Reports",
+                finance_tab_movements: "Movements",
+                finance_filter_month: "Month",
+                finance_filter_property: "Property",
+                finance_transactions: "Transactions",
+                finance_status: "Status",
+                finance_paid: "Paid",
+                finance_pending: "Pending",
+                finance_no_transactions: "No transactions match these filters.",
+                finance_transaction_count: "{count} entries",
+                finance_service_history: "Service and payment history",
+                finance_new_entry: "New entry",
+                finance_metric_month_income: "Total Revenue (Month)",
+                finance_metric_expenses: "Cleaning/Maintenance Expenses",
+                hosting_reports_eyebrow: "Platform documents",
+                hosting_reports_title: "Platform Reports & Documents",
+                hosting_platform: "Platform",
+                hosting_choose_file: "Choose or drop a PDF/CSV",
+                hosting_file_limit: "PDF or CSV · 20 MB maximum",
+                hosting_upload: "Upload document",
+                hosting_uploading: "Uploading document...",
+                hosting_documents: "Uploaded documents",
+                hosting_no_documents: "No documents have been uploaded yet.",
+                hosting_file_required: "Select a PDF or CSV file up to 20 MB.",
+                hosting_upload_success: "Document uploaded successfully.",
+                hosting_upload_error: "Could not upload the document",
+                hosting_download: "Download",
+                hosting_delete: "Delete",
+                hosting_delete_confirm: "Are you sure you want to delete this document?",
+                hosting_delete_error: "Could not delete the document",
                 reports_by_property: "Performance by property",
                 reports_add_entry: "Record income or expense",
                 reports_property: "Property",
@@ -511,8 +578,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             // Re-renderiza o calendário para atualizar os dias da semana
             if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
-            if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+                fetchHistoryAdmin();
+            }
+            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+                !document.getElementById(id).classList.contains('hidden'))) {
                 carregarRelatorios();
+            }
+            if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
+                carregarDocumentosHosting();
             }
             void updateOfflineIndicator();
             if (!document.getElementById('view-sub-time-entries').classList.contains('hidden')) {
@@ -523,7 +597,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         async function initApp() {
             changeLanguage(currentLang);
             document.getElementById('calendar-date-picker').value = selectedDate;
-            document.getElementById('financial-date').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('financial-date').value = getLocalDateString();
+            document.getElementById('financial-filter-month').value = getLocalDateString().slice(0, 7);
             document.getElementById('time-entry-date').value = getLocalDateString();
             const { data: { session } } = await supabaseClient.auth.getSession();
             currentUser = session ? session.user : null;
@@ -885,8 +960,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             
             const previousTab = localStorage.getItem('host_cleaner_active_tab');
             const savedTab = ['sub-calendar-daily', 'sub-calendar-overview'].includes(previousTab) ? 'sub-agenda' : previousTab || 'sub-agenda';
-            const restrictedTabs = ['sub-properties-add', 'sub-reports'];
+            const restrictedTabs = ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-history'];
             if (userRole === 'cleaner' && restrictedTabs.includes(savedTab)) {
+                switchTab('sub-agenda');
+            } else if (userRole === 'admin' && savedTab === 'sub-time-entries') {
                 switchTab('sub-agenda');
             } else {
                 switchTab(savedTab);
@@ -960,8 +1037,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         function switchTab(subtabId) {
             closeMenuAfterAction();
-            
-            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports'].includes(subtabId)) {
+
+            if (subtabId === 'sub-history') subtabId = 'sub-financial-movements';
+            if (subtabId === 'sub-time-entries' && userRole !== 'cleaner') {
+                alert(i18n[currentLang].role_locked);
+                return;
+            }
+
+            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements'].includes(subtabId)) {
                 alert(i18n[currentLang].role_locked);
                 return;
             }
@@ -972,17 +1055,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-history', 'sub-reports', 'sub-team-management', 'sub-time-entries'];
+            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-team-management', 'sub-time-entries'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
                 const btn = document.getElementById(`btn-${t}`);
                 if (btn) {
-                    if (t === subtabId && !(userRole === 'cleaner' && t === 'sub-team-management')) {
-                        btn.className = "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-lg transition whitespace-nowrap";
-                    } else {
-                        btn.className = "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap";
-                    }
+                    const isActive = t === subtabId && !(userRole === 'cleaner' && t === 'sub-team-management');
+                    btn.classList.toggle('font-bold', isActive);
+                    btn.classList.toggle('font-semibold', !isActive);
+                    btn.classList.toggle('bg-indigo-600', isActive);
+                    btn.classList.toggle('text-white', isActive);
+                    btn.classList.toggle('shadow-lg', isActive);
+                    btn.classList.toggle('text-slate-300', !isActive);
                 }
             });
             const teamDirectoryButton = document.getElementById('btn-sub-team-directory');
@@ -998,8 +1083,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (subtabId === 'sub-agenda') fetchAgendaTasks();
             if (subtabId === 'sub-properties-list') carregarPropriedades();
             if (subtabId === 'sub-properties-add' && !editingPropertyId) carregarCleaners();
-            if (subtabId === 'sub-history') fetchHistoryAdmin();
-            if (subtabId === 'sub-reports') carregarRelatorios();
+            if (subtabId === 'sub-reports' || subtabId === 'sub-financial-movements') {
+                void carregarRelatorios();
+            }
+            if (subtabId === 'sub-financial-movements') fetchHistoryAdmin();
+            if (subtabId === 'sub-hosting-reports') {
+                void carregarRelatorios();
+                void carregarDocumentosHosting();
+            }
             if (subtabId === 'sub-team-management') fetchTeamMembers();
             if (subtabId === 'sub-time-entries') carregarRegistosHoras();
         }
@@ -1027,8 +1118,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             } catch (error) {
                 console.error('Não foi possível atualizar a cópia offline:', error);
             }
-            if (!document.getElementById('view-sub-reports').classList.contains('hidden')) {
-                carregarRelatorios();
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+                fetchHistoryAdmin();
+            }
+            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+                !document.getElementById(id).classList.contains('hidden'))) {
+                void carregarRelatorios();
+            }
+            if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
+                void carregarDocumentosHosting();
             }
         }
 
@@ -1400,8 +1498,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     if (document.getElementById('view-sub-agenda') && !document.getElementById('view-sub-agenda').classList.contains('hidden')) {
                         await loadData();
                     }
-                    if (userRole === 'admin' && !document.getElementById('view-sub-reports').classList.contains('hidden')) {
+                    if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+                        await fetchHistoryAdmin();
+                    }
+                    if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+                        !document.getElementById(id).classList.contains('hidden'))) {
                         await carregarRelatorios();
+                    }
+                    if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
+                        await carregarDocumentosHosting();
                     }
                     return !ownPending;
                 } catch (error) {
@@ -2718,24 +2823,24 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const isPaid = task.payment_status === 'paid';
 
                 return `
-                    <div class="border ${isPaid ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'} p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+                    <div class="border ${isPaid ? 'border-emerald-900 bg-emerald-950/30' : 'border-amber-900 bg-amber-950/20'} p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
-                                <strong class="text-slate-900">${task.properties?.name || 'Alojamento'}</strong>
-                                <span class="text-slate-500">📅 ${task.scheduled_date}</span>
+                                <strong class="text-slate-100">${escapePropertyHTML(task.properties?.name || 'Alojamento')}</strong>
+                                <span class="text-slate-400">📅 ${escapePropertyHTML(task.scheduled_date)}</span>
                             </div>
-                            ${task.cleaner_notes ? `<p class="text-slate-600">💬 "${task.cleaner_notes}"</p>` : ''}
+                            ${task.cleaner_notes ? `<p class="text-slate-400">💬 "${escapePropertyHTML(task.cleaner_notes)}"</p>` : ''}
                         </div>
                         <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 shrink-0">
-                            <span class="font-bold text-slate-800">${hours}h × ${rate.toFixed(2)}€ = ${taskTotal.toFixed(2)}€</span>
+                            <span class="font-bold text-slate-200">${hours}h × ${rate.toFixed(2)}€ = ${taskTotal.toFixed(2)}€</span>
                             
                             ${userRole === 'admin' ? `
-                                <button onclick="togglePaymentStatus('${task.id}', '${task.payment_status || 'pending'}')" class="px-3 py-1.5 rounded-xl font-bold transition ${isPaid ? 'bg-emerald-600 text-white shadow-sm' : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'}">
-                                    ${isPaid ? '🟢 Pago' : '⏳ Pendente'}
+                                <button onclick="togglePaymentStatus('${task.id}', '${task.payment_status || 'pending'}')" class="px-3 py-1.5 rounded-xl font-bold transition ${isPaid ? 'bg-emerald-800 text-emerald-100 shadow-sm' : 'bg-amber-800 text-amber-100 shadow-sm hover:bg-amber-700'}">
+                                    ${isPaid ? `🟢 ${i18n[currentLang].finance_paid}` : `⏳ ${i18n[currentLang].finance_pending}`}
                                 </button>
                             ` : `
-                                <span class="px-3 py-1.5 rounded-xl font-bold ${isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                                    ${isPaid ? '🟢 Pago' : '⏳ Pendente'}
+                                <span class="px-3 py-1.5 rounded-xl font-bold ${isPaid ? 'bg-emerald-950 text-emerald-200' : 'bg-amber-950 text-amber-200'}">
+                                    ${isPaid ? `🟢 ${i18n[currentLang].finance_paid}` : `⏳ ${i18n[currentLang].finance_pending}`}
                                 </span>
                             `}
                         </div>
@@ -2844,100 +2949,61 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function carregarRelatorios() {
             const cardsEl = document.getElementById('reports-summary-cards');
+            const transactionsEl = document.getElementById('financial-transactions-list');
             const propertyListEl = document.getElementById('reports-property-list');
             const propertySelect = document.getElementById('financial-property');
-            if (!cardsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
+            const filterPropertySelect = document.getElementById('financial-filter-property');
+            const monthInput = document.getElementById('financial-filter-month');
+            if (!cardsEl || !transactionsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
 
+            const requestId = ++reportsRequestId;
             cardsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
-            propertyListEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
+            transactionsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
             hidePropertyMessage('reports-summary-message');
 
             try {
+                const month = monthInput.value || getLocalDateString().slice(0, 7);
+                const [year, monthNumber] = month.split('-').map(Number);
+                if (!year || !monthNumber || monthNumber > 12) throw new Error(i18n[currentLang].reports_load_error);
+                const monthStart = `${month}-01`;
+                const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
+                const nextMonth = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+                const selectedProperty = filterPropertySelect.value;
+                let entriesQuery = supabaseClient
+                    .from('property_financial_entries')
+                    .select('id, property_id, entry_type, amount, description, occurred_on, status')
+                    .eq('user_id', currentUser.id)
+                    .gte('occurred_on', monthStart)
+                    .lt('occurred_on', nextMonth)
+                    .order('occurred_on', { ascending: false });
+                if (selectedProperty && selectedProperty !== 'all') {
+                    entriesQuery = entriesQuery.eq('property_id', selectedProperty);
+                }
+
                 const [propertiesResult, entriesResult, tasksResult] = await Promise.all([
-                    supabaseClient
-                        .from('properties')
-                        .select('id, name')
-                        .eq('user_id', currentUser.id),
-                    supabaseClient
-                        .from('property_financial_entries')
-                        .select('property_id, entry_type, amount')
-                        .eq('user_id', currentUser.id),
+                    supabaseClient.from('properties').select('id, name').eq('user_id', currentUser.id).order('name'),
+                    entriesQuery,
                     supabaseClient
                         .from('cleaning_tasks')
                         .select('property_id, properties!inner(user_id)')
                         .eq('properties.user_id', currentUser.id)
                 ]);
+                if (requestId !== reportsRequestId) return;
                 if (propertiesResult.error) throw propertiesResult.error;
-                if (entriesResult.error) throw entriesResult.error;
-                if (tasksResult.error) throw tasksResult.error;
-
                 const properties = propertiesResult.data || [];
-                const entries = entriesResult.data || [];
-                const tasks = tasksResult.data || [];
-                const metricsByProperty = new Map(properties.map(property => [String(property.id), {
-                    property,
-                    income: 0,
-                    expenses: 0,
-                    cleaningCount: 0
-                }]));
-
-                entries.forEach(entry => {
-                    const metric = metricsByProperty.get(String(entry.property_id));
-                    if (!metric) return;
-                    if (entry.entry_type === 'income') metric.income += Number(entry.amount);
-                    else metric.expenses += Number(entry.amount);
-                });
-                tasks.forEach(task => {
-                    const metric = metricsByProperty.get(String(task.property_id));
-                    if (metric) metric.cleaningCount += 1;
-                });
-
-                const metrics = [...metricsByProperty.values()];
-                const totals = metrics.reduce((sum, metric) => ({
-                    income: sum.income + metric.income,
-                    expenses: sum.expenses + metric.expenses
-                }), { income: 0, expenses: 0 });
-                const mostRequested = metrics.reduce((top, metric) =>
-                    metric.cleaningCount > (top?.cleaningCount || 0) ? metric : top, null);
-
-                cardsEl.innerHTML = `
-                    <article class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                        <p class="text-[11px] font-bold text-emerald-700">${i18n[currentLang].reports_income_total}</p>
-                        <p class="mt-1 text-lg font-extrabold text-emerald-900">${formatFinancialAmount(totals.income)}</p>
-                    </article>
-                    <article class="rounded-2xl border border-rose-100 bg-rose-50 p-4">
-                        <p class="text-[11px] font-bold text-rose-700">${i18n[currentLang].reports_expense_total}</p>
-                        <p class="mt-1 text-lg font-extrabold text-rose-900">${formatFinancialAmount(totals.expenses)}</p>
-                    </article>
-                    <article class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                        <p class="text-[11px] font-bold text-indigo-700">${i18n[currentLang].reports_net_total}</p>
-                        <p class="mt-1 text-lg font-extrabold text-indigo-900">${formatFinancialAmount(totals.income - totals.expenses)}</p>
-                    </article>
-                    <article class="rounded-2xl border border-amber-100 bg-amber-50 p-4 sm:col-span-3">
-                        <p class="text-[11px] font-bold text-amber-700">${i18n[currentLang].reports_most_requested}</p>
-                        <p class="mt-1 text-sm font-extrabold text-amber-900">${escapePropertyHTML(mostRequested?.cleaningCount ? mostRequested.property.name : i18n[currentLang].reports_no_cleanings)}</p>
-                        ${mostRequested?.cleaningCount ? `<p class="mt-1 text-[11px] text-amber-800">${mostRequested.cleaningCount} ${i18n[currentLang].reports_cleanings_count}</p>` : ''}
-                    </article>
-                `;
-
-                if (!metrics.length) {
-                    propertyListEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_empty}</p>`;
-                } else {
-                    propertyListEl.innerHTML = metrics.map(metric => `
-                        <article class="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <h5 class="text-xs font-bold text-slate-900">${escapePropertyHTML(metric.property.name)}</h5>
-                            <div class="grid grid-cols-2 gap-2 text-[11px]">
-                                <p class="text-emerald-700">${i18n[currentLang].reports_income_total}: <strong>${formatFinancialAmount(metric.income)}</strong></p>
-                                <p class="text-rose-700">${i18n[currentLang].reports_expense_total}: <strong>${formatFinancialAmount(metric.expenses)}</strong></p>
-                                <p class="font-bold text-indigo-700">${i18n[currentLang].reports_net_total}: <strong>${formatFinancialAmount(metric.income - metric.expenses)}</strong></p>
-                                <p class="text-slate-600">${metric.cleaningCount} ${i18n[currentLang].reports_cleanings_count}</p>
-                            </div>
-                        </article>
-                    `).join('');
-                }
+                const selectedFilterValue = filterPropertySelect.value;
+                filterPropertySelect.replaceChildren(
+                    new Option(i18n[currentLang].opt_all_properties, 'all'),
+                    ...properties.map(property => new Option(property.name, property.id))
+                );
+                filterPropertySelect.value = properties.some(property => String(property.id) === selectedFilterValue)
+                    ? selectedFilterValue
+                    : 'all';
 
                 if (propertySelect) {
                     const selectedId = propertySelect.value;
+                    const hostingPropertySelect = document.getElementById('hosting-report-property');
+                    const selectedHostingPropertyId = hostingPropertySelect.value;
                     propertySelect.replaceChildren(
                         new Option(i18n[currentLang].reports_select_property, ''),
                         ...properties.map(property => new Option(property.name, property.id))
@@ -2947,11 +3013,115 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     }
                     propertySelect.disabled = properties.length === 0;
                     document.getElementById('financial-entry-submit').disabled = properties.length === 0;
+                    hostingPropertySelect.replaceChildren(
+                        new Option(i18n[currentLang].reports_select_property, ''),
+                        ...properties.map(property => new Option(property.name, property.id))
+                    );
+                    if (properties.some(property => String(property.id) === selectedHostingPropertyId)) {
+                        hostingPropertySelect.value = selectedHostingPropertyId;
+                    }
+                    hostingPropertySelect.disabled = properties.length === 0;
+                    document.getElementById('hosting-report-submit').disabled = properties.length === 0;
                 }
+
+                if (entriesResult.error) throw entriesResult.error;
+                if (tasksResult.error) throw tasksResult.error;
+                const entries = entriesResult.data || [];
+                const tasks = tasksResult.data || [];
+                const propertiesById = new Map(properties.map(property => [String(property.id), property]));
+                const metricsByProperty = new Map(properties.map(property => [String(property.id), {
+                    property,
+                    income: 0,
+                    expenses: 0,
+                    cleanings: 0
+                }]));
+                entries.forEach(entry => {
+                    const metric = metricsByProperty.get(String(entry.property_id));
+                    if (!metric) return;
+                    if (entry.entry_type === 'income') metric.income += Number(entry.amount);
+                    else if (entry.entry_type === 'expense') metric.expenses += Number(entry.amount);
+                });
+                tasks.forEach(task => {
+                    const metric = metricsByProperty.get(String(task.property_id));
+                    if (metric) metric.cleanings += 1;
+                });
+                const propertyMetrics = [...metricsByProperty.values()].filter(metric =>
+                    !selectedProperty || selectedProperty === 'all' || String(metric.property.id) === selectedProperty
+                );
+                const mostRequested = [...metricsByProperty.values()].reduce((top, metric) =>
+                    metric.cleanings > (top?.cleanings || 0) ? metric : top, null);
+                const totals = entries.reduce((sum, entry) => {
+                    if (entry.entry_type === 'income') sum.income += Number(entry.amount);
+                    else if (entry.entry_type === 'expense') sum.expenses += Number(entry.amount);
+                    return sum;
+                }, { income: 0, expenses: 0 });
+                cardsEl.innerHTML = `
+                    <article class="rounded-2xl border border-emerald-900/80 bg-emerald-950/60 p-4">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-300">${i18n[currentLang].finance_metric_month_income}</p>
+                        <p class="mt-2 text-xl font-extrabold text-emerald-100">${formatFinancialAmount(totals.income)}</p>
+                    </article>
+                    <article class="rounded-2xl border border-rose-900/80 bg-rose-950/40 p-4">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-rose-300">${i18n[currentLang].finance_metric_expenses}</p>
+                        <p class="mt-2 text-xl font-extrabold text-rose-100">${formatFinancialAmount(totals.expenses)}</p>
+                    </article>
+                    <article class="rounded-2xl border border-emerald-400/50 bg-emerald-900/70 p-4 shadow-lg shadow-emerald-950/30">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-200">${i18n[currentLang].reports_net_total}</p>
+                        <p class="mt-2 text-xl font-extrabold text-white">${formatFinancialAmount(totals.income - totals.expenses)}</p>
+                    </article>
+                `;
+
+                const transactionCount = document.getElementById('financial-transactions-count');
+                transactionCount.innerText = i18n[currentLang].finance_transaction_count.replace('{count}', String(entries.length));
+                if (!entries.length) {
+                    transactionsEl.innerHTML = `<p class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-400">${i18n[currentLang].finance_no_transactions}</p>`;
+                } else {
+                    transactionsEl.innerHTML = entries.map(entry => {
+                        const isIncome = entry.entry_type === 'income';
+                        const isPaid = entry.status === 'paid';
+                        const date = new Date(`${entry.occurred_on}T00:00:00`).toLocaleDateString(
+                            currentLang === 'pt' ? 'pt-PT' : 'en-US',
+                            { day: '2-digit', month: 'short', year: 'numeric' }
+                        );
+                        const statusClass = isPaid
+                            ? 'border-emerald-800 bg-emerald-950 text-emerald-300'
+                            : 'border-amber-800 bg-amber-950 text-amber-300';
+                        return `
+                            <article class="grid grid-cols-1 gap-2 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(100px,1fr)_auto_auto] sm:items-center">
+                                <div class="min-w-0">
+                                    <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(entry.description)}</p>
+                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(propertiesById.get(String(entry.property_id))?.name || '')} · ${date}</p>
+                                </div>
+                                <span class="text-[10px] font-semibold ${isIncome ? 'text-emerald-300' : 'text-rose-300'}">${isIncome ? i18n[currentLang].reports_income : i18n[currentLang].reports_expense}</span>
+                                <span class="w-fit rounded-full border px-2.5 py-1 text-[9px] font-bold ${statusClass}">${isPaid ? i18n[currentLang].finance_paid : i18n[currentLang].finance_pending}</span>
+                                <strong class="text-sm font-extrabold ${isIncome ? 'text-emerald-300' : 'text-rose-300'}">${isIncome ? '+' : '−'}${formatFinancialAmount(Number(entry.amount))}</strong>
+                            </article>
+                        `;
+                    }).join('');
+                }
+                propertyListEl.innerHTML = `
+                    ${mostRequested?.cleanings ? `
+                        <article class="rounded-xl border border-amber-900/80 bg-amber-950/30 p-3 sm:col-span-2">
+                            <p class="text-[9px] font-bold uppercase tracking-wide text-amber-300">${i18n[currentLang].reports_most_requested}</p>
+                            <p class="mt-1 text-xs font-extrabold text-white">${escapePropertyHTML(mostRequested.property.name)} <span class="font-medium text-slate-400">· ${mostRequested.cleanings} ${i18n[currentLang].reports_cleanings_count}</span></p>
+                        </article>
+                    ` : ''}
+                    ${propertyMetrics.map(metric => `
+                        <article class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                            <h5 class="truncate text-xs font-bold text-white">${escapePropertyHTML(metric.property.name)}</h5>
+                            <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                                <span class="text-emerald-300">${i18n[currentLang].reports_income_total}: <strong>${formatFinancialAmount(metric.income)}</strong></span>
+                                <span class="text-rose-300">${i18n[currentLang].reports_expense_total}: <strong>${formatFinancialAmount(metric.expenses)}</strong></span>
+                                <span class="col-span-2 text-slate-400">${metric.cleanings} ${i18n[currentLang].reports_cleanings_count}</span>
+                            </div>
+                        </article>
+                    `).join('')}
+                `;
             } catch (error) {
+                if (requestId !== reportsRequestId) return;
                 console.error('Erro ao carregar métricas financeiras:', error);
-                cardsEl.replaceChildren();
-                propertyListEl.innerHTML = `<p class="text-rose-600 text-xs">${i18n[currentLang].reports_load_error}: ${escapePropertyHTML(error.message)}</p>`;
+                cardsEl.innerHTML = `<p class="text-rose-300 text-xs">${i18n[currentLang].reports_load_error}</p>`;
+                transactionsEl.innerHTML = `<p class="text-rose-300 text-xs">${escapePropertyHTML(error.message)}</p>`;
+                propertyListEl.replaceChildren();
                 showPropertyMessage('reports-summary-message', `${i18n[currentLang].reports_load_error}: ${error.message}`, 'error');
             }
         }
@@ -2968,7 +3138,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const amount = Number(document.getElementById('financial-amount').value);
             const description = document.getElementById('financial-description').value.trim();
             const occurredOn = document.getElementById('financial-date').value;
-            if (!propertyId || !['income', 'expense'].includes(entryType) || !Number.isFinite(amount) || amount <= 0 || !description || !occurredOn) {
+            const status = document.getElementById('financial-status').value;
+            if (!propertyId || !['income', 'expense'].includes(entryType) || !['paid', 'pending'].includes(status) || !Number.isFinite(amount) || amount <= 0 || !description || !occurredOn) {
                 showPropertyMessage('financial-entry-message', i18n[currentLang].reports_invalid_entry, 'error');
                 return;
             }
@@ -2985,12 +3156,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         entry_type: entryType,
                         amount,
                         description,
-                        occurred_on: occurredOn
+                        occurred_on: occurredOn,
+                        status
                     }]);
                 if (error) throw error;
 
                 document.getElementById('financial-entry-form').reset();
-                document.getElementById('financial-date').value = new Date().toISOString().slice(0, 10);
+                document.getElementById('financial-date').value = getLocalDateString();
                 await carregarRelatorios();
                 showPropertyMessage('financial-entry-message', i18n[currentLang].reports_entry_success, 'success');
             } catch (error) {
@@ -2998,6 +3170,177 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 showPropertyMessage('financial-entry-message', `${i18n[currentLang].reports_entry_error}: ${error.message}`, 'error');
             } finally {
                 submitButton.disabled = false;
+            }
+        }
+
+        function validateHostingReportFile(file) {
+            if (!file) return false;
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            return file.size > 0
+                && file.size <= 20 * 1024 * 1024
+                && ['pdf', 'csv'].includes(extension);
+        }
+
+        async function submitHostingReport(event) {
+            event.preventDefault();
+            if (!currentUser || userRole !== 'admin') {
+                showPropertyMessage('hosting-report-message', i18n[currentLang].role_locked, 'error');
+                return;
+            }
+            const propertyId = document.getElementById('hosting-report-property').value;
+            const platformName = document.getElementById('hosting-report-platform').value.trim();
+            const file = document.getElementById('hosting-report-file').files?.[0];
+            if (!propertyId || !platformName || !validateHostingReportFile(file)) {
+                showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_file_required, 'error');
+                return;
+            }
+
+            const submitButton = document.getElementById('hosting-report-submit');
+            submitButton.disabled = true;
+            submitButton.innerText = i18n[currentLang].hosting_uploading;
+            hidePropertyMessage('hosting-report-message');
+            const safeFileName = file.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(-120);
+            const extension = safeFileName.split('.').pop().toLowerCase();
+            const reportId = crypto.randomUUID();
+            const storagePath = `${currentUser.id}/${propertyId}/${reportId}.${extension}`;
+            const storage = supabaseClient.storage.from('hosting-reports');
+            try {
+                const { error: uploadError } = await storage.upload(storagePath, file, {
+                    contentType: extension === 'pdf' ? 'application/pdf' : 'text/csv',
+                    upsert: false
+                });
+                if (uploadError) throw uploadError;
+
+                const { error: insertError } = await supabaseClient
+                    .from('hosting_reports')
+                    .insert([{
+                        id: reportId,
+                        property_id: propertyId,
+                        platform_name: platformName,
+                        file_name: safeFileName,
+                        file_url: `${SUPABASE_URL}/storage/v1/object/authenticated/hosting-reports/${storagePath}`,
+                        storage_path: storagePath
+                    }]);
+                if (insertError) {
+                    const { error: cleanupError } = await storage.remove([storagePath]);
+                    if (cleanupError) {
+                        console.error('O ficheiro carregado não pôde ser removido após falha ao guardar o registo:', cleanupError);
+                        throw new Error(`${insertError.message}; ${cleanupError.message}`);
+                    }
+                    throw insertError;
+                }
+
+                const selectedProperty = propertyId;
+                document.getElementById('hosting-report-form').reset();
+                document.getElementById('hosting-report-property').value = selectedProperty;
+                document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
+                await carregarDocumentosHosting();
+                showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_success, 'success');
+            } catch (error) {
+                console.error('Erro ao carregar o documento da plataforma:', error);
+                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_upload_error}: ${error.message}`, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerText = i18n[currentLang].hosting_upload;
+            }
+        }
+
+        async function carregarDocumentosHosting() {
+            const listEl = document.getElementById('hosting-reports-list');
+            if (!listEl || !currentUser || userRole !== 'admin') return;
+            const requestId = ++hostingReportsRequestId;
+            listEl.innerHTML = `<p class="text-xs text-slate-400">${i18n[currentLang].reports_loading}</p>`;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('hosting_reports')
+                    .select('id, property_id, platform_name, file_name, file_url, storage_path, uploaded_at')
+                    .order('uploaded_at', { ascending: false });
+                if (error) throw error;
+                if (requestId !== hostingReportsRequestId) return;
+                hostingReportsCache = data || [];
+                if (!hostingReportsCache.length) {
+                    listEl.innerHTML = `<p class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-400">${i18n[currentLang].hosting_no_documents}</p>`;
+                    return;
+                }
+                const propertyNames = new Map([...document.getElementById('financial-filter-property').options]
+                    .map(option => [String(option.value), option.textContent]));
+                listEl.innerHTML = hostingReportsCache.map(report => {
+                    const uploadedAt = new Date(report.uploaded_at).toLocaleDateString(
+                        currentLang === 'pt' ? 'pt-PT' : 'en-US',
+                        { day: '2-digit', month: 'short', year: 'numeric' }
+                    );
+                    return `
+                        <article class="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[10px] font-extrabold uppercase text-indigo-300">${report.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'CSV'}</span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(report.file_name)}</p>
+                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform_name)} · ${escapePropertyHTML(propertyNames.get(String(report.property_id)) || '')} · ${uploadedAt}</p>
+                                </div>
+                            </div>
+                            <div class="flex shrink-0 gap-2">
+                                <button type="button" data-hosting-download="${escapePropertyHTML(report.id)}" class="rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-200 transition hover:border-indigo-400 hover:text-white">${i18n[currentLang].hosting_download}</button>
+                                <button type="button" data-hosting-delete="${escapePropertyHTML(report.id)}" class="rounded-lg border border-rose-900 px-3 py-2 text-[10px] font-bold text-rose-300 transition hover:bg-rose-950">${i18n[currentLang].hosting_delete}</button>
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+                listEl.querySelectorAll('[data-hosting-download]').forEach(button => {
+                    button.addEventListener('click', () => void downloadHostingReport(button.dataset.hostingDownload));
+                });
+                listEl.querySelectorAll('[data-hosting-delete]').forEach(button => {
+                    button.addEventListener('click', () => void deleteHostingReport(button.dataset.hostingDelete));
+                });
+            } catch (error) {
+                if (requestId !== hostingReportsRequestId) return;
+                console.error('Erro ao carregar documentos das plataformas:', error);
+                listEl.innerHTML = `<p role="alert" class="rounded-xl border border-rose-900 bg-rose-950/40 p-3 text-xs text-rose-300">${i18n[currentLang].hosting_upload_error}: ${escapePropertyHTML(error.message)}</p>`;
+            }
+        }
+
+        async function downloadHostingReport(reportId) {
+            if (!requireAdminAction()) return;
+            const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
+            if (!report) {
+                showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_error, 'error');
+                return;
+            }
+            try {
+                const { data, error } = await supabaseClient.storage
+                    .from('hosting-reports')
+                    .createSignedUrl(report.storage_path, 60, { download: report.file_name });
+                if (error) throw error;
+                const link = document.createElement('a');
+                link.href = data.signedUrl;
+                link.download = report.file_name;
+                link.rel = 'noopener';
+                document.body.append(link);
+                link.click();
+                link.remove();
+            } catch (error) {
+                console.error('Erro ao gerar o descarregamento do documento:', error);
+                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_upload_error}: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteHostingReport(reportId) {
+            if (!requireAdminAction()) return;
+            const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
+            if (!report || !window.confirm(i18n[currentLang].hosting_delete_confirm)) return;
+            try {
+                const { error: storageError } = await supabaseClient.storage
+                    .from('hosting-reports')
+                    .remove([report.storage_path]);
+                if (storageError) throw storageError;
+                const { error: rowError } = await supabaseClient
+                    .from('hosting_reports')
+                    .delete()
+                    .eq('id', report.id);
+                if (rowError) throw rowError;
+                await carregarDocumentosHosting();
+            } catch (error) {
+                console.error('Erro ao eliminar documento da plataforma:', error);
+                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_delete_error}: ${error.message}`, 'error');
             }
         }
 
@@ -3287,6 +3630,39 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('financial-filter-month')?.addEventListener('change', () => void carregarRelatorios());
+            document.getElementById('financial-filter-property')?.addEventListener('change', () => void carregarRelatorios());
+            document.getElementById('hosting-report-file')?.addEventListener('change', event => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                document.getElementById('hosting-report-file-label').innerText = file.name;
+                if (!validateHostingReportFile(file)) {
+                    showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_file_required, 'error');
+                    event.target.value = '';
+                    document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
+                } else {
+                    hidePropertyMessage('hosting-report-message');
+                }
+            });
+            const reportDropzone = document.getElementById('hosting-report-dropzone');
+            reportDropzone?.addEventListener('dragover', event => {
+                event.preventDefault();
+                reportDropzone.classList.add('dragover');
+            });
+            reportDropzone?.addEventListener('dragleave', event => {
+                if (!reportDropzone.contains(event.relatedTarget)) reportDropzone.classList.remove('dragover');
+            });
+            reportDropzone?.addEventListener('drop', event => {
+                event.preventDefault();
+                reportDropzone.classList.remove('dragover');
+                const file = event.dataTransfer?.files?.[0];
+                if (!file) return;
+                const fileInput = document.getElementById('hosting-report-file');
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+                fileInput.files = transfer.files;
+                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+            });
             window.addEventListener('online', () => {
                 isOfflineMode = false;
                 void syncPendingData();
