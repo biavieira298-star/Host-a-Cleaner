@@ -14,8 +14,19 @@ async function fetchTeamMembers() {
         listEl.innerHTML = `<p class="text-rose-600 text-xs py-2">Erro ao carregar os membros da equipa: ${escapeTeamMemberAttribute(error.message)}</p>`;
         return;
     }
+    propertyCleaners = (data || []).filter(member => member.role === 'cleaner');
     if (!data || data.length === 0) {
-        listEl.innerHTML = '<p class="text-slate-400 text-xs py-2">Ainda não adicionou membros à sua equipa.</p>';
+        listEl.innerHTML = `<p class="text-slate-400 text-xs py-2">${userRole === 'cleaner' ? 'Ainda não existem membros visíveis na equipa.' : 'Ainda não adicionou membros à sua equipa.'}</p>`;
+        return;
+    }
+
+    if (userRole === 'cleaner') {
+        listEl.innerHTML = data.map(member => `
+            <div class="border border-slate-200 bg-slate-50 p-3.5 rounded-2xl text-xs">
+                <strong class="text-slate-900 block">${escapeTeamMemberAttribute(member.name || 'Membro da equipa')}</strong>
+                <span class="text-[10px] font-bold text-indigo-700">${member.role === 'admin' ? '👑 Administrador' : '🧹 Equipa de Limpeza'}</span>
+            </div>
+        `).join('');
         return;
     }
 
@@ -82,6 +93,7 @@ async function fetchTeamMembers() {
 
 async function handleAddTeamMember(event) {
     event.preventDefault();
+    if (!requireAdminAction()) return;
     const name = document.getElementById('team-name').value.trim();
     const phone = normalizeTeamPhone(document.getElementById('team-phone').value);
     const preferences = {
@@ -153,6 +165,7 @@ function formatPhoneForWhatsApp(phone) {
 }
 
 async function saveTeamMemberField(memberId, field, value) {
+    if (!requireAdminAction()) return;
     let updatedValue = value || null;
     if (field === 'phone' && value) {
         updatedValue = normalizeTeamPhone(value);
@@ -174,6 +187,7 @@ async function saveTeamMemberField(memberId, field, value) {
 }
 
 async function getTeamAccessLink(memberId) {
+    if (!requireAdminAction()) throw new Error(i18n[currentLang].role_locked);
     let token = teamInviteTokens.get(String(memberId));
     if (!token) {
         const { data, error } = await supabaseClient.rpc('rotate_team_member_invite', {
@@ -260,6 +274,7 @@ async function copyTeamAccessLink(memberId) {
 }
 
 async function updateTeamMemberPreference(memberId, preference, enabled) {
+    if (!requireAdminAction()) return;
     const allowedPreferences = ['track_hours', 'require_photos'];
     if (!allowedPreferences.includes(preference)) {
         throw new Error(`Preferência de equipa inválida: ${preference}`);
@@ -276,6 +291,7 @@ async function updateTeamMemberPreference(memberId, preference, enabled) {
 }
 
 async function removeTeamMember(memberId) {
+    if (!requireAdminAction()) return;
     if (!confirm('Deseja mesmo remover este membro da equipa?')) return;
     const { error } = await supabaseClient.from('team_members').delete().eq('id', memberId);
     if (error) {
