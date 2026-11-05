@@ -1761,7 +1761,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (navigator.onLine) {
                 const { data: incidents, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id, property_id, type, description, photo_url, created_at, properties!inner(name)')
+                    .select('id, property_id, type, description, photo_url, created_at, properties!property_incidents_property_id_fkey!inner(name)')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
                 if (requestId !== incidentRequestId) return;
@@ -2874,7 +2874,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             let query = supabaseClient
                 .from('work_time_entries')
-                .select('id, work_date, hours, description, team_members(name), properties(name)')
+                .select('id, work_date, hours, description, team_members!work_time_entries_team_member_id_fkey(name), properties!work_time_entries_property_id_fkey(name)')
                 .order('work_date', { ascending: false })
                 .order('created_at', { ascending: false });
             query = userRole === 'admin'
