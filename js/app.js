@@ -1181,33 +1181,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (subtabId === 'sub-time-entries') carregarRegistosHoras();
         }
 
-        function setSubscriptionBilling(period) {
-            const isAnnual = period === 'annual';
-            const formatPrice = amount => new Intl.NumberFormat('pt-PT', {
-                style: 'currency',
-                currency: 'EUR'
-            }).format(amount);
-
-            document.querySelectorAll('[data-subscription-price]').forEach(price => {
-                const amount = Number(isAnnual ? price.dataset.annualMonthlyPrice : price.dataset.monthlyPrice);
-                price.textContent = formatPrice(amount);
-            });
-            document.querySelectorAll('[data-subscription-annual-detail]').forEach(detail => {
-                const annualTotal = detail.dataset.annualTotal;
-                detail.textContent = `Faturado anualmente: ${formatPrice(Number(annualTotal))}/ano`;
-                detail.classList.toggle('hidden', !isAnnual);
-            });
-
-            [['monthly', !isAnnual], ['annual', isAnnual]].forEach(([billing, isActive]) => {
-                const button = document.getElementById(`btn-subscription-${billing}`);
-                button.setAttribute('aria-pressed', String(isActive));
-                button.classList.toggle('bg-white', isActive);
-                button.classList.toggle('text-indigo-600', isActive);
-                button.classList.toggle('shadow-sm', isActive);
-                button.classList.toggle('text-slate-500', !isActive);
-            });
-        }
-
         async function loadData() {
             if (isOfflineMode || !navigator.onLine) {
                 await restoreOfflineSnapshot();
