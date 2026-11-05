@@ -2810,6 +2810,24 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             window.location.href = `mailto:?subject=${subject}&body=${body}`;
         }
 
+        function subscribePlan(plan) {
+            const paymentLinks = {
+                starter: 'https://buy.stripe.com/test_3cIdR1h0leJFaZVcmodwc03',
+                pro: 'https://buy.stripe.com/test_14AfZ9eSd0SPec79acdwc02',
+                business: 'https://buy.stripe.com/test_7sY4gr39v'
+            };
+            const paymentLink = Object.prototype.hasOwnProperty.call(paymentLinks, plan)
+                ? paymentLinks[plan]
+                : null;
+
+            if (!paymentLink) {
+                console.error(`Plano de subscrição inválido: ${plan}`);
+                return;
+            }
+
+            window.location.href = paymentLink;
+        }
+
         function handleStripeCheckout() {
             const stripePaymentLink = 'https://buy.stripe.com/'; 
             
