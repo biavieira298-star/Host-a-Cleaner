@@ -1044,7 +1044,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
 
-            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements'].includes(subtabId)) {
+            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-subscriptions'].includes(subtabId)) {
                 alert(i18n[currentLang].role_locked);
                 return;
             }
@@ -1055,7 +1055,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-team-management', 'sub-time-entries'];
+            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-team-management', 'sub-time-entries', 'sub-subscriptions'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
@@ -1093,6 +1093,33 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
             if (subtabId === 'sub-team-management') fetchTeamMembers();
             if (subtabId === 'sub-time-entries') carregarRegistosHoras();
+        }
+
+        function setSubscriptionBilling(period) {
+            const isAnnual = period === 'annual';
+            const formatPrice = amount => new Intl.NumberFormat('pt-PT', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+
+            document.querySelectorAll('[data-subscription-price]').forEach(price => {
+                const amount = Number(isAnnual ? price.dataset.annualMonthlyPrice : price.dataset.monthlyPrice);
+                price.textContent = formatPrice(amount);
+            });
+            document.querySelectorAll('[data-subscription-annual-detail]').forEach(detail => {
+                const annualTotal = detail.dataset.annualTotal;
+                detail.textContent = `Faturado anualmente: ${formatPrice(Number(annualTotal))}/ano`;
+                detail.classList.toggle('hidden', !isAnnual);
+            });
+
+            [['monthly', !isAnnual], ['annual', isAnnual]].forEach(([billing, isActive]) => {
+                const button = document.getElementById(`btn-subscription-${billing}`);
+                button.setAttribute('aria-pressed', String(isActive));
+                button.classList.toggle('bg-white', isActive);
+                button.classList.toggle('text-indigo-600', isActive);
+                button.classList.toggle('shadow-sm', isActive);
+                button.classList.toggle('text-slate-500', !isActive);
+            });
         }
 
         async function loadData() {
