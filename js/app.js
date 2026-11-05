@@ -1008,6 +1008,85 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
+        async function checkSubscriptionLimit(resource) {
+            if (!currentUser) {
+                alert('Inicie sessão para verificar os limites do seu plano.');
+                return false;
+            }
+
+            try {
+                const limitColumn = resource === 'properties' ? 'max_properties' : 'max_cleaners';
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select(`subscription_plan, ${limitColumn}`)
+                    .eq('id', currentUser.id)
+                    .maybeSingle();
+                if (profileError) throw profileError;
+                if (!profile) throw new Error('Perfil de subscrição não encontrado.');
+
+                const plan = String(profile.subscription_plan || 'gratuito').trim().toLowerCase();
+                const planLabels = {
+                    free: 'Gratuito',
+                    gratuito: 'Gratuito',
+                    starter: 'Starter',
+                    pro: 'Pro',
+                    business: 'Business'
+                };
+                const planLabel = planLabels[plan] || profile.subscription_plan || 'Gratuito';
+                let limit = profile[limitColumn];
+
+                if (resource === 'cleaners') {
+                    if (!['free', 'gratuito', 'starter'].includes(plan)) return true;
+                    if (limit === null || limit === undefined || limit === '') {
+                        throw new Error(`O limite de cleaners do plano ${planLabel} não está configurado.`);
+                    }
+                } else if (limit === null || limit === undefined || limit === '') {
+                    return true;
+                }
+
+                limit = Number(limit);
+                if (!Number.isInteger(limit) || limit < 0) {
+                    throw new Error(`O limite ${limitColumn} do plano ${planLabel} não é válido.`);
+                }
+
+                const table = resource === 'properties' ? 'properties' : 'team_members';
+                let countQuery = supabaseClient
+                    .from(table)
+                    .select('id', { count: 'exact', head: true });
+                if (resource === 'properties') {
+                    countQuery = countQuery.eq('user_id', currentUser.id);
+                } else {
+                    countQuery = countQuery
+                        .eq('manager_id', currentUser.id)
+                        .eq('role', 'cleaner');
+                }
+
+                const { count, error: countError } = await countQuery;
+                if (countError) throw countError;
+                if (count === null) throw new Error('Não foi possível contar os recursos existentes.');
+                if (count < limit) return true;
+
+                const nextPlan = {
+                    free: 'Starter',
+                    gratuito: 'Starter',
+                    starter: 'Pro',
+                    pro: 'Business',
+                    business: 'Business'
+                }[plan] || 'Starter';
+                const resourceLabel = resource === 'properties' ? 'imóveis' : 'cleaners';
+                const upgrade = window.confirm(
+                    `Atingiu o limite de ${limit} ${resourceLabel} do plano ${planLabel}. ` +
+                    `Faça upgrade para o plano ${nextPlan} para continuar. Deseja ver os planos?`
+                );
+                if (upgrade) switchTab('sub-subscriptions');
+                return false;
+            } catch (error) {
+                console.error('Erro ao verificar o limite do plano:', error);
+                alert(`Não foi possível verificar o limite do plano: ${error.message}`);
+                return false;
+            }
+        }
+
         async function handleChangePassword(e) {
             e.preventDefault();
             const newPassword = document.getElementById('new-password-input').value;
@@ -1035,7 +1114,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             btn.innerText = i18n[currentLang].btn_update_pwd;
         }
 
-        function switchTab(subtabId) {
+        function switchTab(subtabId, planLimitChecked = false) {
             closeMenuAfterAction();
 
             if (subtabId === 'sub-history') subtabId = 'sub-financial-movements';
@@ -1046,6 +1125,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-subscriptions'].includes(subtabId)) {
                 alert(i18n[currentLang].role_locked);
+                return;
+            }
+
+            if (subtabId === 'sub-properties-add' && !editingPropertyId && !planLimitChecked) {
+                void checkSubscriptionLimit('properties').then(canCreate => {
+                    if (canCreate) switchTab(subtabId, true);
+                });
                 return;
             }
 
@@ -1713,10 +1799,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             submitBtn.className = "md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30";
         }
 
-        function abrirFormularioPropriedade() {
+        async function abrirFormularioPropriedade() {
             if (!requireAdminAction()) return;
+            if (!(await checkSubscriptionLimit('properties'))) return;
             resetPropertyForm();
-            switchTab('sub-properties-add');
+            switchTab('sub-properties-add', true);
         }
 
         async function deleteProperty(propId) {
@@ -3592,6 +3679,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
 
+            if (!editingPropertyId && !(await checkSubscriptionLimit('properties'))) return;
+
             submitButton.disabled = true;
             hidePropertyMessage('property-form-message');
             const wasEditing = Boolean(editingPropertyId);
@@ -3657,6 +3746,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
+            const teamAddForm = document.getElementById('team-add-form');
+            teamAddForm?.addEventListener('submit', event => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                void (async () => {
+                    try {
+                        if (await checkSubscriptionLimit('cleaners')) {
+                            await handleAddTeamMember(event);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao validar o limite de cleaners:', error);
+                        alert(`Não foi possível validar o limite de cleaners: ${error.message}`);
+                    }
+                })();
+            }, true);
+
             document.getElementById('financial-filter-month')?.addEventListener('change', () => void carregarRelatorios());
             document.getElementById('financial-filter-property')?.addEventListener('change', () => void carregarRelatorios());
             document.getElementById('hosting-report-file')?.addEventListener('change', event => {
