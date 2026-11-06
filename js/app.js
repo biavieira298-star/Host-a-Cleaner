@@ -19,6 +19,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let incidentRequestId = 0;
         let offlineDatabasePromise = null;
         let syncPendingPromise = null;
+        let syncRetryTimer = null;
+        let syncRetryAttempt = 0;
         let reportsRequestId = 0;
         let financialChartRequestId = 0;
         let financialOverviewChart = null;
@@ -72,7 +74,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_submit_login: "Entrar na Plataforma",
                 btn_submit_signup: "Criar Nova Conta",
                 btn_forgot_pwd: "Esqueceu-se da palavra-passe?",
-                header_subtitle: "Acompanhe as limpezas e gira a sua equipa.",
+                workspace_title: "Painel de trabalho",
                 nav_cat_calendar: "📅 Agenda",
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Tarefas Diárias (Lista)",
@@ -99,7 +101,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 settings_theme: "Tema",
                 theme_light: "Claro",
                 theme_dark: "Escuro",
-                theme_system: "Padrão (sistema)",
+                theme_default: "Padrão",
                 settings_save_preferences: "Guardar preferências",
                 settings_saved: "Preferências guardadas.",
                 settings_save_error: "Não foi possível guardar as preferências",
@@ -347,7 +349,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_submit_login: "Log In to Platform",
                 btn_submit_signup: "Create New Account",
                 btn_forgot_pwd: "Forgot password?",
-                header_subtitle: "Track cleanings and manage your team.",
+                workspace_title: "Workspace",
                 nav_cat_calendar: "📅 Agenda",
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Daily Tasks (List)",
@@ -374,7 +376,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 settings_theme: "Theme",
                 theme_light: "Light",
                 theme_dark: "Dark",
-                theme_system: "Default (system)",
+                theme_default: "Default",
                 settings_save_preferences: "Save preferences",
                 settings_saved: "Preferences saved.",
                 settings_save_error: "Could not save preferences",
@@ -1125,14 +1127,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function applyThemePreference(theme, persist = false) {
-            const selectedTheme = ['light', 'dark', 'system'].includes(theme) ? theme : 'system';
-            const isDark = selectedTheme === 'dark'
-                || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            const selectedTheme = ['light', 'dark', 'default'].includes(theme) ? theme : 'default';
+            if (theme === 'system') localStorage.setItem('host_cleaner_theme', selectedTheme);
+            document.documentElement.dataset.theme = selectedTheme;
+            if (document.body) document.body.dataset.theme = selectedTheme;
+            const appLayout = document.getElementById('app-layout');
+            if (appLayout) appLayout.dataset.theme = selectedTheme;
             const selector = document.getElementById('profile-theme-select');
             if (selector) selector.value = selectedTheme;
             const themeColor = document.querySelector('meta[name="theme-color"]');
-            if (themeColor) themeColor.content = isDark ? '#0f172a' : '#f0f4f8';
+            if (themeColor) {
+                themeColor.content = selectedTheme === 'dark'
+                    ? '#0f172a'
+                    : selectedTheme === 'light'
+                        ? '#f7f4ec'
+                        : '#f0f4f8';
+            }
             if (persist) localStorage.setItem('host_cleaner_theme', selectedTheme);
             return selectedTheme;
         }
@@ -1152,7 +1162,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function loadProfileSettings() {
             document.getElementById('profile-email-val').textContent = currentUser?.email || '---';
-            applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'system');
+            applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'default');
             const savedPreferences = localStorage.getItem(getOperationalPreferencesStorageKey());
             let storedPreferences = null;
             if (savedPreferences) {
@@ -1673,6 +1683,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
             await updateOfflineIndicator();
             void requestBackgroundSync();
+            if (navigator.onLine && currentUser) {
+                isOfflineMode = false;
+                void syncPendingData();
+            }
             return saved;
         }
 
@@ -1822,6 +1836,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return false;
             }
 
+            isOfflineMode = false;
             syncPendingPromise = (async () => {
                 try {
                     const allPending = await listPendingOfflineItems();
@@ -1839,6 +1854,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         await updateOfflineIndicator(i18n[currentLang].offline_sync_account);
                     } else {
                         await updateOfflineIndicator();
+                    }
+                    if (ownPending && navigator.onLine) {
+                        schedulePendingSyncRetry();
+                    } else {
+                        clearPendingSyncRetry();
                     }
                     if (document.getElementById('view-sub-agenda') && !document.getElementById('view-sub-agenda').classList.contains('hidden')) {
                         await loadData();
@@ -1861,12 +1881,42 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     console.error('Erro ao sincronizar dados offline:', error);
                     if (isOfflineNetworkError(error)) isOfflineMode = true;
                     await updateOfflineIndicator(i18n[currentLang].offline_sync_error);
+                    if (navigator.onLine && currentUser) schedulePendingSyncRetry();
                     return false;
                 } finally {
                     syncPendingPromise = null;
                 }
             })();
             return syncPendingPromise;
+        }
+
+        function clearPendingSyncRetry() {
+            if (syncRetryTimer) window.clearTimeout(syncRetryTimer);
+            syncRetryTimer = null;
+            syncRetryAttempt = 0;
+        }
+
+        function schedulePendingSyncRetry() {
+            if (syncRetryTimer || !navigator.onLine || !currentUser) return;
+            const delay = Math.min(30000, 1000 * (2 ** Math.min(syncRetryAttempt, 5)));
+            syncRetryAttempt += 1;
+            syncRetryTimer = window.setTimeout(() => {
+                syncRetryTimer = null;
+                if (!navigator.onLine || !currentUser) return;
+                isOfflineMode = false;
+                void syncPendingData();
+            }, delay);
+        }
+
+        async function resumePendingSync() {
+            if (!navigator.onLine) {
+                isOfflineMode = true;
+                await updateOfflineIndicator();
+                return;
+            }
+            isOfflineMode = false;
+            clearPendingSyncRetry();
+            await syncPendingData();
         }
 
         function showPropertyMessage(elementId, message, type) {
@@ -4691,12 +4741,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
-            const systemThemePreference = window.matchMedia('(prefers-color-scheme: dark)');
-            systemThemePreference.addEventListener('change', () => {
-                if ((localStorage.getItem('host_cleaner_theme') || 'system') === 'system') {
-                    applyThemePreference('system');
-                }
-            });
+            applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'default');
             document.querySelectorAll('[data-financial-date-preset]').forEach(button => {
                 button.addEventListener('click', () => applyFinancialDatePreset(button.dataset.financialDatePreset));
             });
@@ -4779,16 +4824,33 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 fileInput.dispatchEvent(new Event('change', { bubbles: true }));
             });
             window.addEventListener('online', () => {
-                isOfflineMode = false;
-                void syncPendingData();
+                void resumePendingSync();
             });
             window.addEventListener('offline', () => {
                 isOfflineMode = true;
                 void updateOfflineIndicator();
             });
+            window.addEventListener('focus', () => {
+                if (navigator.onLine) void resumePendingSync();
+            });
+            window.addEventListener('pageshow', () => {
+                if (navigator.onLine) void resumePendingSync();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && navigator.onLine) {
+                    void resumePendingSync();
+                }
+            });
+            navigator.connection?.addEventListener?.('change', () => {
+                if (navigator.onLine) void resumePendingSync();
+                else {
+                    isOfflineMode = true;
+                    void updateOfflineIndicator();
+                }
+            });
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.addEventListener('message', event => {
-                    if (event.data?.type === 'HOST_CLEANER_SYNC_PENDING') void syncPendingData();
+                    if (event.data?.type === 'HOST_CLEANER_SYNC_PENDING') void resumePendingSync();
                 });
             }
             void updateOfflineIndicator();
