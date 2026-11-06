@@ -30,10 +30,31 @@
         }
         html:not(.app-loading) #app-loading-screen { display: none; }
         #app-loading-screen img { width: 64px; height: 64px; }
+        html[data-theme="dark"] body { background: #0f172a; color: #e2e8f0; }
+        html[data-theme="dark"] #app-layout { background: #0f172a; }
+        html[data-theme="dark"] #app-layout :is(.bg-white, .bg-slate-50, .bg-slate-100) {
+            background-color: #1e293b !important;
+        }
+        html[data-theme="dark"] #app-layout :is(.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600) {
+            color: #e2e8f0 !important;
+        }
+        html[data-theme="dark"] #app-layout :is(.text-slate-500, .text-slate-400) { color: #94a3b8 !important; }
+        html[data-theme="dark"] #app-layout :is([class~="border-slate-100"], [class~="border-slate-200"], [class~="border-slate-300"]) {
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] #app-layout input:not([type="checkbox"]),
+        html[data-theme="dark"] #app-layout select,
+        html[data-theme="dark"] #app-layout textarea {
+            color-scheme: dark;
+        }
     </style>
     <script>
         document.documentElement.classList.add('app-loading');
-        window.__appStartupFallback = window.setTimeout(() => {
+    const savedTheme = localStorage.getItem('host_cleaner_theme') || 'system';
+    const useDarkTheme = savedTheme === 'dark'
+        || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
+    window.__appStartupFallback = window.setTimeout(() => {
             document.documentElement.classList.remove('app-loading');
         }, 4000);
     </script>
@@ -196,7 +217,6 @@
                         <div id="settings-menu-items" class="hidden space-y-1 pl-3 border-l border-slate-700 ml-4">
                             <button type="button" onclick="switchTab('sub-properties-add')" id="btn-sub-properties-add" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">➕ <span class="sidebar-text" data-i18n="nav_add_property">Adicionar Alojamento</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">🏠 <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
-                            <button type="button" onclick="openProfileModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👤 <span class="sidebar-text" data-i18n="nav_profile">Perfil</span></button>
                             <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-directory" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_team_directory">Equipa (consulta)</span></button>
                         </div>
@@ -206,20 +226,19 @@
                         <div data-i18n="nav_cat_finance" class="admin-only sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">💶 Finanças</div>
                         <div class="space-y-1 pl-1">
                             <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📈 <span class="sidebar-text" data-i18n="finance_tab_overview">Visão Geral</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-hosting-reports')" id="btn-sub-hosting-reports" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📄 <span class="sidebar-text" data-i18n="finance_tab_reports">Lançamentos & Documentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-financial-movements')" id="btn-sub-financial-movements" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="finance_tab_movements">Movimentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
+                            <button type="button" onclick="switchTab('sub-financial-entries')" id="btn-sub-financial-entries" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="finance_tab_manual_entries">Lançamentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
+                            <button type="button" onclick="switchTab('sub-hosting-reports')" id="btn-sub-hosting-reports" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📄 <span class="sidebar-text" data-i18n="finance_tab_reports">Documentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-time-entries')" id="btn-sub-time-entries" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">⏱️ <span class="sidebar-text" data-i18n="nav_my_hours">As Minhas Horas</span></button>
                         </div>
-                    </div>
-
-                    <div class="space-y-1 pl-1">
-                        <button type="button" onclick="switchTab('sub-subscriptions')" id="btn-sub-subscriptions" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💳 <span class="sidebar-text">Subscrições</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                     </div>
 
                     <div class="space-y-2 pt-2 border-t border-slate-800 admin-only">
                         <button type="button" onclick="forceSyncICalNow()" id="btn-force-sync-sidebar" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition whitespace-nowrap">
                             <span id="sync-icon">🔄</span> <span class="sidebar-text" data-i18n="btn_sync_ical">Sincronizar Agenda</span>
                         </button>
+                    </div>
+                    <div class="space-y-1 border-t border-slate-800 pt-2">
+                        <button type="button" onclick="switchTab('sub-profile-settings')" id="btn-sub-profile-settings" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">⚙️ <span class="sidebar-text" data-i18n="nav_profile">Definições de Perfil</span></button>
                     </div>
                 </nav>
             </div>
@@ -417,67 +436,87 @@
                     </div>
             </div>
 
+            <div id="view-sub-financial-entries" class="space-y-4 hidden">
+                <header>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="finance_manual_entries_eyebrow">Gestão financeira</p>
+                    <h3 data-i18n="finance_tab_manual_entries" class="mt-1 text-lg font-extrabold text-slate-900">Lançamentos</h3>
+                </header>
+                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
+                    <div class="space-y-3 border-b border-slate-800 pb-4">
+                        <div>
+                            <h4 data-i18n="finance_new_entry" class="text-sm font-bold text-white">Novo lançamento</h4>
+                            <p class="mt-1 text-[10px] text-slate-400">Registe uma receita ou despesa manualmente.</p>
+                        </div>
+                        <form id="financial-entry-form" onsubmit="registarMovimentoFinanceiro(event)" class="grid grid-cols-2 gap-2 sm:grid-cols-6">
+                            <label for="financial-date" class="col-span-1 text-[10px] font-semibold text-slate-400">Data
+                                <input type="date" id="financial-date" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
+                            </label>
+                            <label for="financial-property" class="col-span-1 text-[10px] font-semibold text-slate-400">Imóvel
+                                <select id="financial-property" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white"></select>
+                            </label>
+                            <label for="financial-type" class="col-span-1 text-[10px] font-semibold text-slate-400">Tipo
+                                <select id="financial-type" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
+                                    <option value="income">Receita</option>
+                                    <option value="expense">Despesa</option>
+                                </select>
+                            </label>
+                            <label for="financial-category" class="col-span-1 text-[10px] font-semibold text-slate-400">Categoria
+                                <input type="text" id="financial-category" maxlength="80" required placeholder="Limpeza, estadia..." class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
+                            </label>
+                            <label for="financial-amount" class="col-span-1 text-[10px] font-semibold text-slate-400">Valor (€)
+                                <input type="number" id="financial-amount" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
+                            </label>
+                            <label for="financial-description" class="col-span-2 text-[10px] font-semibold text-slate-400 sm:col-span-1">Descrição
+                                <input type="text" id="financial-description" maxlength="200" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
+                            </label>
+                            <p id="financial-entry-message" role="status" aria-live="polite" class="hidden col-span-2 text-xs font-semibold sm:col-span-6"></p>
+                            <button id="financial-entry-submit" type="submit" class="col-span-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 sm:col-span-6">Guardar lançamento</button>
+                        </form>
+                    </div>
+                    <div class="space-y-2 border-b border-slate-800 pb-4">
+                        <h4 data-i18n="financial_entries_recent" class="text-sm font-bold text-white">Lançamentos recentes</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[620px] text-left text-[11px]">
+                                <thead class="text-[10px] uppercase tracking-wide text-slate-400">
+                                    <tr>
+                                        <th class="px-2 py-2 font-semibold">Data</th>
+                                        <th class="px-2 py-2 font-semibold">Imóvel</th>
+                                        <th class="px-2 py-2 font-semibold">Tipo</th>
+                                        <th class="px-2 py-2 font-semibold">Categoria</th>
+                                        <th class="px-2 py-2 font-semibold">Descrição</th>
+                                        <th class="px-2 py-2 text-right font-semibold">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financial-entries-table-body" class="divide-y divide-slate-800 text-slate-300">
+                                    <tr><td colspan="6" class="px-2 py-3 text-slate-400">A carregar lançamentos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <details class="border-t border-slate-800 pt-3">
+                        <summary class="cursor-pointer text-xs font-bold text-indigo-300 hover:text-white">
+                            <span data-i18n="finance_service_history">Histórico de serviços e pagamentos</span>
+                        </summary>
+                        <div class="pt-4">
+                            <div class="mb-3 flex flex-wrap items-center gap-2">
+                                <span id="total-hours-badge" class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-300">Total: 0h</span>
+                                <span id="total-amount-badge" class="rounded-xl border border-emerald-900 bg-emerald-950 px-3 py-2 text-[10px] font-bold text-emerald-300">Total: 0.00€</span>
+                            </div>
+                            <div id="history-tasks-list" class="space-y-2"><p class="text-xs text-slate-400">A carregar histórico...</p></div>
+                        </div>
+                    </details>
+                </section>
+            </div>
+
             <div id="view-sub-hosting-reports" class="space-y-4 hidden">
                 <header>
                     <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="hosting_reports_eyebrow">Documentos de plataformas</p>
-                    <h3 data-i18n="finance_tab_reports" class="mt-1 text-lg font-extrabold text-slate-900">Lançamentos & Documentos</h3>
+                    <h3 data-i18n="finance_tab_reports" class="mt-1 text-lg font-extrabold text-slate-900">Documentos</h3>
                 </header>
-                    <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
-                        <div class="space-y-3 border-b border-slate-800 pb-4">
-                            <div>
-                                <h4 class="text-sm font-bold text-white">Novo lançamento</h4>
-                                <p class="mt-1 text-[10px] text-slate-400">Registe uma receita ou despesa manualmente.</p>
-                            </div>
-                            <form id="financial-entry-form" onsubmit="registarMovimentoFinanceiro(event)" class="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                                <label for="financial-date" class="col-span-1 text-[10px] font-semibold text-slate-400">Data
-                                    <input type="date" id="financial-date" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
-                                </label>
-                                <label for="financial-property" class="col-span-1 text-[10px] font-semibold text-slate-400">Imóvel
-                                    <select id="financial-property" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white"></select>
-                                </label>
-                                <label for="financial-type" class="col-span-1 text-[10px] font-semibold text-slate-400">Tipo
-                                    <select id="financial-type" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
-                                        <option value="income">Receita</option>
-                                        <option value="expense">Despesa</option>
-                                    </select>
-                                </label>
-                                <label for="financial-category" class="col-span-1 text-[10px] font-semibold text-slate-400">Categoria
-                                    <input type="text" id="financial-category" maxlength="80" required placeholder="Limpeza, estadia..." class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
-                                </label>
-                                <label for="financial-amount" class="col-span-1 text-[10px] font-semibold text-slate-400">Valor (€)
-                                    <input type="number" id="financial-amount" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
-                                </label>
-                                <label for="financial-description" class="col-span-2 text-[10px] font-semibold text-slate-400 sm:col-span-1">Descrição
-                                    <input type="text" id="financial-description" maxlength="200" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
-                                </label>
-                                <p id="financial-entry-message" role="status" aria-live="polite" class="hidden col-span-2 text-xs font-semibold sm:col-span-6"></p>
-                                <button id="financial-entry-submit" type="submit" class="col-span-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 sm:col-span-6">Guardar lançamento</button>
-                            </form>
-                        </div>
-                        <div class="space-y-2 border-b border-slate-800 pb-4">
-                            <h4 class="text-sm font-bold text-white">Lançamentos recentes</h4>
-                            <div class="overflow-x-auto">
-                                <table class="w-full min-w-[620px] text-left text-[11px]">
-                                    <thead class="text-[10px] uppercase tracking-wide text-slate-400">
-                                        <tr>
-                                            <th class="px-2 py-2 font-semibold">Data</th>
-                                            <th class="px-2 py-2 font-semibold">Imóvel</th>
-                                            <th class="px-2 py-2 font-semibold">Tipo</th>
-                                            <th class="px-2 py-2 font-semibold">Categoria</th>
-                                            <th class="px-2 py-2 font-semibold">Descrição</th>
-                                            <th class="px-2 py-2 text-right font-semibold">Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="financial-entries-table-body" class="divide-y divide-slate-800 text-slate-300">
-                                        <tr><td colspan="6" class="px-2 py-3 text-slate-400">A carregar lançamentos...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-300" data-i18n="hosting_reports_eyebrow">Documentos de plataformas</p>
-                            <h4 data-i18n="hosting_reports_title" class="mt-1 text-sm font-bold text-white">Relatórios & Documentos de Plataformas</h4>
-                        </div>
+                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
+                    <div>
+                        <h4 data-i18n="hosting_reports_title" class="text-sm font-bold text-white">Relatórios & Documentos de Plataformas</h4>
+                    </div>
                         <form id="hosting-report-form" onsubmit="submitHostingReport(event)" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label for="hosting-report-property" data-i18n="reports_property" class="mb-1 block text-xs font-bold text-slate-300">Imóvel</label>
@@ -505,37 +544,6 @@
                             <h5 data-i18n="hosting_documents" class="mb-2 text-xs font-bold text-slate-300">Documentos enviados</h5>
                             <div id="hosting-reports-list" class="space-y-2">
                                 <p class="text-xs text-slate-400">A carregar documentos...</p>
-                            </div>
-                        </div>
-                    </section>
-            </div>
-
-            <div id="view-sub-financial-movements" class="space-y-4 hidden">
-                <header>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="finance_tab_movements">Movimentos</p>
-                    <h3 data-i18n="finance_transactions" class="mt-1 text-lg font-extrabold text-slate-900">Transações</h3>
-                </header>
-                    <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-300" data-i18n="finance_tab_movements">Movimentos</p>
-                                <h4 data-i18n="finance_transactions" class="mt-1 text-sm font-bold text-white">Transações</h4>
-                            </div>
-                            <span id="financial-transactions-count" class="text-[10px] font-semibold text-slate-400"></span>
-                        </div>
-                        <div id="financial-transactions-list" class="space-y-2">
-                            <p class="text-xs text-slate-400">A carregar movimentos...</p>
-                        </div>
-                        <div class="border-t border-slate-800 pt-3">
-                            <button type="button" onclick="document.getElementById('history-finance-details').classList.toggle('hidden')" class="text-xs font-bold text-indigo-300 hover:text-white">
-                                <span data-i18n="finance_service_history">Histórico de serviços e pagamentos</span>
-                            </button>
-                            <div id="history-finance-details" class="hidden pt-4">
-                                <div class="mb-3 flex flex-wrap items-center gap-2">
-                                    <span id="total-hours-badge" class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-300">Total: 0h</span>
-                                    <span id="total-amount-badge" class="rounded-xl border border-emerald-900 bg-emerald-950 px-3 py-2 text-[10px] font-bold text-emerald-300">Total: 0.00€</span>
-                                </div>
-                                <div id="history-tasks-list" class="space-y-2"><p class="text-xs text-slate-400">A carregar histórico...</p></div>
                             </div>
                         </div>
                     </section>
@@ -623,13 +631,75 @@
                 </div>
             </div>
 
-            <section id="view-sub-subscriptions" class="admin-only hidden space-y-6 p-6">
-                <header class="space-y-2 text-center">
-                    <h1 class="text-3xl font-bold text-slate-800 dark:text-white">Escolha o plano ideal para o seu Alojamento Local</h1>
-                    <p class="text-slate-500">Soluções flexíveis para anfitriões e gestores de equipas de limpeza.</p>
+            <section id="view-sub-profile-settings" class="hidden space-y-5">
+                <header>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="profile_settings_eyebrow">Conta e preferências</p>
+                    <h3 data-i18n="nav_profile" class="mt-1 text-lg font-extrabold text-slate-900">Definições de Perfil</h3>
                 </header>
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                    <nav class="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 lg:flex-col lg:overflow-visible" role="tablist" aria-label="Definições de perfil">
+                        <button type="button" id="btn-profile-tab-account" onclick="switchProfileTab('account')" role="tab" aria-controls="profile-subtab-security" class="profile-settings-tab min-w-fit rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-xs font-bold text-indigo-700" data-i18n="settings_account_tab">Conta / Palavra-passe</button>
+                        <button type="button" id="btn-profile-tab-operations" onclick="switchProfileTab('operations')" role="tab" aria-controls="profile-subtab-operations" class="profile-settings-tab min-w-fit rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-500 hover:bg-slate-50" data-i18n="settings_preferences_tab">Preferências Operacionais</button>
+                        <button type="button" id="btn-profile-tab-subscription" onclick="switchProfileTab('subscription')" role="tab" aria-controls="profile-subtab-subscription" class="profile-settings-tab admin-only min-w-fit rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-500 hover:bg-slate-50" data-i18n="settings_subscription_tab">Plano de Subscrição</button>
+                    </nav>
+                    <div class="min-w-0 space-y-4">
+                        <section id="profile-subtab-security" role="tabpanel" aria-labelledby="btn-profile-tab-account" class="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <header class="border-b border-slate-100 pb-3">
+                                <h4 data-i18n="settings_account_heading" class="text-sm font-bold text-slate-900">Conta / Palavra-passe</h4>
+                                <p id="profile-email-val" class="mt-1 truncate text-xs text-slate-500">---</p>
+                            </header>
+                            <form onsubmit="handleChangePassword(event)" class="max-w-xl space-y-3">
+                                <label for="new-password-input" class="block text-xs font-bold text-slate-700">
+                                    <span data-i18n="label_new_pwd">Nova Palavra-passe</span>
+                                    <input type="password" id="new-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_min_length" placeholder="Mínimo de 6 caracteres" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <label for="confirm-password-input" class="block text-xs font-bold text-slate-700">
+                                    <span data-i18n="label_confirm_pwd">Confirmar Nova Palavra-passe</span>
+                                    <input type="password" id="confirm-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_confirm_placeholder" placeholder="Repita a palavra-passe" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <p id="profile-password-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
+                                <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Atualizar Palavra-passe</button>
+                            </form>
+                        </section>
 
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                        <section id="profile-subtab-operations" role="tabpanel" aria-labelledby="btn-profile-tab-operations" class="hidden space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <header class="border-b border-slate-100 pb-3">
+                                <h4 data-i18n="settings_preferences_heading" class="text-sm font-bold text-slate-900">Preferências Operacionais</h4>
+                            </header>
+                            <div class="space-y-3">
+                                <label class="admin-only flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <span>
+                                        <span data-i18n="settings_require_photos" class="block text-xs font-bold text-slate-800">Pedir fotos de verificação</span>
+                                        <span data-i18n="settings_require_photos_help" class="mt-0.5 block text-[10px] text-slate-500">Solicitar fotos antes e depois da limpeza.</span>
+                                    </span>
+                                    <input id="settings-require-photos" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                </label>
+                                <label class="admin-only flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <span>
+                                        <span data-i18n="settings-track-hours" class="block text-xs font-bold text-slate-800">Pedir total de horas</span>
+                                        <span data-i18n="settings-track-hours-help" class="mt-0.5 block text-[10px] text-slate-500">Solicitar a duração total ao concluir uma limpeza.</span>
+                                    </span>
+                                    <input id="settings-track-hours" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                </label>
+                            </div>
+                            <label for="profile-theme-select" class="block max-w-sm text-xs font-bold text-slate-700">
+                                <span data-i18n="settings_theme">Tema</span>
+                                <select id="profile-theme-select" onchange="saveThemePreference(this.value)" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="light" data-i18n="theme_light">Claro</option>
+                                    <option value="dark" data-i18n="theme_dark">Escuro</option>
+                                    <option value="system" data-i18n="theme_system">Default (sistema)</option>
+                                </select>
+                            </label>
+                            <p id="profile-settings-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
+                            <button type="button" id="save-operational-preferences" onclick="saveOperationalPreferences()" data-i18n="settings_save_preferences" class="admin-only rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Guardar preferências</button>
+                        </section>
+
+                        <section id="profile-subtab-subscription" role="tabpanel" aria-labelledby="btn-profile-tab-subscription" class="admin-only hidden space-y-5">
+                            <header class="space-y-1">
+                                <h4 data-i18n="settings_subscription_heading" class="text-sm font-bold text-slate-900">Plano de Subscrição</h4>
+                                <p class="text-xs text-slate-500">Soluções flexíveis para anfitriões e gestores de equipas de limpeza.</p>
+                            </header>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <article class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                         <div>
                             <h2 class="text-lg font-bold text-slate-800 dark:text-white">Gratuito</h2>
@@ -696,6 +766,9 @@
                         </div>
                         <button type="button" onclick="subscribePlan('business')" class="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900">Subscrever Business</button>
                     </article>
+                            </div>
+                        </section>
+                    </div>
                 </div>
             </section>
 
@@ -871,79 +944,6 @@
             </form>
         </section>
     </div>
-
-    <!-- MODAL DE PERFIL COM SUBSECTOR DE SUBSCRIÇÃO (SAAS) -->
-    <div id="profile-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div>
-                    <h3 data-i18n="modal_profile_title" class="text-sm font-bold text-slate-900">Perfil de Utilizador</h3>
-                    <p data-i18n="modal_profile_sub" class="text-[11px] text-slate-500">Gira os seus dados, segurança e licença da app</p>
-                </div>
-                <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
-            </div>
-
-            <div class="bg-indigo-50 border border-indigo-100 p-3.5 rounded-2xl flex justify-between items-center">
-                <div>
-                    <span data-i18n="label_active_account" class="text-[10px] font-extrabold uppercase text-indigo-500 block">Conta Ativa</span>
-                    <span id="profile-email-val" class="text-xs font-bold text-indigo-900 truncate block">---</span>
-                </div>
-                <span id="profile-role-badge" class="text-[10px] font-extrabold px-2.5 py-1 bg-indigo-600 text-white rounded-full">Admin</span>
-            </div>
-
-            <!-- Navegação Interna do Perfil -->
-            <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
-                <button type="button" onclick="switchProfileTab('security')" id="btn-profile-tab-security" data-i18n="tab_security" class="flex-1 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition">🔒 Segurança & Acesso</button>
-                <button type="button" onclick="switchProfileTab('subscription')" id="btn-profile-tab-subscription" data-i18n="tab_subscription" class="admin-only flex-1 py-2 rounded-lg text-slate-500 transition">💳 Plano & Subscrição</button>
-            </div>
-
-            <!-- Separador 1: Segurança (Alterar Palavra-passe) -->
-            <div id="profile-subtab-security" class="space-y-4">
-                <form onsubmit="handleChangePassword(event)" class="space-y-4">
-                    <div>
-                        <label data-i18n="label_new_pwd" class="block text-xs font-bold text-slate-700 mb-1">Nova Palavra-passe</label>
-                        <div class="relative">
-                            <input type="password" id="new-password-input" required minlength="6" placeholder="Mínimo de 6 caracteres" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
-                                <span id="eye-icon-new-pwd">👁️</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label data-i18n="label_confirm_pwd" class="block text-xs font-bold text-slate-700 mb-1">Confirmar Nova Palavra-passe</label>
-                        <div class="relative">
-                            <input type="password" id="confirm-password-input" required minlength="6" placeholder="Repita a palavra-passe" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button type="button" onclick="togglePasswordVisibility('confirm-password-input', 'eye-icon-confirm-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
-                                <span id="eye-icon-confirm-pwd">👁️</span>
-                            </button>
-                        </div>
-                    </div>
-                    <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Atualizar Palavra-passe</button>
-                </form>
-            </div>
-
-            <!-- Separador 2: Subscrição / SaaS (Integrado no Perfil) -->
-            <div id="profile-subtab-subscription" class="space-y-4 hidden">
-                <div class="border border-indigo-100 bg-indigo-50/50 p-4 rounded-2xl space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span data-i18n="badge_comm_license" class="text-[10px] font-extrabold uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Licença Comercial</span>
-                        <span data-i18n="badge_active" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">🟢 Ativa</span>
-                    </div>
-                    <h4 data-i18n="plan_title" class="text-sm font-extrabold text-slate-900">Plano Profissional (29.00€/mês)</h4>
-                    <p data-i18n="plan_desc" class="text-[11px] text-slate-600">Acesso ilimitado a alojamentos, sincronização iCal automática e gestão de equipa.</p>
-                </div>
-
-                <button type="button" onclick="handleStripeCheckout()" data-i18n="btn_stripe_portal" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2">
-                    💳 Abrir Portal de Pagamento Stripe
-                </button>
-            </div>
-
-            <div class="pt-2 flex justify-end border-t border-slate-100">
-                <button onclick="closeProfileModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
 
     </div>
 
