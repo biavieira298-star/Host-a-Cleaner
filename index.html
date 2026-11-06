@@ -50,11 +50,10 @@
     </style>
     <script>
         document.documentElement.classList.add('app-loading');
-    const savedTheme = localStorage.getItem('host_cleaner_theme') || 'system';
-    const useDarkTheme = savedTheme === 'dark'
-        || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = useDarkTheme ? 'dark' : 'light';
-    window.__appStartupFallback = window.setTimeout(() => {
+        const storedTheme = localStorage.getItem('host_cleaner_theme');
+        const savedTheme = storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'default';
+        document.documentElement.dataset.theme = savedTheme;
+        window.__appStartupFallback = window.setTimeout(() => {
             document.documentElement.classList.remove('app-loading');
         }, 4000);
     </script>
@@ -161,7 +160,7 @@
     <div id="app-layout" class="min-h-screen flex flex-col md:flex-row relative hidden">
 
         <!-- BARRA FIXA SUPERIOR NO TELEMÓVEL -->
-        <header class="fixed top-0 left-0 right-0 h-14 bg-slate-900 text-white flex items-center justify-between px-4 z-40 md:hidden shadow-md">
+        <header class="fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-40 md:hidden shadow-md">
             <div class="flex items-center gap-2">
                 <button type="button" onclick="toggleMobileDrawer()" class="p-2 text-slate-300 hover:text-white font-bold text-lg focus:outline-none" aria-label="Abrir menu">
                     ☰
@@ -252,11 +251,10 @@
         </aside>
 
         <!-- Conteúdo Principal -->
-        <main class="flex-1 p-3 sm:p-4 md:p-10 pt-20 md:pt-10 space-y-6 md:space-y-8 overflow-y-auto max-w-7xl transition-all">
-            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80">
+        <main class="flex-1 p-3 sm:p-4 md:p-10 pt-24 md:pt-10 space-y-6 md:space-y-8 overflow-y-auto max-w-7xl transition-all">
+            <header class="flex min-h-[76px] flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:px-6 sm:py-6 rounded-3xl shadow-sm border border-slate-200/80">
                 <div>
-                    <h2 id="page-title" class="text-base md:text-lg font-bold text-slate-900">Host a Cleaner</h2>
-                    <p id="page-subtitle" data-i18n="header_subtitle" class="text-[11px] md:text-xs text-slate-500 font-medium">Acompanhe as limpezas e gira a sua equipa.</p>
+                    <h2 id="page-title" data-i18n="workspace_title" class="text-base md:text-lg font-extrabold tracking-tight text-slate-900">Painel de trabalho</h2>
                 </div>
                 <!-- Seletor de Idioma no Desktop -->
                 <div class="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
@@ -687,7 +685,7 @@
                                 <select id="profile-theme-select" onchange="saveThemePreference(this.value)" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="light" data-i18n="theme_light">Claro</option>
                                     <option value="dark" data-i18n="theme_dark">Escuro</option>
-                                    <option value="system" data-i18n="theme_system">Default (sistema)</option>
+                                    <option value="default" data-i18n="theme_default">Padrão</option>
                                 </select>
                             </label>
                             <p id="profile-settings-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
