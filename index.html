@@ -53,9 +53,6 @@
         const storedTheme = localStorage.getItem('host_cleaner_theme');
         const savedTheme = storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'default';
         document.documentElement.dataset.theme = savedTheme;
-        window.__appStartupFallback = window.setTimeout(() => {
-            document.documentElement.classList.remove('app-loading');
-        }, 4000);
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
