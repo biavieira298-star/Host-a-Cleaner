@@ -1,6 +1,34 @@
 body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0f4f8; }
         .gradient-bg { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
 
+html[data-theme="light"] body,
+body[data-theme="light"] {
+    background-color: #f7f4ec !important;
+    color: #334155;
+}
+
+html[data-theme="light"] #app-loading-screen {
+    background-color: #f7f4ec;
+}
+
+html[data-theme="light"] #app-layout {
+    background-color: #f7f4ec;
+}
+
+html[data-theme="light"] #app-layout :is(.bg-white, .bg-slate-50, .bg-slate-100) {
+    background-color: #fffdf8 !important;
+}
+
+html[data-theme="light"] #app-layout :is([class~="border-slate-100"], [class~="border-slate-200"], [class~="border-slate-300"]) {
+    border-color: #e8e1d4 !important;
+}
+
+html[data-theme="light"] #app-layout input:not([type="checkbox"]),
+html[data-theme="light"] #app-layout select,
+html[data-theme="light"] #app-layout textarea {
+    color-scheme: light;
+}
+
 .offline-sync-indicator {
     position: sticky;
     top: 0.5rem;
