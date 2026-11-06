@@ -424,7 +424,10 @@
                             </div>
                             <div>
                                 <label for="hosting-report-platform" data-i18n="hosting_platform" class="mb-1 block text-xs font-bold text-slate-300">Plataforma</label>
-                                <input id="hosting-report-platform" type="text" maxlength="80" required placeholder="Airbnb, Booking, VRBO..." class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="hosting-report-platform" required class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="Airbnb">Airbnb</option>
+                                    <option value="Booking.com">Booking.com</option>
+                                </select>
                             </div>
                             <div id="hosting-report-dropzone" class="hosting-report-dropzone sm:col-span-2">
                                 <input id="hosting-report-file" type="file" accept=".pdf,.csv,application/pdf,text/csv" class="sr-only">
@@ -919,6 +922,7 @@
 
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer onload="pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'"></script>
     <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/equipas.js" defer></script>
