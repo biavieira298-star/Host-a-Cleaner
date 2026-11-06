@@ -21,6 +21,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let syncPendingPromise = null;
         let syncRetryTimer = null;
         let syncRetryAttempt = 0;
+        let viewRenderRequestId = 0;
+        let activeViewRenderPromise = Promise.resolve();
         let reportsRequestId = 0;
         let financialChartRequestId = 0;
         let financialOverviewChart = null;
@@ -738,9 +740,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
             }
             showAppLayout();
-            window.clearTimeout(window.__appStartupFallback);
-            document.documentElement.classList.remove('app-loading');
             await loadData();
+            await activeViewRenderPromise;
             if (navigator.onLine) void syncPendingData();
         }
 
@@ -1395,6 +1396,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     btn.classList.toggle('text-slate-300', !isActive);
                 }
             });
+            const activeView = document.getElementById(`view-${subtabId}`);
+            const currentRenderRequestId = ++viewRenderRequestId;
+            if (activeView) {
+                activeView.classList.add('app-view', 'is-loading');
+                activeView.classList.remove('is-ready');
+                activeView.dataset.renderRequest = String(currentRenderRequestId);
+                activeView.setAttribute('aria-busy', 'true');
+            }
+            const viewRenderTasks = [];
             const teamDirectoryButton = document.getElementById('btn-sub-team-directory');
             if (teamDirectoryButton) {
                 const directoryStateClass = userRole !== 'cleaner'
@@ -1405,24 +1415,23 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 teamDirectoryButton.className = `cleaner-only ${directoryStateClass} w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap`;
             }
 
-            if (subtabId === 'sub-agenda') fetchAgendaTasks();
-            if (subtabId === 'sub-properties-list') carregarPropriedades();
-            if (subtabId === 'sub-properties-add' && !editingPropertyId) carregarCleaners();
+            if (subtabId === 'sub-agenda') viewRenderTasks.push(fetchAgendaTasks());
+            if (subtabId === 'sub-properties-list') viewRenderTasks.push(carregarPropriedades());
+            if (subtabId === 'sub-properties-add' && !editingPropertyId) viewRenderTasks.push(carregarCleaners());
             if (subtabId === 'sub-reports' || subtabId === 'sub-financial-entries') {
-                void carregarRelatorios();
+                viewRenderTasks.push(carregarRelatorios());
             }
-            if (subtabId === 'sub-reports') void renderFinancialChart();
+            if (subtabId === 'sub-reports') viewRenderTasks.push(renderFinancialChart());
             if (subtabId === 'sub-financial-entries') {
-                void carregarLancamentosManuais();
-                void fetchHistoryAdmin();
+                viewRenderTasks.push(carregarLancamentosManuais(), fetchHistoryAdmin());
             }
             if (subtabId === 'sub-hosting-reports') {
                 carregarPropriedadesDocumentos();
-                void carregarDocumentosHosting();
+                viewRenderTasks.push(carregarDocumentosHosting());
             }
             if (subtabId === 'sub-team-management') {
                 applyOperationalPreferencesToInviteForm();
-                void fetchTeamMembers().then(loaded => {
+                viewRenderTasks.push(fetchTeamMembers().then(loaded => {
                     if (!loaded || userRole !== 'admin') return;
                     const hasSavedPreferences = Boolean(localStorage.getItem(getOperationalPreferencesStorageKey()));
                     const cleaners = allTeamMembersCache.filter(member => member.role === 'cleaner');
@@ -1434,13 +1443,30 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         localStorage.setItem(getOperationalPreferencesStorageKey(), JSON.stringify(operationalPreferences));
                     }
                     applyOperationalPreferencesToInviteForm();
-                });
+                }));
             }
-            if (subtabId === 'sub-time-entries') carregarRegistosHoras();
+            if (subtabId === 'sub-time-entries') viewRenderTasks.push(carregarRegistosHoras());
             if (subtabId === 'sub-profile-settings') {
-                void loadProfileSettings();
                 switchProfileTab(profileSettingsTab);
+                viewRenderTasks.push(loadProfileSettings());
             }
+            activeViewRenderPromise = Promise.allSettled(viewRenderTasks).then(results => {
+                results.forEach(result => {
+                    if (result.status === 'rejected') {
+                        console.error(`Erro ao preparar a vista ${subtabId}:`, result.reason);
+                    }
+                });
+                return new Promise(resolve => requestAnimationFrame(() => {
+                    if (activeView
+                        && !activeView.classList.contains('hidden')
+                        && activeView.dataset.renderRequest === String(currentRenderRequestId)) {
+                        activeView.classList.remove('is-loading');
+                        activeView.classList.add('is-ready');
+                        activeView.setAttribute('aria-busy', 'false');
+                    }
+                    resolve();
+                }));
+            });
         }
 
         async function loadData() {
@@ -4929,7 +4955,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             registrationRequested = inviteParam?.toLowerCase() === 'true' || hash === '#register';
 
             initApp().finally(() => {
-                window.clearTimeout(window.__appStartupFallback);
+                document.documentElement.classList.add('app-ready');
                 document.documentElement.classList.remove('app-loading');
             });
         });
