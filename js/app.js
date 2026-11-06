@@ -3997,6 +3997,94 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 .trim();
         }
 
+        function propertyNameMatchScore(text, propertyName) {
+            const normalizedText = normalizeAirbnbText(text);
+            const normalizedName = normalizeAirbnbText(propertyName);
+            if (!normalizedText || !normalizedName) return 0;
+            if (` ${normalizedText} `.includes(` ${normalizedName} `)) {
+                return 2 + normalizedName.length / 1000;
+            }
+
+            const ignoredWords = new Set(['a', 'an', 'and', 'da', 'das', 'de', 'do', 'dos', 'e', 'of', 'the']);
+            const nameTokens = normalizedName.split(' ').filter(token => !ignoredWords.has(token));
+            const textTokens = normalizedText.split(' ');
+            if (!nameTokens.length || !textTokens.length) return 0;
+
+            let matchedTokens = 0;
+            for (const nameToken of nameTokens) {
+                const matched = textTokens.some(textToken =>
+                    textToken === nameToken
+                    || (nameToken.length >= 4
+                        && textToken.length >= 4
+                        && levenshteinDistanceAtMostOne(nameToken, textToken))
+                );
+                if (matched) matchedTokens += 1;
+            }
+
+            const minimumMatches = nameTokens.length === 1 ? 1 : 2;
+            const coverage = matchedTokens / nameTokens.length;
+            if (matchedTokens < minimumMatches || coverage < 0.5) return 0;
+            return coverage + Math.min(normalizedName.length, 100) / 10000;
+        }
+
+        function levenshteinDistanceAtMostOne(first, second) {
+            if (Math.abs(first.length - second.length) > 1) return false;
+            let firstIndex = 0;
+            let secondIndex = 0;
+            let edits = 0;
+            while (firstIndex < first.length && secondIndex < second.length) {
+                if (first[firstIndex] === second[secondIndex]) {
+                    firstIndex += 1;
+                    secondIndex += 1;
+                    continue;
+                }
+                edits += 1;
+                if (edits > 1) return false;
+                if (first.length > second.length) firstIndex += 1;
+                else if (second.length > first.length) secondIndex += 1;
+                else {
+                    firstIndex += 1;
+                    secondIndex += 1;
+                }
+            }
+            if (firstIndex < first.length || secondIndex < second.length) edits += 1;
+            return edits <= 1;
+        }
+
+        function findPropertyInPDFLines(lines, index, properties) {
+            const findMatches = text => properties
+                .map(property => ({ property, score: propertyNameMatchScore(text, property.name) }))
+                .filter(match => match.score > 0)
+                .sort((a, b) => b.score - a.score);
+            const resolveMatch = matches => {
+                if (!matches.length) return null;
+                const topMatches = matches.filter(match => Math.abs(match.score - matches[0].score) < 0.00001);
+                return new Set(topMatches.map(match => String(match.property.id))).size === 1
+                    ? matches[0].property
+                    : null;
+            };
+            const currentLineMatch = resolveMatch(findMatches(lines[index]));
+            if (currentLineMatch) return currentLineMatch;
+            if (lines[index + 1] && resolveMatch(findMatches(lines[index + 1]))) return null;
+
+            const matches = findMatches([lines[index], lines[index + 1]].filter(Boolean).join(' '));
+            return resolveMatch(matches);
+        }
+
+        function collectPropertyRows(lines, properties) {
+            const rows = [];
+            lines.forEach((line, index) => {
+                const property = findPropertyInPDFLines(lines, index, properties);
+                if (!property) return;
+                const previousRow = rows[rows.length - 1];
+                if (previousRow
+                    && String(previousRow.property.id) === String(property.id)
+                    && index - previousRow.index <= 1) return;
+                rows.push({ index, property });
+            });
+            return rows;
+        }
+
         function parseAirbnbPdfDate(value) {
             const match = value.match(/\b(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b/);
             if (!match) return null;
@@ -4068,23 +4156,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         async function processAirbnbPDF(file, properties) {
             const text = await extractTextFromPDF(file);
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-            const propertyRows = [];
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
-                .map(property => ({ ...property, normalizedName: normalizeAirbnbText(property.name) }))
-                .filter(property => property.normalizedName.length >= 3);
-
-            lines.forEach((line, index) => {
-                const normalizedLine = normalizeAirbnbText(line);
-                const matches = validProperties
-                    .filter(property => normalizedLine.includes(property.normalizedName))
-                    .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
-                if (!matches.length) return;
-                const longestMatches = matches.filter(property => property.normalizedName.length === matches[0].normalizedName.length);
-                const uniqueIds = new Set(longestMatches.map(property => property.id));
-                if (uniqueIds.size !== 1) return;
-                propertyRows.push({ index, property: longestMatches[0] });
-            });
+                .filter(property => normalizeAirbnbText(property.name).length >= 3);
+            const propertyRows = collectPropertyRows(lines, validProperties);
 
             const earnings = [];
             for (let rowIndex = 0; rowIndex < propertyRows.length; rowIndex += 1) {
@@ -4125,7 +4200,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     earnings.push({
                         property_id: row.property.id,
                         entry_type: 'income',
-                        category: 'Airbnb',
+                        category: 'Ganhos',
                         amount: Math.round(amount * 100) / 100,
                         description: `Airbnb: ${transactionType}`.slice(0, 200),
                         occurred_on: date.occurredOn,
@@ -4142,19 +4217,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
-                .map(property => ({ ...property, normalizedName: normalizeAirbnbText(property.name) }))
-                .filter(property => property.normalizedName.length >= 3)
-                .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
-            const propertyRows = [];
-
-            lines.forEach((line, index) => {
-                const normalizedLine = normalizeAirbnbText(line);
-                const matches = validProperties.filter(property => normalizedLine.includes(property.normalizedName));
-                if (!matches.length) return;
-                const longestMatches = matches.filter(property => property.normalizedName.length === matches[0].normalizedName.length);
-                if (new Set(longestMatches.map(property => property.id)).size !== 1) return;
-                propertyRows.push({ index, property: longestMatches[0] });
-            });
+                .filter(property => normalizeAirbnbText(property.name).length >= 3);
+            const propertyRows = collectPropertyRows(lines, validProperties);
 
             const totalsByProperty = new Map();
             const transactionPattern = /\b(?:reservation|booking|confirmation|payment|payout|paid|net(?:\s+amount)?|gross|total|amount|valor|montante|reserva|pagamento|liquido|liquida)\b/i;
@@ -4203,7 +4267,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     totalsByProperty.set(row.property.id, {
                         property_id: row.property.id,
                         entry_type: 'income',
-                        category: 'Booking.com',
+                        category: 'Ganhos',
                         amount,
                         description: 'Booking.com: Reservas consolidadas',
                         occurred_on: latestDate || getLocalDateString(),
@@ -4212,7 +4276,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
             }
 
-            return [...totalsByProperty.values()];
+            return persistPlatformEarnings('Booking.com', [...totalsByProperty.values()]);
         }
 
         function carregarPropriedadesDocumentos() {
@@ -4297,8 +4361,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         if (normalizedPlatformName === 'airbnb') {
                             platformImportResult = await processAirbnbPDF(file, properties || []);
                         } else {
-                            const earnings = await processBookingPDF(file, properties || []);
-                            platformImportResult = await persistPlatformEarnings('Booking.com', earnings);
+                            platformImportResult = await processBookingPDF(file, properties || []);
                         }
                     } catch (error) {
                         platformImportError = error;
@@ -4311,9 +4374,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
                 await carregarDocumentosHosting();
-                await carregarLancamentosManuais();
-                if (platformImportResult?.inserted) await carregarRelatorios();
-                if (platformImportResult) await renderFinancialChart();
+                if (platformImportResult) {
+                    await Promise.all([
+                        carregarLancamentosManuais(),
+                        carregarRelatorios(),
+                        renderFinancialChart()
+                    ]);
+                }
                 const importMessagePrefix = normalizedPlatformName === 'booking.com' ? 'hosting_booking_import' : 'hosting_airbnb_import';
                 if (platformImportError) {
                     showPropertyMessage(
