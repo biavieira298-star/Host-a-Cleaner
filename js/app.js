@@ -204,6 +204,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_file_required: "Selecione um ficheiro PDF ou CSV até 20 MB.",
                 hosting_upload_success: "Documento enviado com sucesso.",
                 hosting_upload_error: "Não foi possível enviar o documento",
+                hosting_no_property: "Sem imóvel associado",
                 hosting_download: "Descarregar",
                 hosting_delete: "Eliminar",
                 hosting_delete_confirm: "Tem a certeza de que pretende eliminar este documento?",
@@ -442,6 +443,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_file_required: "Select a PDF or CSV file up to 20 MB.",
                 hosting_upload_success: "Document uploaded successfully.",
                 hosting_upload_error: "Could not upload the document",
+                hosting_no_property: "No property linked",
                 hosting_download: "Download",
                 hosting_delete: "Delete",
                 hosting_delete_confirm: "Are you sure you want to delete this document?",
@@ -3119,14 +3121,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     propertySelect.disabled = properties.length === 0;
                     document.getElementById('financial-entry-submit').disabled = properties.length === 0;
                     hostingPropertySelect.replaceChildren(
-                        new Option(i18n[currentLang].reports_select_property, ''),
+                        new Option(i18n[currentLang].hosting_no_property, ''),
                         ...properties.map(property => new Option(property.name, property.id))
                     );
                     if (properties.some(property => String(property.id) === selectedHostingPropertyId)) {
                         hostingPropertySelect.value = selectedHostingPropertyId;
+                    } else {
+                        hostingPropertySelect.value = '';
                     }
-                    hostingPropertySelect.disabled = properties.length === 0;
-                    document.getElementById('hosting-report-submit').disabled = properties.length === 0;
+                    hostingPropertySelect.disabled = false;
+                    document.getElementById('hosting-report-submit').disabled = false;
                 }
 
                 if (entriesResult.error) throw entriesResult.error;
@@ -3292,10 +3296,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 showPropertyMessage('hosting-report-message', i18n[currentLang].role_locked, 'error');
                 return;
             }
-            const propertyId = document.getElementById('hosting-report-property').value;
+            const propertyId = document.getElementById('hosting-report-property').value || null;
             const platformName = document.getElementById('hosting-report-platform').value.trim();
             const file = document.getElementById('hosting-report-file').files?.[0];
-            if (!propertyId || !platformName || !validateHostingReportFile(file)) {
+            if (!platformName || !validateHostingReportFile(file)) {
                 showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_file_required, 'error');
                 return;
             }
@@ -3306,26 +3310,33 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             hidePropertyMessage('hosting-report-message');
             const safeFileName = file.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(-120);
             const extension = safeFileName.split('.').pop().toLowerCase();
-            const reportId = crypto.randomUUID();
-            const storagePath = `${currentUser.id}/${propertyId}/${reportId}.${extension}`;
-            const storage = supabaseClient.storage.from('hosting-reports');
+            const documentId = crypto.randomUUID();
+            let storage;
+            let storagePath;
             try {
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError) throw userError;
+                if (!user?.id) throw new Error('É necessário iniciar sessão para carregar documentos.');
+
+                storagePath = `${user.id}/${propertyId || 'unassigned'}/${documentId}.${extension}`;
+                storage = supabaseClient.storage.from('platform-documents');
                 const { error: uploadError } = await storage.upload(storagePath, file, {
                     contentType: extension === 'pdf' ? 'application/pdf' : 'text/csv',
                     upsert: false
                 });
                 if (uploadError) throw uploadError;
 
+                const { data: { publicUrl } } = storage.getPublicUrl(storagePath);
+                const documentRecord = {
+                    platform: platformName,
+                    file_url: publicUrl,
+                    file_name: safeFileName,
+                    property_id: propertyId,
+                    ...(user?.id ? { user_id: user.id } : {})
+                };
                 const { error: insertError } = await supabaseClient
-                    .from('hosting_reports')
-                    .insert([{
-                        id: reportId,
-                        property_id: propertyId,
-                        platform_name: platformName,
-                        file_name: safeFileName,
-                        file_url: `${SUPABASE_URL}/storage/v1/object/authenticated/hosting-reports/${storagePath}`,
-                        storage_path: storagePath
-                    }]);
+                    .from('platform_documents')
+                    .insert([documentRecord]);
                 if (insertError) {
                     const { error: cleanupError } = await storage.remove([storagePath]);
                     if (cleanupError) {
@@ -3335,19 +3346,30 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     throw insertError;
                 }
 
-                const selectedProperty = propertyId;
+                const selectedProperty = propertyId || '';
                 document.getElementById('hosting-report-form').reset();
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
                 await carregarDocumentosHosting();
                 showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_success, 'success');
-            } catch (error) {
-                console.error('Erro ao carregar o documento da plataforma:', error);
-                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_upload_error}: ${error.message}`, 'error');
+            } catch (err) {
+                console.error('Erro ao carregar o documento da plataforma:', err);
+                console.log(err);
+                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_upload_error}: ${err.message}`, 'error');
             } finally {
                 submitButton.disabled = false;
                 submitButton.innerText = i18n[currentLang].hosting_upload;
             }
+        }
+
+        function getPlatformDocumentStoragePath(fileUrl) {
+            const publicUrl = new URL(fileUrl);
+            const supabaseOrigin = new URL(SUPABASE_URL).origin;
+            const publicPathPrefix = '/storage/v1/object/public/platform-documents/';
+            if (publicUrl.origin !== supabaseOrigin || !publicUrl.pathname.startsWith(publicPathPrefix)) {
+                throw new Error('O URL do documento não corresponde ao bucket platform-documents.');
+            }
+            return decodeURIComponent(publicUrl.pathname.slice(publicPathPrefix.length));
         }
 
         async function carregarDocumentosHosting() {
@@ -3357,9 +3379,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             listEl.innerHTML = `<p class="text-xs text-slate-400">${i18n[currentLang].reports_loading}</p>`;
             try {
                 const { data, error } = await supabaseClient
-                    .from('hosting_reports')
-                    .select('id, property_id, platform_name, file_name, file_url, storage_path, uploaded_at')
-                    .order('uploaded_at', { ascending: false });
+                    .from('platform_documents')
+                    .select('id, property_id, platform, file_name, file_url, created_at')
+                    .order('created_at', { ascending: false });
                 if (error) throw error;
                 if (requestId !== hostingReportsRequestId) return;
                 hostingReportsCache = data || [];
@@ -3370,7 +3392,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const propertyNames = new Map([...document.getElementById('financial-filter-property').options]
                     .map(option => [String(option.value), option.textContent]));
                 listEl.innerHTML = hostingReportsCache.map(report => {
-                    const uploadedAt = new Date(report.uploaded_at).toLocaleDateString(
+                    const uploadedAt = new Date(report.created_at).toLocaleDateString(
                         currentLang === 'pt' ? 'pt-PT' : 'en-US',
                         { day: '2-digit', month: 'short', year: 'numeric' }
                     );
@@ -3380,7 +3402,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[10px] font-extrabold uppercase text-indigo-300">${report.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'CSV'}</span>
                                 <div class="min-w-0">
                                     <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(report.file_name)}</p>
-                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform_name)} · ${escapePropertyHTML(propertyNames.get(String(report.property_id)) || '')} · ${uploadedAt}</p>
+                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform)} · ${escapePropertyHTML(report.property_id ? propertyNames.get(String(report.property_id)) || '' : i18n[currentLang].hosting_no_property)} · ${uploadedAt}</p>
                                 </div>
                             </div>
                             <div class="flex shrink-0 gap-2">
@@ -3411,12 +3433,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
             try {
-                const { data, error } = await supabaseClient.storage
-                    .from('hosting-reports')
-                    .createSignedUrl(report.storage_path, 60, { download: report.file_name });
-                if (error) throw error;
+                getPlatformDocumentStoragePath(report.file_url);
+                const downloadUrl = new URL(report.file_url);
+                downloadUrl.searchParams.set('download', report.file_name);
                 const link = document.createElement('a');
-                link.href = data.signedUrl;
+                link.href = downloadUrl.toString();
                 link.download = report.file_name;
                 link.rel = 'noopener';
                 document.body.append(link);
@@ -3433,12 +3454,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
             if (!report || !window.confirm(i18n[currentLang].hosting_delete_confirm)) return;
             try {
+                const storagePath = getPlatformDocumentStoragePath(report.file_url);
                 const { error: storageError } = await supabaseClient.storage
-                    .from('hosting-reports')
-                    .remove([report.storage_path]);
+                    .from('platform-documents')
+                    .remove([storagePath]);
                 if (storageError) throw storageError;
                 const { error: rowError } = await supabaseClient
-                    .from('hosting_reports')
+                    .from('platform_documents')
                     .delete()
                     .eq('id', report.id);
                 if (rowError) throw rowError;
