@@ -18,6 +18,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let offlineDatabasePromise = null;
         let syncPendingPromise = null;
         let reportsRequestId = 0;
+        let financialChartRequestId = 0;
+        let financialOverviewChart = null;
+        let financialChartStartDate = null;
+        let financialChartEndDate = null;
         let hostingReportsRequestId = 0;
         let hostingReportsCache = [];
         const activeOfflineTaskOperations = new Set();
@@ -178,7 +182,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 title_registered_properties: "Alojamentos Registados",
                 finance_overview: "Visão geral",
                 finance_tab_overview: "Visão Geral",
-                finance_tab_reports: "Relatórios",
+                finance_tab_reports: "Lançamentos & Documentos",
                 finance_tab_movements: "Movimentos",
                 finance_filter_month: "Mês",
                 finance_filter_property: "Imóvel",
@@ -211,6 +215,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_booking_import_success: "Documento enviado. Ganhos Booking.com consolidados: {count}; duplicados ignorados: {duplicates}.",
                 hosting_booking_import_none: "Documento enviado, mas não foram encontrados ganhos Booking.com associados a imóveis registados.",
                 hosting_booking_import_error: "Documento enviado, mas não foi possível importar os ganhos Booking.com",
+                financial_entries_loading: "A carregar lançamentos...",
+                financial_entries_empty: "Ainda não existem lançamentos.",
+                financial_entries_error: "Não foi possível carregar os lançamentos",
+                financial_category_required: "Indique uma categoria.",
+                property_cleaning_tasks: "Limpezas",
+                property_no_cleaning_tasks: "Sem limpezas registadas.",
+                property_priority_badge: "Prioritário",
+                task_priority_label: "Marcar como Importante/Prioritário",
+                task_hours_start: "Início",
+                task_hours_end: "Fim",
+                task_hours_save: "Guardar horas",
+                task_hours_saved: "Horas da limpeza guardadas.",
+                task_hours_error: "Não foi possível guardar as horas",
+                task_hours_invalid: "Indique horas válidas e confirme que o fim é posterior ao início.",
+                task_hours_locked: "As horas desta limpeza já foram registadas.",
+                task_photos_verification: "Fotos de verificação",
                 hosting_download: "Descarregar",
                 hosting_delete: "Eliminar",
                 hosting_delete_confirm: "Tem a certeza de que pretende eliminar este documento?",
@@ -423,7 +443,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 title_registered_properties: "Registered Properties",
                 finance_overview: "Overview",
                 finance_tab_overview: "Overview",
-                finance_tab_reports: "Reports",
+                finance_tab_reports: "Entries & Documents",
                 finance_tab_movements: "Movements",
                 finance_filter_month: "Month",
                 finance_filter_property: "Property",
@@ -456,6 +476,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_booking_import_success: "Document uploaded. Booking.com earnings consolidated: {count}; duplicates skipped: {duplicates}.",
                 hosting_booking_import_none: "Document uploaded, but no Booking.com earnings matched registered properties.",
                 hosting_booking_import_error: "Document uploaded, but Booking.com earnings could not be imported",
+                financial_entries_loading: "Loading entries...",
+                financial_entries_empty: "No entries have been recorded yet.",
+                financial_entries_error: "Could not load entries",
+                financial_category_required: "Enter a category.",
+                property_cleaning_tasks: "Cleanings",
+                property_no_cleaning_tasks: "No cleanings recorded.",
+                property_priority_badge: "Priority",
+                task_priority_label: "Mark as Important/Priority",
+                task_hours_start: "Start",
+                task_hours_end: "End",
+                task_hours_save: "Save hours",
+                task_hours_saved: "Cleaning hours saved.",
+                task_hours_error: "Could not save hours",
+                task_hours_invalid: "Enter valid times and make sure the end is after the start.",
+                task_hours_locked: "Hours for this cleaning have already been recorded.",
+                task_photos_verification: "Verification photos",
                 hosting_download: "Download",
                 hosting_delete: "Delete",
                 hosting_delete_confirm: "Are you sure you want to delete this document?",
@@ -1186,10 +1222,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (subtabId === 'sub-reports' || subtabId === 'sub-financial-movements') {
                 void carregarRelatorios();
             }
+            if (subtabId === 'sub-reports') void renderFinancialChart();
             if (subtabId === 'sub-financial-movements') fetchHistoryAdmin();
             if (subtabId === 'sub-hosting-reports') {
                 void carregarRelatorios();
                 void carregarDocumentosHosting();
+                void carregarMovimentosFinanceiros();
             }
             if (subtabId === 'sub-team-management') fetchTeamMembers();
             if (subtabId === 'sub-time-entries') carregarRegistosHoras();
@@ -1225,8 +1263,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 !document.getElementById(id).classList.contains('hidden'))) {
                 void carregarRelatorios();
             }
+            if (userRole === 'admin' && !document.getElementById('view-sub-reports').classList.contains('hidden')) {
+                void renderFinancialChart();
+            }
             if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
+                void carregarRelatorios();
                 void carregarDocumentosHosting();
+                void carregarMovimentosFinanceiros();
             }
         }
 
@@ -1713,11 +1756,18 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             gridEl.innerHTML = data.map(prop => {
                 const assignedCleaner = propertyCleaners.find(cleaner => String(cleaner.id) === String(prop.assigned_team_member_id));
                 const cleanerName = assignedCleaner?.name || assignedCleaner?.email || 'Sem atribuição';
+                const propertyTasks = allTasksCache
+                    .filter(task => String(task.property_id) === String(prop.id))
+                    .sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
+                const isPriority = propertyTasks.some(task => task.is_priority === true);
                 return `
                 <div class="border border-slate-200/80 bg-slate-50 p-5 rounded-2xl space-y-3 relative group hover:border-indigo-300 transition">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h4 class="font-bold text-slate-900 text-sm">${escapePropertyHTML(prop.name)}</h4>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="font-bold text-slate-900 text-sm">${escapePropertyHTML(prop.name)}</h4>
+                                ${isPriority ? `<span class="property-priority-badge rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">⚑ ${i18n[currentLang].property_priority_badge}</span>` : ''}
+                            </div>
                             <p class="text-xs text-slate-500">${escapePropertyHTML(prop.address || 'Sem morada')}</p>
                         </div>
                         ${userRole === 'admin' ? `
@@ -1734,6 +1784,20 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     ${prop.instructions ? `<p class="text-[11px] text-slate-500 break-words">${escapePropertyHTML(prop.instructions)}</p>` : ''}
                     <p class="text-[11px] text-slate-600"><span class="font-bold">${i18n[currentLang].property_cleaner_label}</span> ${escapePropertyHTML(cleanerName)}</p>
                     ${userRole === 'admin' ? `<div class="text-[10px] text-emerald-700 font-mono truncate bg-white p-2 rounded-lg border border-slate-200">🔗 ${escapePropertyHTML(prop.ical_url || 'Sem link iCal')}</div>` : ''}
+                    <details class="rounded-xl border border-slate-200 bg-white">
+                        <summary class="cursor-pointer list-none px-3 py-2.5 text-[11px] font-bold text-slate-700">${i18n[currentLang].property_cleaning_tasks} <span class="ml-1 text-slate-400">(${propertyTasks.length})</span></summary>
+                        <div class="space-y-2 border-t border-slate-100 p-3">
+                            ${propertyTasks.length ? propertyTasks.map(task => `
+                                <button type="button" data-property-task-id="${escapePropertyHTML(task.id)}" class="property-task-button flex w-full items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-left transition hover:bg-indigo-50">
+                                    <span class="min-w-0">
+                                        <span class="block truncate text-[11px] font-semibold text-slate-800">${escapePropertyHTML(task.scheduled_date || '')}</span>
+                                        <span class="block truncate text-[10px] text-slate-500">${task.status === 'completed' ? 'Concluída' : task.status === 'in_progress' ? 'Em curso' : 'Pendente'}${task.cleaner_notes ? ` · ${escapePropertyHTML(task.cleaner_notes)}` : ''}</span>
+                                    </span>
+                                    ${task.is_priority ? `<span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-800">⚑ ${i18n[currentLang].property_priority_badge}</span>` : ''}
+                                </button>
+                            `).join('') : `<p class="text-[10px] text-slate-400">${i18n[currentLang].property_no_cleaning_tasks}</p>`}
+                        </div>
+                    </details>
                 </div>
             `;
             }).join('');
@@ -1746,6 +1810,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
             gridEl.querySelectorAll('.delete-property-button').forEach(button => {
                 button.addEventListener('click', () => deleteProperty(button.dataset.propertyId));
+            });
+            gridEl.querySelectorAll('.property-task-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const task = allTasksCache.find(item => String(item.id) === button.dataset.propertyTaskId);
+                    if (task) void openTaskModal(task);
+                });
             });
         }
 
@@ -2131,7 +2201,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `
                 <div class="space-y-3 pt-2 border-t border-slate-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span class="block font-bold text-slate-700">📸 ${i18n[currentLang].photo_gallery}</span>
+                    <span class="block font-bold text-slate-700">📸 ${i18n[currentLang].task_photos_verification}</span>
                         <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
                             ${i18n[currentLang].photo_upload}
                         </label>
@@ -2210,6 +2280,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             taskNotes.value = task.cleaner_notes || '';
             taskNotes.readOnly = userRole !== 'admin';
             taskNotes.classList.toggle('bg-slate-100', userRole !== 'admin');
+            const taskPriority = document.getElementById('task-priority');
+            taskPriority.checked = task.is_priority === true;
+            taskPriority.disabled = userRole !== 'admin';
+            taskPriority.closest('label').classList.toggle('opacity-60', userRole !== 'admin');
             const getAssignedPreferences = () => {
                 const assignedId = userRole === 'admin'
                     ? assignmentSelect.value
@@ -2275,6 +2349,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <p class="mt-1">${task.properties?.instructions || 'Nenhuma instrução definida.'}</p>
                     </div>
 
+                    ${userRole === 'admin' ? renderTaskTimeEntryForm(task) : ''}
                     <div id="task-time-actions"></div>
                     <button type="button" onclick="openIncidentReportModal('${escapePropertyHTML(task.property_id)}')" class="min-h-14 w-full rounded-2xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-left text-sm font-extrabold text-rose-800 shadow-sm transition hover:border-rose-500 hover:bg-rose-100">
                         ${i18n[currentLang].incident_report_button}
@@ -2333,6 +2408,102 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             return `<button type="button" onclick="startCleaningTask('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
+        }
+
+        function formatTaskTimeInput(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            return Number.isNaN(date.getTime())
+                ? ''
+                : `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function renderTaskTimeEntryForm(task) {
+            const taskId = escapePropertyHTML(task.id);
+            const locked = task.status === 'completed';
+            return `
+                <section class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <h4 class="text-[11px] font-bold text-slate-700">Registo de horas</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label for="task-start-time-${taskId}" class="text-[10px] font-semibold text-slate-500">${i18n[currentLang].task_hours_start}
+                            <input id="task-start-time-${taskId}" type="time" value="${formatTaskTimeInput(task.started_at)}" ${task.started_at || locked ? 'disabled' : ''} class="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs disabled:bg-slate-100">
+                        </label>
+                        <label for="task-end-time-${taskId}" class="text-[10px] font-semibold text-slate-500">${i18n[currentLang].task_hours_end}
+                            <input id="task-end-time-${taskId}" type="time" value="${formatTaskTimeInput(task.completed_at)}" ${locked ? 'disabled' : ''} class="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs disabled:bg-slate-100">
+                        </label>
+                    </div>
+                    <p id="task-time-entry-message-${taskId}" role="status" aria-live="polite" class="hidden text-[10px] font-semibold"></p>
+                    ${locked ? '' : `<button type="button" onclick="saveTaskTimeEntry('${taskId}')" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-slate-100">${i18n[currentLang].task_hours_save}</button>`}
+                </section>
+            `;
+        }
+
+        async function saveTaskTimeEntry(taskId) {
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            const message = document.getElementById(`task-time-entry-message-${taskId}`);
+            if (!task || !message) return;
+            const startTime = document.getElementById(`task-start-time-${taskId}`).value;
+            const endTime = document.getElementById(`task-end-time-${taskId}`).value;
+            if (!startTime || (endTime && endTime <= startTime)) {
+                message.textContent = i18n[currentLang].task_hours_invalid;
+                message.className = 'text-[10px] font-semibold text-rose-600';
+                message.classList.remove('hidden');
+                return;
+            }
+            if (task.status === 'completed') {
+                message.textContent = i18n[currentLang].task_hours_locked;
+                message.className = 'text-[10px] font-semibold text-rose-600';
+                message.classList.remove('hidden');
+                return;
+            }
+
+            const makeTimestamp = time => new Date(`${task.scheduled_date}T${time}:00`).toISOString();
+            const button = message.parentElement.querySelector('button');
+            button.disabled = true;
+            message.classList.add('hidden');
+            try {
+                let startedAt = task.started_at;
+                if (!startedAt) {
+                    const { data, error } = await supabaseClient.rpc('sync_cleaning_task_start', {
+                        p_task_id: task.id,
+                        p_started_at: makeTimestamp(startTime)
+                    });
+                    if (error) throw error;
+                    startedAt = data || makeTimestamp(startTime);
+                }
+
+                if (endTime) {
+                    const completedAt = makeTimestamp(endTime);
+                    const durationMinutes = Math.round((new Date(completedAt) - new Date(startedAt)) / 60000);
+                    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 10080) {
+                        throw new Error(i18n[currentLang].task_hours_invalid);
+                    }
+                    const { error } = await supabaseClient.rpc('sync_cleaning_task_completion', {
+                        p_task_id: task.id,
+                        p_started_at: startedAt,
+                        p_completed_at: completedAt,
+                        p_total_duration_minutes: durationMinutes,
+                        p_checklist_state: task.checklist_state || {}
+                    });
+                    if (error) throw error;
+                }
+
+                await refreshTaskModal(task.id);
+                const refreshedMessage = document.getElementById(`task-time-entry-message-${taskId}`);
+                if (refreshedMessage) {
+                    refreshedMessage.textContent = i18n[currentLang].task_hours_saved;
+                    refreshedMessage.className = 'text-[10px] font-semibold text-emerald-700';
+                    refreshedMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao guardar as horas da limpeza:', error);
+                message.textContent = `${i18n[currentLang].task_hours_error}: ${error.message}`;
+                message.className = 'text-[10px] font-semibold text-rose-600';
+                message.classList.remove('hidden');
+            } finally {
+                const activeButton = document.querySelector(`[onclick="saveTaskTimeEntry('${taskId}')"]`);
+                if (activeButton) activeButton.disabled = false;
+            }
         }
 
         function formatTaskDuration(totalMinutes) {
@@ -2876,9 +3047,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const assignedMember = taskTeamMembers.find(member =>
                 String(member.id) === String(task?.assigned_team_member_id)
             );
+            const cleaner_notes = document.getElementById('task-notes').value;
+            const is_priority = document.getElementById('task-priority').checked;
             if (status === 'completed') {
                 if (!task?.started_at) {
                     alert(i18n[currentLang].time_task_not_started);
+                    return;
+                }
+                const { error: detailsError } = await supabaseClient
+                    .from('cleaning_tasks')
+                    .update({ cleaner_notes, is_priority })
+                    .eq('id', taskId);
+                if (detailsError) {
+                    alert(`Erro ao guardar as notas e prioridade: ${detailsError.message}`);
                     return;
                 }
                 if (assignedMember?.track_hours) {
@@ -2888,13 +3069,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
                 return;
             }
-            const cleaner_notes = document.getElementById('task-notes').value;
             const hoursInput = document.getElementById(`modal-hours-${taskId}`);
             const hours_spent = hoursInput ? hoursInput.value : null;
 
             const taskUpdates = {
                 status,
-                cleaner_notes
+                cleaner_notes,
+                is_priority
             };
             if (userRole === 'admin') {
                 taskUpdates.assigned_team_member_id =
@@ -3063,6 +3244,289 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 showPropertyMessage('time-entry-message', `${i18n[currentLang].time_entry_error}: ${error.message}`, 'error');
             } finally {
                 submitButton.disabled = false;
+            }
+        }
+
+        function getDefaultFinancialDateRange() {
+            const today = getLocalDateString();
+            const [year, month] = today.split('-').map(Number);
+            return {
+                startDate: getLocalDateString(new Date(year, month - 12, 1, 12)),
+                endDate: today
+            };
+        }
+
+        function validateFinancialDateRange(startDate, endDate) {
+            if (!startDate || !endDate
+                || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)
+                || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)
+                || startDate > endDate) {
+                throw new Error('Indique um intervalo de datas válido.');
+            }
+        }
+
+        async function fetchFinancialEntriesForDateRange(startDate, endDate) {
+            validateFinancialDateRange(startDate, endDate);
+            if (!currentUser) throw new Error('É necessário iniciar sessão para consultar os movimentos.');
+            const { data, error } = await supabaseClient
+                .from('property_financial_entries')
+                .select('property_id, entry_type, amount, description, occurred_on, status')
+                .eq('user_id', currentUser.id)
+                .gte('occurred_on', startDate)
+                .lte('occurred_on', endDate)
+                .order('occurred_on', { ascending: true });
+            if (error) throw error;
+            return data || [];
+        }
+
+        async function renderFinancialChart(startDate, endDate) {
+            const canvas = document.getElementById('financialOverviewChart');
+            const errorEl = document.getElementById('financialOverviewChart-error');
+            if (!canvas || !currentUser || userRole !== 'admin') return false;
+
+            const requestId = ++financialChartRequestId;
+            errorEl.classList.add('hidden');
+            try {
+                if (!window.Chart) throw new Error('A biblioteca Chart.js não foi carregada.');
+                const defaultRange = getDefaultFinancialDateRange();
+                const selectedStartDate = startDate || financialChartStartDate || defaultRange.startDate;
+                const selectedEndDate = endDate || financialChartEndDate || defaultRange.endDate;
+                validateFinancialDateRange(selectedStartDate, selectedEndDate);
+                const entries = await fetchFinancialEntriesForDateRange(selectedStartDate, selectedEndDate);
+                if (requestId !== financialChartRequestId) return;
+                financialChartStartDate = selectedStartDate;
+                financialChartEndDate = selectedEndDate;
+
+                const months = [];
+                const [startYear, startMonth] = selectedStartDate.split('-').map(Number);
+                const [endYear, endMonth] = selectedEndDate.split('-').map(Number);
+                for (let year = startYear, month = startMonth; year < endYear || (year === endYear && month <= endMonth);) {
+                    months.push(`${year}-${String(month).padStart(2, '0')}`);
+                    month += 1;
+                    if (month > 12) {
+                        month = 1;
+                        year += 1;
+                    }
+                }
+                const totals = {
+                    airbnb: Array(months.length).fill(0),
+                    booking: Array(months.length).fill(0),
+                    otherIncome: Array(months.length).fill(0),
+                    expenses: Array(months.length).fill(0)
+                };
+                const monthIndexes = new Map(months.map((month, index) => [month, index]));
+
+                entries.forEach(entry => {
+                    const monthIndex = monthIndexes.get(String(entry.occurred_on).slice(0, 7));
+                    const amount = Number(entry.amount);
+                    if (monthIndex === undefined || !Number.isFinite(amount)) return;
+                    if (entry.entry_type === 'expense') {
+                        totals.expenses[monthIndex] -= amount;
+                    } else if (entry.entry_type === 'income') {
+                        const description = String(entry.description || '').toLowerCase();
+                        if (description.startsWith('airbnb:')) totals.airbnb[monthIndex] += amount;
+                        else if (description.startsWith('booking.com:')) totals.booking[monthIndex] += amount;
+                        else totals.otherIncome[monthIndex] += amount;
+                    }
+                });
+
+                if (financialOverviewChart) financialOverviewChart.destroy();
+                financialOverviewChart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: months.map(month => {
+                            const [year, monthNumber] = month.split('-').map(Number);
+                            return new Intl.DateTimeFormat(currentLang === 'pt' ? 'pt-PT' : 'en-US', {
+                                month: 'short',
+                                year: '2-digit'
+                            }).format(new Date(year, monthNumber - 1, 1, 12));
+                        }),
+                        datasets: [
+                            { label: 'Airbnb', data: totals.airbnb, backgroundColor: '#f87171', stack: 'income' },
+                            { label: 'Booking.com', data: totals.booking, backgroundColor: '#60a5fa', stack: 'income' },
+                            { label: currentLang === 'pt' ? 'Outros ganhos' : 'Other income', data: totals.otherIncome, backgroundColor: '#a78bfa', stack: 'income' },
+                            { label: currentLang === 'pt' ? 'Despesas' : 'Expenses', data: totals.expenses, backgroundColor: '#fbbf24', stack: 'expenses' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#cbd5e1' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: context => `${context.dataset.label}: ${formatFinancialAmount(Math.abs(context.parsed.y))}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.12)' } },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#94a3b8',
+                                    callback: value => formatFinancialAmount(Math.abs(Number(value)))
+                                },
+                                grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                            }
+                        }
+                    }
+                });
+                return true;
+            } catch (error) {
+                if (requestId !== financialChartRequestId) return;
+                console.error('Erro ao renderizar o gráfico financeiro:', error);
+                if (financialOverviewChart) {
+                    financialOverviewChart.destroy();
+                    financialOverviewChart = null;
+                }
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+                return false;
+            }
+        }
+
+        function getFinancialDateModalRange() {
+            const defaultRange = getDefaultFinancialDateRange();
+            return {
+                startDate: document.getElementById('financial-date-start').value || financialChartStartDate || defaultRange.startDate,
+                endDate: document.getElementById('financial-date-end').value || financialChartEndDate || defaultRange.endDate
+            };
+        }
+
+        function openFinancialDateModal() {
+            const defaultRange = getDefaultFinancialDateRange();
+            document.getElementById('financial-date-start').value = financialChartStartDate || defaultRange.startDate;
+            document.getElementById('financial-date-end').value = financialChartEndDate || defaultRange.endDate;
+            document.getElementById('financial-date-modal-message').classList.add('hidden');
+            document.getElementById('financial-date-modal').classList.remove('hidden');
+        }
+
+        function closeFinancialDateModal() {
+            document.getElementById('financial-date-modal').classList.add('hidden');
+        }
+
+        function applyFinancialDatePreset(preset) {
+            const today = getLocalDateString();
+            const [year, month] = today.split('-').map(Number);
+            let startDate;
+            if (preset === 'this-month') {
+                startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            } else if (preset === 'last-3-months') {
+                startDate = getLocalDateString(new Date(year, month - 3, 1, 12));
+            } else if (preset === 'last-6-months') {
+                startDate = getLocalDateString(new Date(year, month - 6, 1, 12));
+            } else if (preset === 'this-year') {
+                startDate = `${year}-01-01`;
+            } else {
+                return;
+            }
+            document.getElementById('financial-date-start').value = startDate;
+            document.getElementById('financial-date-end').value = today;
+            document.getElementById('financial-date-modal-message').classList.add('hidden');
+        }
+
+        async function exportToCSV(startDate, endDate) {
+            const range = {
+                startDate: startDate || getFinancialDateModalRange().startDate,
+                endDate: endDate || getFinancialDateModalRange().endDate
+            };
+            const entries = await fetchFinancialEntriesForDateRange(range.startDate, range.endDate);
+            const escapeCSV = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+            const rows = [
+                ['Data', 'Tipo', 'Plataforma', 'Descrição', 'Valor', 'Estado', 'ID do imóvel'],
+                ...entries.map(entry => {
+                    const description = String(entry.description || '');
+                    const platform = description.startsWith('Airbnb:')
+                        ? 'Airbnb'
+                        : description.startsWith('Booking.com:')
+                            ? 'Booking.com'
+                            : '';
+                    const signedAmount = entry.entry_type === 'expense' ? -Number(entry.amount) : Number(entry.amount);
+                    return [
+                        entry.occurred_on,
+                        entry.entry_type === 'income' ? 'Ganho' : 'Despesa',
+                        platform,
+                        description,
+                        signedAmount.toFixed(2),
+                        entry.status || '',
+                        entry.property_id || ''
+                    ];
+                })
+            ];
+            const csv = `\uFEFF${rows.map(row => row.map(escapeCSV).join(';')).join('\r\n')}`;
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `host-a-cleaner-financas-${range.startDate}-${range.endDate}.csv`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportToPDF(startDate, endDate) {
+            const range = {
+                startDate: startDate || getFinancialDateModalRange().startDate,
+                endDate: endDate || getFinancialDateModalRange().endDate
+            };
+            const entries = await fetchFinancialEntriesForDateRange(range.startDate, range.endDate);
+            if (!window.jspdf?.jsPDF) throw new Error('A biblioteca jsPDF não foi carregada.');
+            const pdf = new window.jspdf.jsPDF({ orientation: 'landscape' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const left = 14;
+            const lineWidth = pageWidth - left * 2;
+            let y = 16;
+
+            pdf.setFontSize(16);
+            pdf.text('Host a Cleaner - Movimentos financeiros', left, y);
+            y += 8;
+            pdf.setFontSize(10);
+            pdf.text(`Período: ${range.startDate} a ${range.endDate}`, left, y);
+            y += 10;
+
+            if (!entries.length) {
+                pdf.text('Não existem movimentos neste período.', left, y);
+            } else {
+                entries.forEach(entry => {
+                    const signedAmount = entry.entry_type === 'expense' ? -Number(entry.amount) : Number(entry.amount);
+                    const type = entry.entry_type === 'income' ? 'Ganho' : 'Despesa';
+                    const description = `${entry.occurred_on} | ${type} | ${entry.description || ''} | ${signedAmount.toFixed(2)} EUR`;
+                    const wrappedLines = pdf.splitTextToSize(description, lineWidth);
+                    const rowHeight = wrappedLines.length * 5 + 2;
+                    if (y + rowHeight > pageHeight - 14) {
+                        pdf.addPage();
+                        y = 16;
+                    }
+                    pdf.text(wrappedLines, left, y);
+                    y += rowHeight;
+                });
+            }
+
+            pdf.save(`host-a-cleaner-financas-${range.startDate}-${range.endDate}.pdf`);
+        }
+
+        async function runFinancialExport(exportFunction, button) {
+            const message = document.getElementById('financial-date-modal-message');
+            const exportButtons = [...document.querySelectorAll('#financial-export-csv, #financial-export-pdf')];
+            exportButtons.forEach(exportButton => { exportButton.disabled = true; });
+            message.classList.add('hidden');
+            try {
+                const range = getFinancialDateModalRange();
+                await exportFunction(range.startDate, range.endDate);
+                message.textContent = 'Exportação concluída.';
+                message.className = 'text-xs font-semibold text-emerald-700';
+            } catch (error) {
+                console.error('Erro ao exportar movimentos financeiros:', error);
+                message.textContent = error.message;
+                message.className = 'text-xs font-semibold text-rose-600';
+            } finally {
+                message.classList.remove('hidden');
+                exportButtons.forEach(exportButton => { exportButton.disabled = false; });
+                button.blur();
             }
         }
 
@@ -3257,10 +3721,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const propertyId = document.getElementById('financial-property').value;
             const entryType = document.getElementById('financial-type').value;
             const amount = Number(document.getElementById('financial-amount').value);
+            const category = document.getElementById('financial-category').value.trim();
             const description = document.getElementById('financial-description').value.trim();
             const occurredOn = document.getElementById('financial-date').value;
-            const status = document.getElementById('financial-status').value;
-            if (!propertyId || !['income', 'expense'].includes(entryType) || !['paid', 'pending'].includes(status) || !Number.isFinite(amount) || amount <= 0 || !description || !occurredOn) {
+            if (!propertyId || !['income', 'expense'].includes(entryType) || !Number.isFinite(amount) || amount <= 0 || !description || !category || !occurredOn) {
                 showPropertyMessage('financial-entry-message', i18n[currentLang].reports_invalid_entry, 'error');
                 return;
             }
@@ -3275,22 +3739,60 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         property_id: propertyId,
                         user_id: currentUser.id,
                         entry_type: entryType,
+                        category,
                         amount,
                         description,
                         occurred_on: occurredOn,
-                        status
+                        status: 'paid'
                     }]);
                 if (error) throw error;
 
                 document.getElementById('financial-entry-form').reset();
                 document.getElementById('financial-date').value = getLocalDateString();
                 await carregarRelatorios();
+                await Promise.all([carregarMovimentosFinanceiros(), renderFinancialChart()]);
                 showPropertyMessage('financial-entry-message', i18n[currentLang].reports_entry_success, 'success');
             } catch (error) {
                 console.error('Erro ao registar movimento financeiro:', error);
                 showPropertyMessage('financial-entry-message', `${i18n[currentLang].reports_entry_error}: ${error.message}`, 'error');
             } finally {
                 submitButton.disabled = false;
+            }
+        }
+
+        async function carregarMovimentosFinanceiros() {
+            const tbody = document.getElementById('financial-entries-table-body');
+            if (!tbody || !currentUser || userRole !== 'admin') return;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-slate-400">${i18n[currentLang].financial_entries_loading}</td></tr>`;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('property_financial_entries')
+                    .select('id, property_id, entry_type, amount, description, category, occurred_on, created_at, properties(name)')
+                    .eq('user_id', currentUser.id)
+                    .order('occurred_on', { ascending: false })
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                if (error) throw error;
+                if (!data?.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-slate-400">${i18n[currentLang].financial_entries_empty}</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = data.map(entry => {
+                    const income = entry.entry_type === 'income';
+                    return `
+                        <tr>
+                            <td class="whitespace-nowrap px-2 py-2">${escapePropertyHTML(entry.occurred_on)}</td>
+                            <td class="max-w-40 truncate px-2 py-2">${escapePropertyHTML(entry.properties?.name || '')}</td>
+                            <td class="px-2 py-2"><span class="${income ? 'text-emerald-300' : 'text-rose-300'}">${income ? 'Receita' : 'Despesa'}</span></td>
+                            <td class="px-2 py-2">${escapePropertyHTML(entry.category || 'Geral')}</td>
+                            <td class="max-w-52 truncate px-2 py-2" title="${escapePropertyHTML(entry.description)}">${escapePropertyHTML(entry.description)}</td>
+                            <td class="whitespace-nowrap px-2 py-2 text-right font-semibold ${income ? 'text-emerald-300' : 'text-rose-300'}">${income ? '+' : '−'}${formatFinancialAmount(Number(entry.amount))}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Erro ao carregar lançamentos financeiros:', error);
+                tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-rose-300">${i18n[currentLang].financial_entries_error}: ${escapePropertyHTML(error.message)}</td></tr>`;
             }
         }
 
@@ -3482,6 +3984,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     earnings.push({
                         property_id: row.property.id,
                         entry_type: 'income',
+                        category: 'Airbnb',
                         amount: Math.round(amount * 100) / 100,
                         description: `Airbnb: ${transactionType}`.slice(0, 200),
                         occurred_on: date.occurredOn,
@@ -3559,6 +4062,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     totalsByProperty.set(row.property.id, {
                         property_id: row.property.id,
                         entry_type: 'income',
+                        category: 'Booking.com',
                         amount,
                         description: 'Booking.com: Reservas consolidadas',
                         occurred_on: latestDate || getLocalDateString(),
@@ -3653,7 +4157,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
                 await carregarDocumentosHosting();
+                await carregarMovimentosFinanceiros();
                 if (platformImportResult?.inserted) await carregarRelatorios();
+                if (platformImportResult) await renderFinancialChart();
                 const importMessagePrefix = normalizedPlatformName === 'booking.com' ? 'hosting_booking_import' : 'hosting_airbnb_import';
                 if (platformImportError) {
                     showPropertyMessage(
@@ -4081,6 +4587,38 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-financial-date-preset]').forEach(button => {
+                button.addEventListener('click', () => applyFinancialDatePreset(button.dataset.financialDatePreset));
+            });
+            document.getElementById('financial-date-apply')?.addEventListener('click', async () => {
+                const message = document.getElementById('financial-date-modal-message');
+                const { startDate, endDate } = getFinancialDateModalRange();
+                try {
+                    validateFinancialDateRange(startDate, endDate);
+                    const applied = await renderFinancialChart(startDate, endDate);
+                    if (applied) closeFinancialDateModal();
+                    else {
+                        message.textContent = document.getElementById('financialOverviewChart-error').textContent
+                            || 'Não foi possível aplicar o intervalo.';
+                        message.className = 'text-xs font-semibold text-rose-600';
+                        message.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    message.textContent = error.message;
+                    message.className = 'text-xs font-semibold text-rose-600';
+                    message.classList.remove('hidden');
+                }
+            });
+            document.getElementById('financial-export-csv')?.addEventListener('click', event => {
+                void runFinancialExport(exportToCSV, event.currentTarget);
+            });
+            document.getElementById('financial-export-pdf')?.addEventListener('click', event => {
+                void runFinancialExport(exportToPDF, event.currentTarget);
+            });
+            document.getElementById('financial-date-modal')?.addEventListener('click', event => {
+                if (event.target.id === 'financial-date-modal') closeFinancialDateModal();
+            });
+
             const teamAddForm = document.getElementById('team-add-form');
             teamAddForm?.addEventListener('submit', event => {
                 event.preventDefault();
