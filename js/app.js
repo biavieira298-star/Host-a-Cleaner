@@ -10,6 +10,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         let userRole = 'admin';
         let currentTeamMemberPreferences = { track_hours: false, require_photos: false };
+        let operationalPreferences = { track_hours: false, require_photos: false };
+        let profileSettingsTab = 'account';
         let currentTeamMemberId = null;
         let taskTeamMembers = [];
         let taskAwaitingTimeConfirmation = null;
@@ -83,7 +85,32 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_my_hours: "As Minhas Horas",
                 team_read_only_title: "Equipa",
                 time_entries_submitted: "Registos submetidos",
-                nav_profile: "Perfil",
+                nav_profile: "Definições de Perfil",
+                profile_settings_eyebrow: "Conta e preferências",
+                settings_account_tab: "Conta / Palavra-passe",
+                settings_preferences_tab: "Preferências Operacionais",
+                settings_subscription_tab: "Plano de Subscrição",
+                settings_account_heading: "Conta / Palavra-passe",
+                settings_preferences_heading: "Preferências Operacionais",
+                settings_require_photos: "Pedir fotos de verificação",
+                settings_require_photos_help: "Solicitar fotos antes e depois da limpeza.",
+                settings_track_hours: "Pedir total de horas",
+                settings_track_hours_help: "Solicitar a duração total ao concluir uma limpeza.",
+                settings_theme: "Tema",
+                theme_light: "Claro",
+                theme_dark: "Escuro",
+                theme_system: "Padrão (sistema)",
+                settings_save_preferences: "Guardar preferências",
+                settings_saved: "Preferências guardadas.",
+                settings_save_error: "Não foi possível guardar as preferências",
+                settings_load_error: "Não foi possível carregar as preferências",
+                settings_theme_saved: "Tema guardado.",
+                settings_subscription_heading: "Plano de Subscrição",
+                password_min_length: "Mínimo de 6 caracteres",
+                password_confirm_placeholder: "Repita a palavra-passe",
+                password_mismatch: "As palavras-passe introduzidas não coincidem.",
+                password_updated: "Palavra-passe alterada com sucesso.",
+                password_update_error: "Não foi possível alterar a palavra-passe",
                 nav_add_team: "Gestão de Equipa",
                 role_locked: "Acesso reservado ao administrador",
                 role_read_only: "Modo de consulta",
@@ -182,18 +209,17 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 title_registered_properties: "Alojamentos Registados",
                 finance_overview: "Visão geral",
                 finance_tab_overview: "Visão Geral",
-                finance_tab_reports: "Lançamentos & Documentos",
-                finance_tab_movements: "Movimentos",
+                finance_tab_reports: "Documentos",
+                finance_tab_manual_entries: "Lançamentos",
+                finance_manual_entries_eyebrow: "Gestão financeira",
                 finance_filter_month: "Mês",
                 finance_filter_property: "Imóvel",
-                finance_transactions: "Transações",
                 finance_status: "Estado",
                 finance_paid: "Pago",
                 finance_pending: "Pendente",
-                finance_no_transactions: "Não existem transações para estes filtros.",
-                finance_transaction_count: "{count} movimentos",
                 finance_service_history: "Histórico de serviços e pagamentos",
-                finance_new_entry: "Novo movimento",
+                finance_new_entry: "Novo lançamento",
+                financial_entries_recent: "Lançamentos recentes",
                 finance_metric_month_income: "Receitas Totais (Mês)",
                 finance_metric_expenses: "Despesas de Limpeza/Manutenção",
                 hosting_reports_eyebrow: "Documentos de plataformas",
@@ -223,13 +249,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 property_no_cleaning_tasks: "Sem limpezas registadas.",
                 property_priority_badge: "Prioritário",
                 task_priority_label: "Marcar como Importante/Prioritário",
-                task_hours_start: "Início",
-                task_hours_end: "Fim",
-                task_hours_save: "Guardar horas",
-                task_hours_saved: "Horas da limpeza guardadas.",
-                task_hours_error: "Não foi possível guardar as horas",
-                task_hours_invalid: "Indique horas válidas e confirme que o fim é posterior ao início.",
-                task_hours_locked: "As horas desta limpeza já foram registadas.",
+                task_hours_spent: "Total de horas gastas",
+                task_hours_invalid: "Indique uma duração válida entre 0,25 e 168 horas.",
                 task_photos_verification: "Fotos de verificação",
                 hosting_download: "Descarregar",
                 hosting_delete: "Eliminar",
@@ -308,11 +329,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_whatsapp: "💬 Enviar WhatsApp",
                 btn_email: "✉️ Enviar Email",
                 btn_delete_task: "🗑️ Apagar Limpeza",
-                modal_profile_title: "Perfil de Utilizador",
-                modal_profile_sub: "Gira os seus dados, segurança e licença da app",
-                label_active_account: "Conta Ativa",
-                tab_security: "🔒 Segurança & Acesso",
-                tab_subscription: "💳 Plano & Subscrição",
                 label_new_pwd: "Nova Palavra-passe",
                 label_confirm_pwd: "Confirmar Nova Palavra-passe",
                 btn_update_pwd: "Atualizar Palavra-passe",
@@ -344,7 +360,32 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_my_hours: "My Hours",
                 team_read_only_title: "Team",
                 time_entries_submitted: "Submitted entries",
-                nav_profile: "Profile",
+                nav_profile: "Profile Settings",
+                profile_settings_eyebrow: "Account and preferences",
+                settings_account_tab: "Account / Password",
+                settings_preferences_tab: "Operational Preferences",
+                settings_subscription_tab: "Subscription Plan",
+                settings_account_heading: "Account / Password",
+                settings_preferences_heading: "Operational Preferences",
+                settings_require_photos: "Request verification photos",
+                settings_require_photos_help: "Request before and after cleaning photos.",
+                settings_track_hours: "Request total hours",
+                settings_track_hours_help: "Request total cleaning duration when a task is completed.",
+                settings_theme: "Theme",
+                theme_light: "Light",
+                theme_dark: "Dark",
+                theme_system: "Default (system)",
+                settings_save_preferences: "Save preferences",
+                settings_saved: "Preferences saved.",
+                settings_save_error: "Could not save preferences",
+                settings_load_error: "Could not load preferences",
+                settings_theme_saved: "Theme saved.",
+                settings_subscription_heading: "Subscription Plan",
+                password_min_length: "At least 6 characters",
+                password_confirm_placeholder: "Repeat the password",
+                password_mismatch: "The passwords do not match.",
+                password_updated: "Password updated successfully.",
+                password_update_error: "Could not update the password",
                 nav_add_team: "Team Management",
                 role_locked: "Administrator access only",
                 role_read_only: "Read-only",
@@ -443,18 +484,17 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 title_registered_properties: "Registered Properties",
                 finance_overview: "Overview",
                 finance_tab_overview: "Overview",
-                finance_tab_reports: "Entries & Documents",
-                finance_tab_movements: "Movements",
+                finance_tab_reports: "Documents",
+                finance_tab_manual_entries: "Entries",
+                finance_manual_entries_eyebrow: "Financial management",
                 finance_filter_month: "Month",
                 finance_filter_property: "Property",
-                finance_transactions: "Transactions",
                 finance_status: "Status",
                 finance_paid: "Paid",
                 finance_pending: "Pending",
-                finance_no_transactions: "No transactions match these filters.",
-                finance_transaction_count: "{count} entries",
                 finance_service_history: "Service and payment history",
                 finance_new_entry: "New entry",
+                financial_entries_recent: "Recent entries",
                 finance_metric_month_income: "Total Revenue (Month)",
                 finance_metric_expenses: "Cleaning/Maintenance Expenses",
                 hosting_reports_eyebrow: "Platform documents",
@@ -484,13 +524,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 property_no_cleaning_tasks: "No cleanings recorded.",
                 property_priority_badge: "Priority",
                 task_priority_label: "Mark as Important/Priority",
-                task_hours_start: "Start",
-                task_hours_end: "End",
-                task_hours_save: "Save hours",
-                task_hours_saved: "Cleaning hours saved.",
-                task_hours_error: "Could not save hours",
-                task_hours_invalid: "Enter valid times and make sure the end is after the start.",
-                task_hours_locked: "Hours for this cleaning have already been recorded.",
+                task_hours_spent: "Total hours spent",
+                task_hours_invalid: "Enter a valid duration between 0.25 and 168 hours.",
                 task_photos_verification: "Verification photos",
                 hosting_download: "Download",
                 hosting_delete: "Delete",
@@ -569,11 +604,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_whatsapp: "💬 Send WhatsApp",
                 btn_email: "✉️ Send Email",
                 btn_delete_task: "🗑️ Delete Task",
-                modal_profile_title: "User Profile",
-                modal_profile_sub: "Manage your data, security and app license",
-                label_active_account: "Active Account",
-                tab_security: "🔒 Security & Access",
-                tab_subscription: "💳 Plan & Subscription",
                 label_new_pwd: "New Password",
                 label_confirm_pwd: "Confirm New Password",
                 btn_update_pwd: "Update Password",
@@ -628,14 +658,18 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             // Re-renderiza o calendário para atualizar os dias da semana
             if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
-            if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
                 fetchHistoryAdmin();
             }
-            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-entries'].some(id =>
                 !document.getElementById(id).classList.contains('hidden'))) {
                 carregarRelatorios();
             }
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
+                carregarLancamentosManuais();
+            }
             if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
+                carregarPropriedadesDocumentos();
                 carregarDocumentosHosting();
             }
             void updateOfflineIndicator();
@@ -790,10 +824,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('time-entry-form')?.classList.toggle('hidden', !isCleaner);
             if (isCleaner) {
                 document.getElementById('sidebar-role-subtitle').innerText = "Equipa de Limpeza";
-                document.getElementById('profile-role-badge').innerText = "Limpeza";
             } else {
                 document.getElementById('sidebar-role-subtitle').innerText = "Admin Hub";
-                document.getElementById('profile-role-badge').innerText = "Admin";
             }
         }
 
@@ -1007,16 +1039,24 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('user-email-display').innerText = currentUser?.email || 'Utilizador';
 
             applyRolePermissionsUI();
+            restoreOperationalPreferencesFromStorage();
             
             const previousTab = localStorage.getItem('host_cleaner_active_tab');
-            const savedTab = ['sub-calendar-daily', 'sub-calendar-overview'].includes(previousTab) ? 'sub-agenda' : previousTab || 'sub-agenda';
-            const restrictedTabs = ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-history'];
-            if (userRole === 'cleaner' && restrictedTabs.includes(savedTab)) {
+            const savedTab = ['sub-calendar-daily', 'sub-calendar-overview'].includes(previousTab)
+                ? 'sub-agenda'
+                : ['sub-financial-movements', 'sub-history'].includes(previousTab)
+                    ? 'sub-financial-entries'
+                    : previousTab || 'sub-agenda';
+            const resolvedTab = savedTab === 'sub-subscriptions' ? 'sub-profile-settings' : savedTab;
+            if (savedTab === 'sub-subscriptions') profileSettingsTab = 'subscription';
+            if (userRole !== 'admin' && profileSettingsTab === 'subscription') profileSettingsTab = 'account';
+            const restrictedTabs = ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries'];
+            if (userRole === 'cleaner' && restrictedTabs.includes(resolvedTab)) {
                 switchTab('sub-agenda');
-            } else if (userRole === 'admin' && savedTab === 'sub-time-entries') {
+            } else if (userRole === 'admin' && resolvedTab === 'sub-time-entries') {
                 switchTab('sub-agenda');
             } else {
-                switchTab(savedTab);
+                switchTab(resolvedTab);
             }
         }
 
@@ -1026,35 +1066,169 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             currentUser = null; userRole = 'admin'; showLoginScreen();
         }
 
-        function openProfileModal() {
-            closeMenuAfterAction();
-            document.getElementById('profile-email-val').innerText = currentUser?.email || '---';
-            document.getElementById('new-password-input').value = '';
-            document.getElementById('confirm-password-input').value = '';
-            switchProfileTab('security');
-            document.getElementById('profile-modal').classList.remove('hidden');
-        }
-
-        function closeProfileModal() {
-            document.getElementById('profile-modal').classList.add('hidden');
-        }
-
         function switchProfileTab(tab) {
-            const secTab = document.getElementById('profile-subtab-security');
-            const subTab = document.getElementById('profile-subtab-subscription');
-            const btnSec = document.getElementById('btn-profile-tab-security');
-            const btnSub = document.getElementById('btn-profile-tab-subscription');
+            if (!['account', 'operations', 'subscription'].includes(tab)) return;
+            if (tab === 'subscription' && userRole !== 'admin') return;
+            profileSettingsTab = tab;
+            const panels = {
+                account: 'profile-subtab-security',
+                operations: 'profile-subtab-operations',
+                subscription: 'profile-subtab-subscription'
+            };
+            Object.entries(panels).forEach(([key, panelId]) => {
+                const active = key === tab;
+                document.getElementById(panelId).classList.toggle('hidden', !active);
+                const button = document.getElementById(`btn-profile-tab-${key}`);
+                if (!button) return;
+                button.setAttribute('aria-selected', String(active));
+                button.className = `profile-settings-tab min-w-fit rounded-xl px-3 py-2.5 text-left text-xs transition ${
+                    active
+                        ? 'bg-indigo-50 font-bold text-indigo-700'
+                        : 'font-semibold text-slate-500 hover:bg-slate-50'
+                }${key === 'subscription' ? ' admin-only' : ''}`;
+            });
+        }
 
-            if (tab === 'security') {
-                secTab.classList.remove('hidden');
-                subTab.classList.add('hidden');
-                btnSec.className = "flex-1 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition";
-                btnSub.className = "admin-only flex-1 py-2 rounded-lg text-slate-500 transition";
+        function getOperationalPreferencesStorageKey() {
+            return `host_cleaner_operational_preferences_${currentUser?.id || 'anonymous'}`;
+        }
+
+        function restoreOperationalPreferencesFromStorage() {
+            const savedPreferences = localStorage.getItem(getOperationalPreferencesStorageKey());
+            if (!savedPreferences) return false;
+            try {
+                const parsedPreferences = JSON.parse(savedPreferences);
+                operationalPreferences = {
+                    track_hours: parsedPreferences.track_hours === true,
+                    require_photos: parsedPreferences.require_photos === true
+                };
+                return true;
+            } catch (error) {
+                console.error('Preferências operacionais locais inválidas:', error);
+                localStorage.removeItem(getOperationalPreferencesStorageKey());
+                return false;
+            }
+        }
+
+        function setProfileSettingsMessage(message, type = 'success') {
+            const element = document.getElementById('profile-settings-message');
+            if (!element) return;
+            element.textContent = message;
+            element.className = `text-xs font-semibold ${type === 'error' ? 'text-rose-600' : 'text-emerald-700'}`;
+        }
+
+        function setProfilePasswordMessage(message, type = 'success') {
+            const element = document.getElementById('profile-password-message');
+            if (!element) return;
+            element.textContent = message;
+            element.className = `text-xs font-semibold ${type === 'error' ? 'text-rose-600' : 'text-emerald-700'}`;
+        }
+
+        function applyThemePreference(theme, persist = false) {
+            const selectedTheme = ['light', 'dark', 'system'].includes(theme) ? theme : 'system';
+            const isDark = selectedTheme === 'dark'
+                || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            const selector = document.getElementById('profile-theme-select');
+            if (selector) selector.value = selectedTheme;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) themeColor.content = isDark ? '#0f172a' : '#f0f4f8';
+            if (persist) localStorage.setItem('host_cleaner_theme', selectedTheme);
+            return selectedTheme;
+        }
+
+        function saveThemePreference(theme) {
+            const selectedTheme = applyThemePreference(theme, true);
+            setProfileSettingsMessage(i18n[currentLang].settings_theme_saved);
+            return selectedTheme;
+        }
+
+        function applyOperationalPreferencesToInviteForm() {
+            const trackHours = document.getElementById('team-track-hours');
+            const requirePhotos = document.getElementById('team-require-photos');
+            if (trackHours) trackHours.checked = operationalPreferences.track_hours;
+            if (requirePhotos) requirePhotos.checked = operationalPreferences.require_photos;
+        }
+
+        async function loadProfileSettings() {
+            document.getElementById('profile-email-val').textContent = currentUser?.email || '---';
+            applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'system');
+            const savedPreferences = localStorage.getItem(getOperationalPreferencesStorageKey());
+            let storedPreferences = null;
+            if (savedPreferences) {
+                try {
+                    const parsedPreferences = JSON.parse(savedPreferences);
+                    storedPreferences = {
+                        track_hours: parsedPreferences.track_hours === true,
+                        require_photos: parsedPreferences.require_photos === true
+                    };
+                } catch (error) {
+                    console.error('Preferências operacionais locais inválidas:', error);
+                    localStorage.removeItem(getOperationalPreferencesStorageKey());
+                }
+            }
+
+            if (userRole === 'admin' && currentUser) {
+                try {
+                    const { data: members, error } = await supabaseClient
+                        .from('team_members')
+                        .select('track_hours, require_photos')
+                        .eq('manager_id', currentUser.id)
+                        .eq('role', 'cleaner');
+                    if (error) throw error;
+                    if (members?.length) {
+                        operationalPreferences = {
+                            track_hours: members.every(member => member.track_hours === true),
+                            require_photos: members.every(member => member.require_photos === true)
+                        };
+                        localStorage.setItem(getOperationalPreferencesStorageKey(), JSON.stringify(operationalPreferences));
+                    } else {
+                        operationalPreferences = storedPreferences || { track_hours: false, require_photos: false };
+                    }
+                } catch (error) {
+                    console.error('Não foi possível carregar as preferências da equipa:', error);
+                    setProfileSettingsMessage(`${i18n[currentLang].settings_load_error}: ${error.message}`, 'error');
+                    operationalPreferences = storedPreferences || operationalPreferences;
+                }
             } else {
-                secTab.classList.add('hidden');
-                subTab.classList.remove('hidden');
-                btnSec.className = "flex-1 py-2 rounded-lg text-slate-500 transition";
-                btnSub.className = "admin-only flex-1 py-2 rounded-lg bg-white text-indigo-600 shadow-sm transition";
+                operationalPreferences = storedPreferences || operationalPreferences;
+            }
+            document.getElementById('settings-track-hours').checked = operationalPreferences.track_hours;
+            document.getElementById('settings-require-photos').checked = operationalPreferences.require_photos;
+            applyOperationalPreferencesToInviteForm();
+        }
+
+        async function saveOperationalPreferences() {
+            if (!requireAdminAction()) return;
+            const button = document.getElementById('save-operational-preferences');
+            const preferences = {
+                track_hours: document.getElementById('settings-track-hours').checked,
+                require_photos: document.getElementById('settings-require-photos').checked
+            };
+            button.disabled = true;
+            try {
+                const { error } = await supabaseClient
+                    .from('team_members')
+                    .update(preferences)
+                    .eq('manager_id', currentUser.id)
+                    .eq('role', 'cleaner');
+                if (error) throw error;
+
+                operationalPreferences = preferences;
+                localStorage.setItem(getOperationalPreferencesStorageKey(), JSON.stringify(preferences));
+                allTeamMembersCache.forEach(member => {
+                    if (member.role === 'cleaner') {
+                        Object.assign(member, preferences);
+                    }
+                });
+                taskTeamMembers.forEach(member => Object.assign(member, preferences));
+                applyOperationalPreferencesToInviteForm();
+                setProfileSettingsMessage(i18n[currentLang].settings_saved);
+            } catch (error) {
+                console.error('Erro ao guardar as preferências operacionais:', error);
+                setProfileSettingsMessage(`${i18n[currentLang].settings_save_error}: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -1143,37 +1317,42 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const confirmPassword = document.getElementById('confirm-password-input').value;
 
             if (newPassword !== confirmPassword) {
-                alert('As palavras-passe introduzidas não coincidem.');
+                setProfilePasswordMessage(i18n[currentLang].password_mismatch, 'error');
                 return;
             }
 
             const btn = document.getElementById('btn-update-pwd');
             btn.disabled = true;
-            btn.innerText = 'A atualizar...';
-
-            const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
-
-            if (error) {
-                alert('Erro ao alterar a palavra-passe: ' + error.message);
-            } else {
-                alert('Palavra-passe alterada com sucesso!');
-                closeProfileModal();
+            try {
+                const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+                if (error) throw error;
+                document.getElementById('new-password-input').value = '';
+                document.getElementById('confirm-password-input').value = '';
+                setProfilePasswordMessage(i18n[currentLang].password_updated);
+            } catch (error) {
+                console.error('Erro ao alterar a palavra-passe:', error);
+                setProfilePasswordMessage(`${i18n[currentLang].password_update_error}: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = i18n[currentLang].btn_update_pwd;
             }
-
-            btn.disabled = false;
-            btn.innerText = i18n[currentLang].btn_update_pwd;
         }
 
         function switchTab(subtabId, planLimitChecked = false) {
             closeMenuAfterAction();
 
-            if (subtabId === 'sub-history') subtabId = 'sub-financial-movements';
+            if (subtabId === 'sub-history' || subtabId === 'sub-financial-movements') subtabId = 'sub-financial-entries';
+            if (subtabId === 'sub-subscriptions') {
+                subtabId = 'sub-profile-settings';
+                profileSettingsTab = 'subscription';
+            }
+            if (userRole !== 'admin' && profileSettingsTab === 'subscription') profileSettingsTab = 'account';
             if (subtabId === 'sub-time-entries' && userRole !== 'cleaner') {
                 alert(i18n[currentLang].role_locked);
                 return;
             }
 
-            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-subscriptions'].includes(subtabId)) {
+            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries'].includes(subtabId)) {
                 alert(i18n[currentLang].role_locked);
                 return;
             }
@@ -1191,7 +1370,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-movements', 'sub-team-management', 'sub-time-entries', 'sub-subscriptions'];
+            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-team-management', 'sub-time-entries', 'sub-profile-settings'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
@@ -1219,18 +1398,39 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (subtabId === 'sub-agenda') fetchAgendaTasks();
             if (subtabId === 'sub-properties-list') carregarPropriedades();
             if (subtabId === 'sub-properties-add' && !editingPropertyId) carregarCleaners();
-            if (subtabId === 'sub-reports' || subtabId === 'sub-financial-movements') {
+            if (subtabId === 'sub-reports' || subtabId === 'sub-financial-entries') {
                 void carregarRelatorios();
             }
             if (subtabId === 'sub-reports') void renderFinancialChart();
-            if (subtabId === 'sub-financial-movements') fetchHistoryAdmin();
-            if (subtabId === 'sub-hosting-reports') {
-                void carregarRelatorios();
-                void carregarDocumentosHosting();
-                void carregarMovimentosFinanceiros();
+            if (subtabId === 'sub-financial-entries') {
+                void carregarLancamentosManuais();
+                void fetchHistoryAdmin();
             }
-            if (subtabId === 'sub-team-management') fetchTeamMembers();
+            if (subtabId === 'sub-hosting-reports') {
+                carregarPropriedadesDocumentos();
+                void carregarDocumentosHosting();
+            }
+            if (subtabId === 'sub-team-management') {
+                applyOperationalPreferencesToInviteForm();
+                void fetchTeamMembers().then(loaded => {
+                    if (!loaded || userRole !== 'admin') return;
+                    const hasSavedPreferences = Boolean(localStorage.getItem(getOperationalPreferencesStorageKey()));
+                    const cleaners = allTeamMembersCache.filter(member => member.role === 'cleaner');
+                    if (!hasSavedPreferences && cleaners.length) {
+                        operationalPreferences = {
+                            track_hours: cleaners.every(member => member.track_hours === true),
+                            require_photos: cleaners.every(member => member.require_photos === true)
+                        };
+                        localStorage.setItem(getOperationalPreferencesStorageKey(), JSON.stringify(operationalPreferences));
+                    }
+                    applyOperationalPreferencesToInviteForm();
+                });
+            }
             if (subtabId === 'sub-time-entries') carregarRegistosHoras();
+            if (subtabId === 'sub-profile-settings') {
+                void loadProfileSettings();
+                switchProfileTab(profileSettingsTab);
+            }
         }
 
         async function loadData() {
@@ -1256,20 +1456,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             } catch (error) {
                 console.error('Não foi possível atualizar a cópia offline:', error);
             }
-            if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
                 fetchHistoryAdmin();
             }
-            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+            if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-entries'].some(id =>
                 !document.getElementById(id).classList.contains('hidden'))) {
                 void carregarRelatorios();
+            }
+            if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
+                void carregarLancamentosManuais();
             }
             if (userRole === 'admin' && !document.getElementById('view-sub-reports').classList.contains('hidden')) {
                 void renderFinancialChart();
             }
             if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
-                void carregarRelatorios();
+                carregarPropriedadesDocumentos();
                 void carregarDocumentosHosting();
-                void carregarMovimentosFinanceiros();
             }
         }
 
@@ -1641,12 +1843,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     if (document.getElementById('view-sub-agenda') && !document.getElementById('view-sub-agenda').classList.contains('hidden')) {
                         await loadData();
                     }
-                    if (userRole === 'admin' && !document.getElementById('view-sub-financial-movements').classList.contains('hidden')) {
+                    if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
                         await fetchHistoryAdmin();
                     }
-                    if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-movements'].some(id =>
+                    if (userRole === 'admin' && ['view-sub-reports', 'view-sub-financial-entries'].some(id =>
                         !document.getElementById(id).classList.contains('hidden'))) {
                         await carregarRelatorios();
+                    }
+                    if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
+                        await carregarLancamentosManuais();
                     }
                     if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
                         await carregarDocumentosHosting();
@@ -2219,12 +2424,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         `).join('') : `<p class="col-span-full text-[11px] text-slate-400">${i18n[currentLang].photo_empty}</p>`}
                     </div>
                 </div>
-                ${preferences.track_hours && userRole === 'admin' ? `
-                    <div class="space-y-2 pt-2 border-t border-slate-100">
-                        <label for="modal-hours-${task.id}" class="block font-bold text-slate-700">Horas Gastas</label>
-                        <input type="number" step="0.5" id="modal-hours-${task.id}" value="${task.hours_spent || ''}" placeholder="ex: 2.5" class="w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white">
-                    </div>
-                ` : ''}
             `;
         }
 
@@ -2349,8 +2548,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <p class="mt-1">${task.properties?.instructions || 'Nenhuma instrução definida.'}</p>
                     </div>
 
-                    ${userRole === 'admin' ? renderTaskTimeEntryForm(task) : ''}
                     <div id="task-time-actions"></div>
+                    ${userRole === 'admin' ? `
+                        <label for="modal-hours-${escapePropertyHTML(task.id)}" class="block text-xs font-bold text-slate-700">
+                            ${i18n[currentLang].task_hours_spent}
+                            <input type="number" id="modal-hours-${escapePropertyHTML(task.id)}" min="0.25" max="168" step="0.25" value="${task.hours_spent || ''}" placeholder="ex: 2.5" class="mt-1 w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white">
+                        </label>
+                    ` : ''}
                     <button type="button" onclick="openIncidentReportModal('${escapePropertyHTML(task.property_id)}')" class="min-h-14 w-full rounded-2xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-left text-sm font-extrabold text-rose-800 shadow-sm transition hover:border-rose-500 hover:bg-rose-100">
                         ${i18n[currentLang].incident_report_button}
                     </button>
@@ -2374,23 +2578,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             };
             renderPermissionModules();
             document.getElementById('task-time-actions').innerHTML =
-                renderTaskTimeActions(task, getAssignedPreferences());
+                renderTaskTimeActions(task);
             if (userRole === 'admin') {
                 assignmentSelect.onchange = renderPermissionModules;
                 assignmentSelect.addEventListener('change', () => {
                     document.getElementById('task-time-actions').innerHTML =
-                        renderTaskTimeActions(task, getAssignedPreferences());
+                        renderTaskTimeActions(task);
                 });
             }
             document.getElementById('task-modal').classList.remove('hidden');
         }
 
-        function renderTaskTimeActions(task, preferences) {
+        function renderTaskTimeActions(task) {
             const isAssignedCleaner = userRole === 'cleaner'
                 && currentTeamMemberId
                 && String(task.assigned_team_member_id) === String(currentTeamMemberId);
-            const isTrackingAdmin = userRole === 'admin' && preferences.track_hours;
-            if (!isAssignedCleaner && !isTrackingAdmin) return '';
+            if (!isAssignedCleaner) return '';
 
             if (task.status === 'completed') {
                 return task.total_duration_minutes
@@ -2408,102 +2611,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             return `<button type="button" onclick="startCleaningTask('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
-        }
-
-        function formatTaskTimeInput(timestamp) {
-            if (!timestamp) return '';
-            const date = new Date(timestamp);
-            return Number.isNaN(date.getTime())
-                ? ''
-                : `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-        }
-
-        function renderTaskTimeEntryForm(task) {
-            const taskId = escapePropertyHTML(task.id);
-            const locked = task.status === 'completed';
-            return `
-                <section class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <h4 class="text-[11px] font-bold text-slate-700">Registo de horas</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label for="task-start-time-${taskId}" class="text-[10px] font-semibold text-slate-500">${i18n[currentLang].task_hours_start}
-                            <input id="task-start-time-${taskId}" type="time" value="${formatTaskTimeInput(task.started_at)}" ${task.started_at || locked ? 'disabled' : ''} class="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs disabled:bg-slate-100">
-                        </label>
-                        <label for="task-end-time-${taskId}" class="text-[10px] font-semibold text-slate-500">${i18n[currentLang].task_hours_end}
-                            <input id="task-end-time-${taskId}" type="time" value="${formatTaskTimeInput(task.completed_at)}" ${locked ? 'disabled' : ''} class="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs disabled:bg-slate-100">
-                        </label>
-                    </div>
-                    <p id="task-time-entry-message-${taskId}" role="status" aria-live="polite" class="hidden text-[10px] font-semibold"></p>
-                    ${locked ? '' : `<button type="button" onclick="saveTaskTimeEntry('${taskId}')" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-slate-100">${i18n[currentLang].task_hours_save}</button>`}
-                </section>
-            `;
-        }
-
-        async function saveTaskTimeEntry(taskId) {
-            const task = allTasksCache.find(item => String(item.id) === String(taskId));
-            const message = document.getElementById(`task-time-entry-message-${taskId}`);
-            if (!task || !message) return;
-            const startTime = document.getElementById(`task-start-time-${taskId}`).value;
-            const endTime = document.getElementById(`task-end-time-${taskId}`).value;
-            if (!startTime || (endTime && endTime <= startTime)) {
-                message.textContent = i18n[currentLang].task_hours_invalid;
-                message.className = 'text-[10px] font-semibold text-rose-600';
-                message.classList.remove('hidden');
-                return;
-            }
-            if (task.status === 'completed') {
-                message.textContent = i18n[currentLang].task_hours_locked;
-                message.className = 'text-[10px] font-semibold text-rose-600';
-                message.classList.remove('hidden');
-                return;
-            }
-
-            const makeTimestamp = time => new Date(`${task.scheduled_date}T${time}:00`).toISOString();
-            const button = message.parentElement.querySelector('button');
-            button.disabled = true;
-            message.classList.add('hidden');
-            try {
-                let startedAt = task.started_at;
-                if (!startedAt) {
-                    const { data, error } = await supabaseClient.rpc('sync_cleaning_task_start', {
-                        p_task_id: task.id,
-                        p_started_at: makeTimestamp(startTime)
-                    });
-                    if (error) throw error;
-                    startedAt = data || makeTimestamp(startTime);
-                }
-
-                if (endTime) {
-                    const completedAt = makeTimestamp(endTime);
-                    const durationMinutes = Math.round((new Date(completedAt) - new Date(startedAt)) / 60000);
-                    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 10080) {
-                        throw new Error(i18n[currentLang].task_hours_invalid);
-                    }
-                    const { error } = await supabaseClient.rpc('sync_cleaning_task_completion', {
-                        p_task_id: task.id,
-                        p_started_at: startedAt,
-                        p_completed_at: completedAt,
-                        p_total_duration_minutes: durationMinutes,
-                        p_checklist_state: task.checklist_state || {}
-                    });
-                    if (error) throw error;
-                }
-
-                await refreshTaskModal(task.id);
-                const refreshedMessage = document.getElementById(`task-time-entry-message-${taskId}`);
-                if (refreshedMessage) {
-                    refreshedMessage.textContent = i18n[currentLang].task_hours_saved;
-                    refreshedMessage.className = 'text-[10px] font-semibold text-emerald-700';
-                    refreshedMessage.classList.remove('hidden');
-                }
-            } catch (error) {
-                console.error('Erro ao guardar as horas da limpeza:', error);
-                message.textContent = `${i18n[currentLang].task_hours_error}: ${error.message}`;
-                message.className = 'text-[10px] font-semibold text-rose-600';
-                message.classList.remove('hidden');
-            } finally {
-                const activeButton = document.querySelector(`[onclick="saveTaskTimeEntry('${taskId}')"]`);
-                if (activeButton) activeButton.disabled = false;
-            }
         }
 
         function formatTaskDuration(totalMinutes) {
@@ -2556,14 +2663,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         await refreshTaskModal(taskId);
                     }
                 } else {
-                    const assignedMember = taskTeamMembers.find(member =>
-                        String(member.id) === String(task.assigned_team_member_id)
-                    );
-                    const preferences = userRole === 'cleaner'
-                        ? currentTeamMemberPreferences
-                        : { track_hours: assignedMember?.track_hours === true };
                     const taskTimeActions = document.getElementById('task-time-actions');
-                    if (taskTimeActions) taskTimeActions.innerHTML = renderTaskTimeActions(task, preferences);
+                    if (taskTimeActions) taskTimeActions.innerHTML = renderTaskTimeActions(task);
                 }
             } catch (error) {
                 console.error('Erro ao iniciar a limpeza:', error);
@@ -3044,46 +3145,67 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (!requireAdminAction()) return;
             const status = document.getElementById(`modal-status-${taskId}`).value;
             const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            if (!task) return;
+            const assignedTeamMemberId = document.getElementById('task-assigned-member').value || null;
             const assignedMember = taskTeamMembers.find(member =>
-                String(member.id) === String(task?.assigned_team_member_id)
+                String(member.id) === String(assignedTeamMemberId)
             );
             const cleaner_notes = document.getElementById('task-notes').value;
             const is_priority = document.getElementById('task-priority').checked;
-            if (status === 'completed') {
-                if (!task?.started_at) {
-                    alert(i18n[currentLang].time_task_not_started);
-                    return;
-                }
-                const { error: detailsError } = await supabaseClient
-                    .from('cleaning_tasks')
-                    .update({ cleaner_notes, is_priority })
-                    .eq('id', taskId);
-                if (detailsError) {
-                    alert(`Erro ao guardar as notas e prioridade: ${detailsError.message}`);
-                    return;
-                }
-                if (assignedMember?.track_hours) {
-                    openTimeConfirmation(task);
-                } else {
-                    await requestCleaningCompletion(taskId);
-                }
+            const hoursInput = document.getElementById(`modal-hours-${taskId}`);
+            const hoursValue = hoursInput?.value.trim() || '';
+            const hours_spent = hoursValue === '' ? null : Number(hoursValue);
+            if (hours_spent !== null && (!Number.isFinite(hours_spent) || hours_spent < 0.25 || hours_spent > 168)) {
+                alert(i18n[currentLang].task_hours_invalid);
                 return;
             }
-            const hoursInput = document.getElementById(`modal-hours-${taskId}`);
-            const hours_spent = hoursInput ? hoursInput.value : null;
-
+            if (status === 'completed' && task.status !== 'completed' && assignedMember?.track_hours && hours_spent === null) {
+                alert(i18n[currentLang].task_hours_invalid);
+                return;
+            }
             const taskUpdates = {
-                status,
                 cleaner_notes,
                 is_priority
             };
-            if (userRole === 'admin') {
-                taskUpdates.assigned_team_member_id =
-                    document.getElementById('task-assigned-member').value || null;
-            }
-            if (hoursInput) taskUpdates.hours_spent = hours_spent ? parseFloat(hours_spent) : 0;
-            const { error } = await supabaseClient.from('cleaning_tasks').update(taskUpdates).eq('id', taskId);
-            if (error) {
+            taskUpdates.assigned_team_member_id = assignedTeamMemberId;
+            if (hours_spent !== null) taskUpdates.hours_spent = hours_spent;
+
+            try {
+                const { error: detailsError } = await supabaseClient
+                    .from('cleaning_tasks')
+                    .update(taskUpdates)
+                    .eq('id', taskId);
+                if (detailsError) throw detailsError;
+
+                if (status === 'completed' && task.status !== 'completed') {
+                    let startedAt = task.started_at;
+                    if (!startedAt) {
+                        const requestedStart = new Date().toISOString();
+                        const { data, error } = await supabaseClient.rpc('sync_cleaning_task_start', {
+                            p_task_id: task.id,
+                            p_started_at: requestedStart
+                        });
+                        if (error) throw error;
+                        startedAt = data || requestedStart;
+                    }
+
+                    const { error } = await supabaseClient.rpc('sync_cleaning_task_completion', {
+                        p_task_id: task.id,
+                        p_started_at: startedAt,
+                        p_completed_at: new Date().toISOString(),
+                        p_total_duration_minutes: hours_spent === null ? null : Math.round(hours_spent * 60),
+                        p_checklist_state: task.checklist_state || {}
+                    });
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabaseClient
+                        .from('cleaning_tasks')
+                        .update({ status })
+                        .eq('id', taskId);
+                    if (error) throw error;
+                }
+            } catch (error) {
+                console.error('Erro ao guardar os detalhes da limpeza:', error);
                 alert('Erro ao guardar as alterações: ' + error.message);
                 return;
             }
@@ -3482,7 +3604,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             let y = 16;
 
             pdf.setFontSize(16);
-            pdf.text('Host a Cleaner - Movimentos financeiros', left, y);
+            pdf.text('Host a Cleaner - Lançamentos financeiros', left, y);
             y += 8;
             pdf.setFontSize(10);
             pdf.text(`Período: ${range.startDate} a ${range.endDate}`, left, y);
@@ -3532,16 +3654,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function carregarRelatorios() {
             const cardsEl = document.getElementById('reports-summary-cards');
-            const transactionsEl = document.getElementById('financial-transactions-list');
             const propertyListEl = document.getElementById('reports-property-list');
             const propertySelect = document.getElementById('financial-property');
             const filterPropertySelect = document.getElementById('financial-filter-property');
             const monthInput = document.getElementById('financial-filter-month');
-            if (!cardsEl || !transactionsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
+            if (!cardsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
 
             const requestId = ++reportsRequestId;
             cardsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
-            transactionsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
             hidePropertyMessage('reports-summary-message');
 
             try {
@@ -3655,34 +3775,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     </article>
                 `;
 
-                const transactionCount = document.getElementById('financial-transactions-count');
-                transactionCount.innerText = i18n[currentLang].finance_transaction_count.replace('{count}', String(entries.length));
-                if (!entries.length) {
-                    transactionsEl.innerHTML = `<p class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-400">${i18n[currentLang].finance_no_transactions}</p>`;
-                } else {
-                    transactionsEl.innerHTML = entries.map(entry => {
-                        const isIncome = entry.entry_type === 'income';
-                        const isPaid = entry.status === 'paid';
-                        const date = new Date(`${entry.occurred_on}T00:00:00`).toLocaleDateString(
-                            currentLang === 'pt' ? 'pt-PT' : 'en-US',
-                            { day: '2-digit', month: 'short', year: 'numeric' }
-                        );
-                        const statusClass = isPaid
-                            ? 'border-emerald-800 bg-emerald-950 text-emerald-300'
-                            : 'border-amber-800 bg-amber-950 text-amber-300';
-                        return `
-                            <article class="grid grid-cols-1 gap-2 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(100px,1fr)_auto_auto] sm:items-center">
-                                <div class="min-w-0">
-                                    <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(entry.description)}</p>
-                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(propertiesById.get(String(entry.property_id))?.name || '')} · ${date}</p>
-                                </div>
-                                <span class="text-[10px] font-semibold ${isIncome ? 'text-emerald-300' : 'text-rose-300'}">${isIncome ? i18n[currentLang].reports_income : i18n[currentLang].reports_expense}</span>
-                                <span class="w-fit rounded-full border px-2.5 py-1 text-[9px] font-bold ${statusClass}">${isPaid ? i18n[currentLang].finance_paid : i18n[currentLang].finance_pending}</span>
-                                <strong class="text-sm font-extrabold ${isIncome ? 'text-emerald-300' : 'text-rose-300'}">${isIncome ? '+' : '−'}${formatFinancialAmount(Number(entry.amount))}</strong>
-                            </article>
-                        `;
-                    }).join('');
-                }
                 propertyListEl.innerHTML = `
                     ${mostRequested?.cleanings ? `
                         <article class="rounded-xl border border-amber-900/80 bg-amber-950/30 p-3 sm:col-span-2">
@@ -3705,7 +3797,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 if (requestId !== reportsRequestId) return;
                 console.error('Erro ao carregar métricas financeiras:', error);
                 cardsEl.innerHTML = `<p class="text-rose-300 text-xs">${i18n[currentLang].reports_load_error}</p>`;
-                transactionsEl.innerHTML = `<p class="text-rose-300 text-xs">${escapePropertyHTML(error.message)}</p>`;
                 propertyListEl.replaceChildren();
                 showPropertyMessage('reports-summary-message', `${i18n[currentLang].reports_load_error}: ${error.message}`, 'error');
             }
@@ -3750,7 +3841,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('financial-entry-form').reset();
                 document.getElementById('financial-date').value = getLocalDateString();
                 await carregarRelatorios();
-                await Promise.all([carregarMovimentosFinanceiros(), renderFinancialChart()]);
+                await Promise.all([carregarLancamentosManuais(), renderFinancialChart()]);
                 showPropertyMessage('financial-entry-message', i18n[currentLang].reports_entry_success, 'success');
             } catch (error) {
                 console.error('Erro ao registar movimento financeiro:', error);
@@ -3760,7 +3851,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
-        async function carregarMovimentosFinanceiros() {
+        async function carregarLancamentosManuais() {
             const tbody = document.getElementById('financial-entries-table-body');
             if (!tbody || !currentUser || userRole !== 'admin') return;
             tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-slate-400">${i18n[currentLang].financial_entries_loading}</td></tr>`;
@@ -4074,6 +4165,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return [...totalsByProperty.values()];
         }
 
+        function carregarPropriedadesDocumentos() {
+            const propertySelect = document.getElementById('hosting-report-property');
+            if (!propertySelect) return;
+            const selectedPropertyId = propertySelect.value;
+            propertySelect.replaceChildren(
+                new Option(i18n[currentLang].hosting_no_property, ''),
+                ...allPropertiesCache.map(property => new Option(property.name, property.id))
+            );
+            propertySelect.value = allPropertiesCache.some(property => String(property.id) === selectedPropertyId)
+                ? selectedPropertyId
+                : '';
+        }
+
         async function submitHostingReport(event) {
             event.preventDefault();
             if (!currentUser || userRole !== 'admin') {
@@ -4157,7 +4261,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
                 await carregarDocumentosHosting();
-                await carregarMovimentosFinanceiros();
+                await carregarLancamentosManuais();
                 if (platformImportResult?.inserted) await carregarRelatorios();
                 if (platformImportResult) await renderFinancialChart();
                 const importMessagePrefix = normalizedPlatformName === 'booking.com' ? 'hosting_booking_import' : 'hosting_airbnb_import';
@@ -4587,6 +4691,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }, true);
 
         document.addEventListener('DOMContentLoaded', () => {
+            const systemThemePreference = window.matchMedia('(prefers-color-scheme: dark)');
+            systemThemePreference.addEventListener('change', () => {
+                if ((localStorage.getItem('host_cleaner_theme') || 'system') === 'system') {
+                    applyThemePreference('system');
+                }
+            });
             document.querySelectorAll('[data-financial-date-preset]').forEach(button => {
                 button.addEventListener('click', () => applyFinancialDatePreset(button.dataset.financialDatePreset));
             });
