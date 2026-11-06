@@ -205,6 +205,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Documento enviado com sucesso.",
                 hosting_upload_error: "Não foi possível enviar o documento",
                 hosting_no_property: "Sem imóvel associado",
+                hosting_airbnb_import_success: "Documento enviado. Ganhos Airbnb importados: {count}; duplicados ignorados: {duplicates}.",
+                hosting_airbnb_import_none: "Documento enviado, mas não foram encontrados ganhos Airbnb associados a imóveis registados.",
+                hosting_airbnb_import_error: "Documento enviado, mas não foi possível importar os ganhos Airbnb",
+                hosting_booking_import_success: "Documento enviado. Ganhos Booking.com consolidados: {count}; duplicados ignorados: {duplicates}.",
+                hosting_booking_import_none: "Documento enviado, mas não foram encontrados ganhos Booking.com associados a imóveis registados.",
+                hosting_booking_import_error: "Documento enviado, mas não foi possível importar os ganhos Booking.com",
                 hosting_download: "Descarregar",
                 hosting_delete: "Eliminar",
                 hosting_delete_confirm: "Tem a certeza de que pretende eliminar este documento?",
@@ -444,6 +450,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Document uploaded successfully.",
                 hosting_upload_error: "Could not upload the document",
                 hosting_no_property: "No property linked",
+                hosting_airbnb_import_success: "Document uploaded. Airbnb earnings imported: {count}; duplicates skipped: {duplicates}.",
+                hosting_airbnb_import_none: "Document uploaded, but no Airbnb earnings matched registered properties.",
+                hosting_airbnb_import_error: "Document uploaded, but Airbnb earnings could not be imported",
+                hosting_booking_import_success: "Document uploaded. Booking.com earnings consolidated: {count}; duplicates skipped: {duplicates}.",
+                hosting_booking_import_none: "Document uploaded, but no Booking.com earnings matched registered properties.",
+                hosting_booking_import_error: "Document uploaded, but Booking.com earnings could not be imported",
                 hosting_download: "Download",
                 hosting_delete: "Delete",
                 hosting_delete_confirm: "Are you sure you want to delete this document?",
@@ -3290,6 +3302,274 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 && ['pdf', 'csv'].includes(extension);
         }
 
+        async function extractTextFromPDF(file) {
+            if (!window.pdfjsLib) throw new Error('A biblioteca PDF.js não foi carregada.');
+            const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+            const pages = [];
+
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+                const { items } = await (await pdf.getPage(pageNumber)).getTextContent();
+                const positionedItems = items.filter(item => item.str?.trim() && item.transform?.length >= 6);
+                const lines = [];
+
+                if (positionedItems.length !== items.filter(item => item.str?.trim()).length) {
+                    pages.push(items.map(item => item.str || '').join(' '));
+                    continue;
+                }
+
+                positionedItems.forEach(item => {
+                    const x = item.transform[4];
+                    const y = item.transform[5];
+                    let line = lines.find(candidate => Math.abs(candidate.y - y) <= 2.5);
+                    if (!line) {
+                        line = { y, items: [] };
+                        lines.push(line);
+                    }
+                    line.items.push({ x, text: item.str });
+                });
+
+                pages.push(lines
+                    .sort((a, b) => b.y - a.y)
+                    .map(line => line.items
+                        .sort((a, b) => a.x - b.x)
+                        .map(item => item.text)
+                        .join(' ')
+                        .replace(/\s+/g, ' ')
+                        .trim())
+                    .filter(Boolean)
+                    .join('\n'));
+            }
+
+            const text = pages.join('\n').trim();
+            if (!text) throw new Error('Não foi possível extrair texto deste PDF.');
+            return text;
+        }
+
+        function normalizeAirbnbText(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+        }
+
+        function parseAirbnbPdfDate(value) {
+            const match = value.match(/\b(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b/);
+            if (!match) return null;
+            const [, day, month, year, isoYear, isoMonth, isoDay] = match;
+            const parsedYear = Number(isoYear || year);
+            const parsedMonth = Number(isoMonth || month);
+            const parsedDay = Number(isoDay || day);
+            const parsedDate = new Date(Date.UTC(parsedYear, parsedMonth - 1, parsedDay));
+            if (parsedDate.getUTCFullYear() !== parsedYear
+                || parsedDate.getUTCMonth() !== parsedMonth - 1
+                || parsedDate.getUTCDate() !== parsedDay) return null;
+            return `${parsedYear}-${String(parsedMonth).padStart(2, '0')}-${String(parsedDay).padStart(2, '0')}`;
+        }
+
+        function extractEuroAmounts(text) {
+            const pattern = /(?:€|EUR)\s*([+-]?\d[\d.,\u00a0 ]*)|([+-]?\d[\d.,\u00a0 ]*)\s*(?:€|EUR)(?![A-Za-z])/gi;
+            return [...text.matchAll(pattern)].map(match => {
+                let value = (match[1] || match[2]).replace(/[ \u00a0]/g, '');
+                const lastComma = value.lastIndexOf(',');
+                const lastDot = value.lastIndexOf('.');
+                const decimalIndex = Math.max(lastComma, lastDot);
+                const decimalPlaces = decimalIndex < 0 ? 0 : value.length - decimalIndex - 1;
+                if (decimalPlaces >= 1 && decimalPlaces <= 2) {
+                    value = `${value.slice(0, decimalIndex).replace(/[.,]/g, '')}.${value.slice(decimalIndex + 1)}`;
+                } else {
+                    value = value.replace(/[.,]/g, '');
+                }
+                return Number(value);
+            }).filter(value => Number.isFinite(value) && value > 0);
+        }
+
+        async function persistPlatformEarnings(platformName, earnings) {
+            if (!earnings.length) return { matched: 0, inserted: 0, duplicates: 0 };
+            const dates = earnings.map(earning => earning.occurred_on).sort();
+            const { data: existingEntries, error: existingError } = await supabaseClient
+                .from('property_financial_entries')
+                .select('property_id, amount, description, occurred_on')
+                .eq('user_id', currentUser.id)
+                .eq('entry_type', 'income')
+                .like('description', `${platformName}:%`)
+                .gte('occurred_on', dates[0])
+                .lte('occurred_on', dates[dates.length - 1]);
+            if (existingError) throw existingError;
+
+            const existingKeys = new Set((existingEntries || []).map(entry =>
+                `${entry.property_id}|${entry.occurred_on}|${entry.description}|${Number(entry.amount).toFixed(2)}`
+            ));
+            const newEntries = [];
+            let duplicates = 0;
+            earnings.forEach(earning => {
+                const key = `${earning.property_id}|${earning.occurred_on}|${earning.description}|${earning.amount.toFixed(2)}`;
+                if (existingKeys.has(key)) {
+                    duplicates += 1;
+                    return;
+                }
+                existingKeys.add(key);
+                newEntries.push({ ...earning, user_id: currentUser.id });
+            });
+
+            if (newEntries.length) {
+                const { error: insertError } = await supabaseClient
+                    .from('property_financial_entries')
+                    .insert(newEntries);
+                if (insertError) throw insertError;
+            }
+            return { matched: earnings.length, inserted: newEntries.length, duplicates };
+        }
+
+        async function processAirbnbPDF(file, properties) {
+            const text = await extractTextFromPDF(file);
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const propertyRows = [];
+            const validProperties = (properties || [])
+                .filter(property => property?.id && property?.name)
+                .map(property => ({ ...property, normalizedName: normalizeAirbnbText(property.name) }))
+                .filter(property => property.normalizedName.length >= 3);
+
+            lines.forEach((line, index) => {
+                const normalizedLine = normalizeAirbnbText(line);
+                const matches = validProperties
+                    .filter(property => normalizedLine.includes(property.normalizedName))
+                    .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
+                if (!matches.length) return;
+                const longestMatches = matches.filter(property => property.normalizedName.length === matches[0].normalizedName.length);
+                const uniqueIds = new Set(longestMatches.map(property => property.id));
+                if (uniqueIds.size !== 1) return;
+                propertyRows.push({ index, property: longestMatches[0] });
+            });
+
+            const earnings = [];
+            for (let rowIndex = 0; rowIndex < propertyRows.length; rowIndex += 1) {
+                const row = propertyRows[rowIndex];
+                const nextRow = propertyRows[rowIndex + 1];
+                const blockEnd = Math.min(nextRow?.index ?? lines.length, row.index + 30);
+                const block = lines.slice(row.index, blockEnd);
+                const datePositions = [];
+                block.forEach((line, lineIndex) => {
+                    const datePattern = /\b(?:\d{1,2}[/. -]\d{1,2}[/. -]\d{4}|\d{4}-\d{2}-\d{2})\b/g;
+                    for (const match of line.matchAll(datePattern)) {
+                        const occurredOn = parseAirbnbPdfDate(match[0]);
+                        if (occurredOn) datePositions.push({ lineIndex, index: match.index, length: match[0].length, occurredOn });
+                    }
+                });
+
+                for (let dateIndex = 0; dateIndex < datePositions.length; dateIndex += 1) {
+                    const date = datePositions[dateIndex];
+                    const nextDate = datePositions[dateIndex + 1];
+                    const amountText = [];
+                    const lastLineIndex = nextDate?.lineIndex ?? block.length - 1;
+                    for (let lineIndex = date.lineIndex; lineIndex <= lastLineIndex; lineIndex += 1) {
+                        let line = block[lineIndex];
+                        if (lineIndex === date.lineIndex) line = line.slice(date.index + date.length);
+                        if (nextDate && lineIndex === nextDate.lineIndex) line = line.slice(0, nextDate.index);
+                        amountText.push(line);
+                        if (extractEuroAmounts(line).length) break;
+                    }
+                    const amounts = extractEuroAmounts(amountText.join(' '));
+                    const amount = amounts[amounts.length - 1];
+                    if (!amount) continue;
+
+                    const transactionText = block
+                        .slice(Math.max(0, date.lineIndex - 2), date.lineIndex + 1)
+                        .join(' ');
+                    const transactionMatch = transactionText.match(/\b(?:pagamento(?:\s+de\s+alojamento)?|payment|payout|ajuste|adjustment|reembolso|refund)\b[^|·]*/i);
+                    const transactionType = transactionMatch?.[0]?.trim() || 'Rendimento';
+                    earnings.push({
+                        property_id: row.property.id,
+                        entry_type: 'income',
+                        amount: Math.round(amount * 100) / 100,
+                        description: `Airbnb: ${transactionType}`.slice(0, 200),
+                        occurred_on: date.occurredOn,
+                        status: 'paid'
+                    });
+                }
+            }
+
+            return persistPlatformEarnings('Airbnb', earnings);
+        }
+
+        async function processBookingPDF(file, properties) {
+            const text = await extractTextFromPDF(file);
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const validProperties = (properties || [])
+                .filter(property => property?.id && property?.name)
+                .map(property => ({ ...property, normalizedName: normalizeAirbnbText(property.name) }))
+                .filter(property => property.normalizedName.length >= 3)
+                .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
+            const propertyRows = [];
+
+            lines.forEach((line, index) => {
+                const normalizedLine = normalizeAirbnbText(line);
+                const matches = validProperties.filter(property => normalizedLine.includes(property.normalizedName));
+                if (!matches.length) return;
+                const longestMatches = matches.filter(property => property.normalizedName.length === matches[0].normalizedName.length);
+                if (new Set(longestMatches.map(property => property.id)).size !== 1) return;
+                propertyRows.push({ index, property: longestMatches[0] });
+            });
+
+            const totalsByProperty = new Map();
+            const transactionPattern = /\b(?:reservation|booking|confirmation|payment|payout|paid|net(?:\s+amount)?|gross|total|amount|valor|montante|reserva|pagamento|liquido|liquida)\b/i;
+            const excludedAmountPattern = /\b(?:commission|fee|tax|vat|comissao|taxa|imposto)\b/i;
+            const reservationIdPattern = /\b(?:reservation|booking|confirmation|reserva)\s*(?:no\.?|number|id|n[ºo.]?)?\s*[:#-]?\s*([a-z0-9-]{5,})\b/i;
+
+            for (let rowIndex = 0; rowIndex < propertyRows.length; rowIndex += 1) {
+                const row = propertyRows[rowIndex];
+                const blockEnd = propertyRows[rowIndex + 1]?.index ?? lines.length;
+                const block = lines.slice(row.index, blockEnd);
+                const candidates = new Map();
+                let latestDate = null;
+
+                block.forEach((line, lineIndex) => {
+                    const dateMatch = line.match(/\b(?:\d{1,2}[/. -]\d{1,2}[/. -]\d{4}|\d{4}-\d{2}-\d{2})\b/);
+                    if (dateMatch) {
+                        const parsedDate = parseAirbnbPdfDate(dateMatch[0]);
+                        if (parsedDate && (!latestDate || parsedDate > latestDate)) latestDate = parsedDate;
+                    }
+
+                    const amounts = extractEuroAmounts(line);
+                    const netAmountPattern = /\b(?:net|payout|paid|payment|amount due|a pagar|liquido|liquida)\b/i;
+                    if (!amounts.length || (excludedAmountPattern.test(line) && !netAmountPattern.test(line))) return;
+                    const isPropertyRow = lineIndex === 0;
+                    const hasReservationId = reservationIdPattern.test(line);
+                    if (!isPropertyRow && !hasReservationId && !transactionPattern.test(line)) return;
+
+                    const reservationId = line.match(reservationIdPattern)?.[1]?.toLowerCase();
+                    const candidateKey = reservationId || `${lineIndex}:${normalizeAirbnbText(line)}`;
+                    const priority = netAmountPattern.test(line) ? 3 : /\b(?:gross|reservation|booking|reserva)\b/i.test(line) ? 2 : 1;
+                    const candidate = { amount: amounts[amounts.length - 1], priority };
+                    const existing = candidates.get(candidateKey);
+                    if (!existing || candidate.priority >= existing.priority) candidates.set(candidateKey, candidate);
+                });
+
+                if (!candidates.size) continue;
+                const amount = Math.round([...candidates.values()].reduce((sum, candidate) => sum + candidate.amount, 0) * 100) / 100;
+                if (amount <= 0) continue;
+                const existing = totalsByProperty.get(row.property.id);
+                if (existing) {
+                    existing.amount = Math.round((existing.amount + amount) * 100) / 100;
+                    if (latestDate && (!existing.occurred_on || latestDate > existing.occurred_on)) {
+                        existing.occurred_on = latestDate;
+                    }
+                } else {
+                    totalsByProperty.set(row.property.id, {
+                        property_id: row.property.id,
+                        entry_type: 'income',
+                        amount,
+                        description: 'Booking.com: Reservas consolidadas',
+                        occurred_on: latestDate || getLocalDateString(),
+                        status: 'paid'
+                    });
+                }
+            }
+
+            return [...totalsByProperty.values()];
+        }
+
         async function submitHostingReport(event) {
             event.preventDefault();
             if (!currentUser || userRole !== 'admin') {
@@ -3346,12 +3626,54 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     throw insertError;
                 }
 
+                let platformImportResult = null;
+                let platformImportError = null;
+                const normalizedPlatformName = platformName.toLowerCase();
+                if (['airbnb', 'booking.com'].includes(normalizedPlatformName) && file.type === 'application/pdf') {
+                    try {
+                        const { data: properties, error: propertiesError } = await supabaseClient
+                            .from('properties')
+                            .select('id, name')
+                            .eq('user_id', user.id);
+                        if (propertiesError) throw propertiesError;
+                        if (normalizedPlatformName === 'airbnb') {
+                            platformImportResult = await processAirbnbPDF(file, properties || []);
+                        } else {
+                            const earnings = await processBookingPDF(file, properties || []);
+                            platformImportResult = await persistPlatformEarnings('Booking.com', earnings);
+                        }
+                    } catch (error) {
+                        platformImportError = error;
+                        console.error(`Erro ao importar ganhos do relatório ${platformName}:`, error);
+                    }
+                }
+
                 const selectedProperty = propertyId || '';
                 document.getElementById('hosting-report-form').reset();
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
                 await carregarDocumentosHosting();
-                showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_success, 'success');
+                if (platformImportResult?.inserted) await carregarRelatorios();
+                const importMessagePrefix = normalizedPlatformName === 'booking.com' ? 'hosting_booking_import' : 'hosting_airbnb_import';
+                if (platformImportError) {
+                    showPropertyMessage(
+                        'hosting-report-message',
+                        `${i18n[currentLang][`${importMessagePrefix}_error`]}: ${platformImportError.message}`,
+                        'error'
+                    );
+                } else if (platformImportResult?.matched === 0) {
+                    showPropertyMessage('hosting-report-message', i18n[currentLang][`${importMessagePrefix}_none`], 'error');
+                } else if (platformImportResult) {
+                    showPropertyMessage(
+                        'hosting-report-message',
+                        i18n[currentLang][`${importMessagePrefix}_success`]
+                            .replace('{count}', String(platformImportResult.inserted))
+                            .replace('{duplicates}', String(platformImportResult.duplicates)),
+                        'success'
+                    );
+                } else {
+                    showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_success, 'success');
+                }
             } catch (err) {
                 console.error('Erro ao carregar o documento da plataforma:', err);
                 console.log(err);
