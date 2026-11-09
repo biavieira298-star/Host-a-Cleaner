@@ -50,6 +50,12 @@ function stripeObjectId(value: string | { id: string } | null): string | null {
     return value?.id ?? null;
 }
 
+function stripeTimestampToIso(value: unknown): string | null {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    const date = new Date(value * 1000);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function planFromPriceIds(priceIds: string[]): PaidPlan {
     const plans = new Set(priceIds.map(priceId => pricePlanMap.get(priceId)).filter(Boolean));
     if (plans.size !== 1) {
@@ -167,7 +173,7 @@ async function handleCheckoutCompleted(
         stripe_customer_id: customerId,
         stripe_subscription_id: subscription.id,
         stripe_subscription_status: subscription.status,
-        stripe_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        stripe_current_period_end: stripeTimestampToIso(subscription.current_period_end),
         stripe_cancel_at_period_end: subscription.cancel_at_period_end,
         stripe_subscription_event_created: eventCreated
     }, eventCreated);
@@ -179,9 +185,7 @@ async function handleSubscriptionChange(
     eventCreated: number,
     deleted = false
 ): Promise<void> {
-    const periodEnd = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+    const periodEnd = stripeTimestampToIso(subscription.current_period_end);
     const values: Record<string, unknown> = {
         stripe_subscription_status: deleted ? 'canceled' : subscription.status,
         stripe_current_period_end: periodEnd,
