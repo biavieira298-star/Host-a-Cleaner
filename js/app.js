@@ -3189,7 +3189,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
 
-            window.location.href = paymentLink;
+            if (!currentUser?.id || !currentUser.email) {
+                alert('Inicie sessão com a sua conta Host a Cleaner antes de subscrever um plano.');
+                return;
+            }
+
+            const checkoutUrl = new URL(paymentLink);
+            checkoutUrl.searchParams.set('client_reference_id', currentUser.id);
+            checkoutUrl.searchParams.set('prefilled_email', currentUser.email);
+            window.location.href = checkoutUrl.toString();
         }
 
         function handleStripeCheckout() {
