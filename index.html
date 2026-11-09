@@ -270,9 +270,9 @@
 
             <!-- Agenda unificada: resumo diário e vistas diária, semanal e mensal -->
             <div id="view-sub-agenda" class="space-y-6">
-                <section id="urgent-incidents-section" class="admin-only rounded-2xl border border-rose-300 bg-rose-50 p-4 shadow-sm">
-                    <div class="mb-3 flex items-center gap-2">
-                        <span class="text-xl" aria-hidden="true">🚨</span>
+                <section id="urgent-incidents-section" class="admin-only rounded-xl border border-rose-300 bg-rose-50 p-2.5 shadow-sm sm:rounded-2xl sm:p-4">
+                    <div class="mb-2 flex items-center gap-2 sm:mb-3">
+                        <span class="text-base sm:text-xl" aria-hidden="true">🚨</span>
                         <h3 data-i18n="incident_alerts_title" class="text-sm font-extrabold text-rose-800">Alertas Urgentes</h3>
                     </div>
                     <div id="urgent-incidents-list" class="space-y-2" aria-live="polite">
@@ -893,35 +893,36 @@
                         <option value="">Sem atribuição</option>
                     </select>
                 </div>
-                <div>
+                <div class="space-y-2">
                     <label for="task-notes" class="block font-bold text-slate-700 mb-1">Notas / Observações</label>
                     <textarea id="task-notes" rows="3" placeholder="Notas ou observações sobre esta limpeza..." class="w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white"></textarea>
+                    <button id="task-report-incident" type="button" onclick="" data-i18n="incident_report_button" class="min-h-11 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left text-xs font-bold text-rose-800 transition hover:border-rose-400 hover:bg-rose-100">⚠️ Reportar Incidente</button>
                 </div>
-                <label for="task-priority" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-700">
-                    <input id="task-priority" type="checkbox" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
-                    <span data-i18n="task_priority_label">Marcar como Importante/Prioritário</span>
-                </label>
             </div>
 
             <div class="space-y-3 text-xs" id="modal-content"></div>
 
-            <!-- Central de Mensagens e Notificações (Admin) -->
+            <!-- Notificações da equipa (Admin) -->
             <div class="pt-3 border-t border-slate-100 admin-only space-y-2">
-                <label data-i18n="label_notify_team" class="block text-xs font-bold text-slate-700">📢 Notificar Funcionário / Equipa</label>
-                <div class="grid grid-cols-2 gap-2">
+                <label data-i18n="label_notify_team" class="block text-xs font-bold text-slate-700">📢 Notificar equipa por WhatsApp</label>
+                <div class="grid grid-cols-1 gap-2">
                     <button type="button" id="btn-whatsapp-notify" onclick="" data-i18n="btn_whatsapp" class="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold p-2.5 rounded-xl border border-emerald-200 transition text-xs">
                         💬 Enviar WhatsApp
-                    </button>
-                    <button type="button" id="btn-email-notify" onclick="" data-i18n="btn_email" class="flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold p-2.5 rounded-xl border border-indigo-200 transition text-xs">
-                        ✉️ Enviar Email
                     </button>
                 </div>
             </div>
 
-            <div class="pt-2 flex justify-between items-center border-t border-slate-100">
+            <div class="flex flex-col gap-2 border-t border-slate-100 pt-2 sm:flex-row sm:items-center sm:justify-between">
                 <button id="btn-delete-task-modal" onclick="" data-i18n="btn_delete_task" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl text-xs transition border border-rose-200 hidden">🗑️ Apagar Limpeza</button>
-                <button onclick="closeTaskModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition ml-auto">Fechar</button>
+                <div class="flex w-full items-center justify-end gap-2 sm:ml-auto sm:w-auto">
+                    <button id="btn-task-manual-sync" type="button" onclick="syncTaskModalData()" class="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60 sm:flex-none">
+                        <span aria-hidden="true">🔄</span>
+                        <span data-i18n="btn_sync_local_data">Sincronizar fotos e notas</span>
+                    </button>
+                    <button onclick="closeTaskModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
+                </div>
             </div>
+            <p id="task-manual-sync-message" role="status" aria-live="polite" class="hidden text-[11px] font-semibold"></p>
         </div>
     </div>
 
@@ -964,6 +965,12 @@
                         <option value="forgotten_item" data-i18n="incident_forgotten_item">Objeto Esquecido</option>
                     </select>
                 </div>
+                <button id="incident-priority-toggle" type="button" onclick="toggleIncidentPriority()" aria-pressed="false" class="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    <span id="incident-priority-label" class="text-sm font-bold text-slate-700">Não prioritário</span>
+                    <span id="incident-priority-switch" aria-hidden="true" class="flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 p-0.5 transition">
+                        <span id="incident-priority-thumb" class="h-5 w-5 rounded-full bg-white shadow transition"></span>
+                    </span>
+                </button>
                 <div>
                     <label for="incident-description" data-i18n="incident_description" class="mb-1 block text-sm font-bold text-slate-700">Descrição do problema</label>
                     <textarea id="incident-description" required maxlength="1000" data-i18n-placeholder="incident_description_placeholder" placeholder="Descreva brevemente o que aconteceu" class="min-h-24 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
