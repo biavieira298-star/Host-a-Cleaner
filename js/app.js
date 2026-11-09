@@ -64,6 +64,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let isDesktopSidebarCollapsed = false;
         let isMobileDrawerOpen = false;
         let selectedModalDate = null;
+        let cancellationPolicyTrigger = null;
+        let cancellationPolicyPreviousOverflow = '';
 
         // Dicionário de Traduções (PT / EN)
         const i18n = {
@@ -3606,6 +3608,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             document.getElementById('financial-date-modal').classList.add('hidden');
         }
 
+        function openCancellationPolicyModal() {
+            const modal = document.getElementById('cancellation-policy-modal');
+            cancellationPolicyTrigger = document.activeElement;
+            cancellationPolicyPreviousOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            modal.classList.remove('hidden');
+            document.getElementById('cancellation-policy-close').focus();
+        }
+
+        function closeCancellationPolicyModal() {
+            document.getElementById('cancellation-policy-modal').classList.add('hidden');
+            document.body.style.overflow = cancellationPolicyPreviousOverflow;
+            if (cancellationPolicyTrigger?.isConnected) cancellationPolicyTrigger.focus();
+            cancellationPolicyTrigger = null;
+        }
+
         function applyFinancialDatePreset(preset) {
             const today = getLocalDateString();
             const [year, month] = today.split('-').map(Number);
@@ -4865,6 +4883,30 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
             document.getElementById('financial-date-modal')?.addEventListener('click', event => {
                 if (event.target.id === 'financial-date-modal') closeFinancialDateModal();
+            });
+            const cancellationPolicyModal = document.getElementById('cancellation-policy-modal');
+            cancellationPolicyModal?.addEventListener('click', event => {
+                if (event.target === cancellationPolicyModal) closeCancellationPolicyModal();
+            });
+            document.addEventListener('keydown', event => {
+                if (!cancellationPolicyModal || cancellationPolicyModal.classList.contains('hidden')) return;
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeCancellationPolicyModal();
+                    return;
+                }
+                if (event.key !== 'Tab') return;
+
+                const focusableElements = [...cancellationPolicyModal.querySelectorAll('button:not(:disabled)')];
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                if (event.shiftKey && document.activeElement === firstElement) {
+                    event.preventDefault();
+                    lastElement.focus();
+                } else if (!event.shiftKey && document.activeElement === lastElement) {
+                    event.preventDefault();
+                    firstElement.focus();
+                }
             });
 
             const teamAddForm = document.getElementById('team-add-form');
