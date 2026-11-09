@@ -59,6 +59,21 @@ html.app-ready #main-app-container {
     min-height: 5.5rem;
 }
 
+.incident-alert-mobile,
+.incident-alert-desktop,
+.incident-alert-desktop-action {
+    display: none !important;
+}
+
+@media (max-width: 639px) {
+    .incident-alert-mobile { display: flex !important; }
+}
+
+@media (min-width: 640px) {
+    .incident-alert-desktop { display: flex !important; }
+    .incident-alert-desktop-action { display: inline-flex !important; }
+}
+
 #reports-property-list {
     min-height: 4rem;
 }
