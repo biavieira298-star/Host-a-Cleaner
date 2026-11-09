@@ -16,6 +16,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let taskTeamMembers = [];
         let taskAwaitingTimeConfirmation = null;
         let incidentTaskContext = null;
+        let incidentIsPriority = false;
         let incidentRequestId = 0;
         let offlineDatabasePromise = null;
         let syncPendingPromise = null;
@@ -146,6 +147,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 time_tracking_start_error: "Não foi possível iniciar a limpeza",
                 incident_report_button: "⚠️ Reportar Incidente",
                 incident_report_title: "Reportar Ocorrência / Danos",
+                incident_priority: "Prioritário",
+                incident_not_priority: "Não prioritário",
+                incident_priority_badge: "Prioritário",
                 incident_type: "Tipo de ocorrência",
                 incident_damage: "Dano / Avaria",
                 incident_forgotten_item: "Objeto Esquecido",
@@ -195,6 +199,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 offline_sync_account: "Inicie sessão com a conta que criou estes dados para sincronizar.",
                 offline_storage_error: "Não foi possível guardar os dados offline",
                 offline_photo_pending: "Fotografia por sincronizar",
+                btn_sync_local_data: "Sincronizar fotos e notas",
+                task_sync_complete: "Fotos e notas sincronizadas.",
+                task_sync_pending: "Alguns dados continuam pendentes de sincronização.",
+                task_sync_offline: "Guardado neste dispositivo. Será sincronizado quando a ligação regressar.",
+                task_sync_error: "Não foi possível sincronizar os dados",
                 btn_sync_ical: "Sincronizar Agenda",
                 btn_logout: "Sair da Conta",
                 label_date: "Data:",
@@ -254,7 +263,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 property_cleaning_tasks: "Limpezas",
                 property_no_cleaning_tasks: "Sem limpezas registadas.",
                 property_priority_badge: "Prioritário",
-                task_priority_label: "Marcar como Importante/Prioritário",
                 task_hours_spent: "Total de horas gastas",
                 task_hours_invalid: "Indique uma duração válida entre 0,25 e 168 horas.",
                 task_photos_verification: "Fotos de verificação",
@@ -331,9 +339,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_schedule_cleaning: "Agendar Limpeza",
                 btn_cancel: "Cancelar",
                 btn_close: "Fechar",
-                label_notify_team: "📢 Notificar Funcionário / Equipa",
+                label_notify_team: "📢 Notificar equipa por WhatsApp",
                 btn_whatsapp: "💬 Enviar WhatsApp",
-                btn_email: "✉️ Enviar Email",
                 btn_delete_task: "🗑️ Apagar Limpeza",
                 label_new_pwd: "Nova Palavra-passe",
                 label_confirm_pwd: "Confirmar Nova Palavra-passe",
@@ -421,6 +428,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 time_tracking_start_error: "Could not start the cleaning",
                 incident_report_button: "⚠️ Report Incident",
                 incident_report_title: "Report Incident / Damage",
+                incident_priority: "Priority",
+                incident_not_priority: "Not a priority",
+                incident_priority_badge: "Priority",
                 incident_type: "Incident type",
                 incident_damage: "Damage / Fault",
                 incident_forgotten_item: "Forgotten Item",
@@ -470,6 +480,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 offline_sync_account: "Sign in with the account that created this data to sync it.",
                 offline_storage_error: "Could not save data offline",
                 offline_photo_pending: "Photo waiting to sync",
+                btn_sync_local_data: "Sync photos and notes",
+                task_sync_complete: "Photos and notes synced.",
+                task_sync_pending: "Some data is still waiting to sync.",
+                task_sync_offline: "Saved on this device. It will sync when your connection returns.",
+                task_sync_error: "Could not sync the data",
                 btn_sync_ical: "Sync Calendar Now",
                 btn_logout: "Log Out",
                 label_date: "Date:",
@@ -529,7 +544,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 property_cleaning_tasks: "Cleanings",
                 property_no_cleaning_tasks: "No cleanings recorded.",
                 property_priority_badge: "Priority",
-                task_priority_label: "Mark as Important/Priority",
                 task_hours_spent: "Total hours spent",
                 task_hours_invalid: "Enter a valid duration between 0.25 and 168 hours.",
                 task_photos_verification: "Verification photos",
@@ -606,9 +620,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 btn_schedule_cleaning: "Schedule Cleaning",
                 btn_cancel: "Cancel",
                 btn_close: "Close",
-                label_notify_team: "📢 Notify Staff / Team",
+                label_notify_team: "📢 Notify team via WhatsApp",
                 btn_whatsapp: "💬 Send WhatsApp",
-                btn_email: "✉️ Send Email",
                 btn_delete_task: "🗑️ Delete Task",
                 label_new_pwd: "New Password",
                 label_confirm_pwd: "Confirm New Password",
@@ -661,6 +674,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const key = el.getAttribute('data-i18n-aria-label');
                 if (i18n[lang] && i18n[lang][key]) el.setAttribute('aria-label', i18n[lang][key]);
             });
+            setIncidentPriority(incidentIsPriority);
 
             // Re-renderiza o calendário para atualizar os dias da semana
             if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
@@ -1740,6 +1754,21 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
         }
 
+        async function queueTaskNotesForSync(taskId, cleanerNotes) {
+            const pending = await listPendingOfflineItems();
+            const existing = pending.find(item =>
+                item.type === 'task_notes'
+                && item.userId === currentUser.id
+                && String(item.taskId) === String(taskId)
+            );
+            if (existing) {
+                existing.cleanerNotes = cleanerNotes;
+                await updatePendingOfflineItem(existing);
+                return existing;
+            }
+            return savePendingOfflineItem({ type: 'task_notes', taskId, cleanerNotes });
+        }
+
         function offlineLabel(key, count) {
             return i18n[currentLang][key].replace('{count}', String(count));
         }
@@ -1809,6 +1838,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 await uploadQueuedTaskPhoto(item);
                 return;
             }
+            if (item.type === 'task_notes') {
+                const { error } = await supabaseClient
+                    .from('cleaning_tasks')
+                    .update({ cleaner_notes: item.cleanerNotes })
+                    .eq('id', item.taskId);
+                if (error) throw error;
+                return;
+            }
             if (item.type === 'task_start') {
                 const { error } = await supabaseClient.rpc('sync_cleaning_task_start', {
                     p_task_id: item.taskId,
@@ -1847,6 +1884,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         type: item.incidentType,
                         description: item.description,
                         photo_url: photoUrl,
+                        is_priority: item.isPriority === true,
                         created_by: item.userId,
                         created_at: item.createdAtISO,
                         status: 'pending'
@@ -2215,7 +2253,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (navigator.onLine) {
                 const { data: incidents, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id, property_id, type, description, photo_url, created_at, properties!property_incidents_property_id_fkey!inner(name)')
+                    .select('id, property_id, type, description, photo_url, is_priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
                 if (requestId !== incidentRequestId) return;
@@ -2236,6 +2274,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         type: item.incidentType,
                         description: item.description,
                         photo_url: item.file ? URL.createObjectURL(item.file) : null,
+                        is_priority: item.isPriority === true,
                         created_at: item.createdAtISO,
                         properties: {
                             name: allPropertiesCache.find(property =>
@@ -2258,17 +2297,26 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             list.innerHTML = data.map(incident => `
-                <article class="rounded-xl border border-rose-200 bg-white p-3">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <article class="rounded-xl border border-rose-200 bg-white p-2.5 sm:p-3">
+                    <div class="incident-alert-mobile flex items-center gap-2">
+                        <span class="shrink-0 text-base" title="${incident.is_priority ? i18n[currentLang].incident_priority_badge : incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}" aria-label="${incident.is_priority ? i18n[currentLang].incident_priority_badge : incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}">${incident.is_priority ? '🚨' : incident.type === 'forgotten_item' ? '📦' : '⚠️'}</span>
+                        <p class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title="${escapePropertyHTML(`${incident.properties?.name || 'Alojamento'} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}: ${incident.description}`)}">
+                            ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}: ${escapePropertyHTML(incident.description)}
+                        </p>
+                        ${incident.photo_url ? `<a href="${escapePropertyHTML(incident.photo_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">📷</a>` : ''}
+                        ${incident.queued ? `<span title="${escapePropertyHTML(i18n[currentLang].offline_photo_pending)}" class="max-w-24 shrink-0 truncate text-right text-[10px] font-semibold text-slate-500">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="min-h-10 shrink-0 rounded-lg bg-rose-600 px-2.5 text-[11px] font-bold text-white hover:bg-rose-700">${currentLang === 'pt' ? 'Resolver' : 'Resolve'}</button>`}
+                    </div>
+                    <div class="incident-alert-desktop flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}</p>
                             <span class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">${i18n[currentLang].incident_pending}</span>
+                            ${incident.is_priority ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">🚨 ${i18n[currentLang].incident_priority_badge}</span>` : ''}
                             <p class="mt-1 whitespace-pre-wrap break-words text-xs text-slate-700">${escapePropertyHTML(incident.description)}</p>
                             <p class="mt-2 text-[10px] text-slate-500">${i18n[currentLang].incident_date}: ${new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')}</p>
                         </div>
                         ${incident.photo_url ? `<a href="${escapePropertyHTML(incident.photo_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}"><img src="${escapePropertyHTML(incident.photo_url)}" alt="" class="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover"></a>` : ''}
                     </div>
-                    ${incident.queued ? `<span class="mt-3 inline-flex min-h-11 items-center rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
+                    ${incident.queued ? '' : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="incident-alert-desktop-action mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
                 </article>
             `).join('');
         }
@@ -2519,12 +2567,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             const btnWhatsapp = document.getElementById('btn-whatsapp-notify');
-            const btnEmail = document.getElementById('btn-email-notify');
-
-            if (btnWhatsapp && btnEmail) {
-                btnWhatsapp.onclick = () => sendWhatsappNotification(task);
-                btnEmail.onclick = () => sendEmailNotification(task);
-            }
+            if (btnWhatsapp) btnWhatsapp.onclick = () => sendWhatsappNotification(task);
 
             const assignmentControl = document.getElementById('task-assignment-control');
             const assignmentSelect = document.getElementById('task-assigned-member');
@@ -2554,13 +2597,25 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             const taskNotes = document.getElementById('task-notes');
+            document.getElementById('task-report-incident').onclick =
+                () => openIncidentReportModal(task.property_id);
             taskNotes.value = task.cleaner_notes || '';
+            if (userRole === 'admin') {
+                try {
+                    const queuedNotes = (await listPendingOfflineItems()).find(item =>
+                        item.type === 'task_notes'
+                        && item.userId === currentUser.id
+                        && String(item.taskId) === String(task.id)
+                    );
+                    if (queuedNotes) taskNotes.value = queuedNotes.cleanerNotes;
+                } catch (error) {
+                    console.error('Erro ao carregar notas locais pendentes:', error);
+                    alert(`${i18n[currentLang].offline_storage_error}: ${error.message}`);
+                    return;
+                }
+            }
             taskNotes.readOnly = userRole !== 'admin';
             taskNotes.classList.toggle('bg-slate-100', userRole !== 'admin');
-            const taskPriority = document.getElementById('task-priority');
-            taskPriority.checked = task.is_priority === true;
-            taskPriority.disabled = userRole !== 'admin';
-            taskPriority.closest('label').classList.toggle('opacity-60', userRole !== 'admin');
             const getAssignedPreferences = () => {
                 const assignedId = userRole === 'admin'
                     ? assignmentSelect.value
@@ -2633,9 +2688,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             <input type="number" id="modal-hours-${escapePropertyHTML(task.id)}" min="0.25" max="168" step="0.25" value="${task.hours_spent || ''}" placeholder="ex: 2.5" class="mt-1 w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white">
                         </label>
                     ` : ''}
-                    <button type="button" onclick="openIncidentReportModal('${escapePropertyHTML(task.property_id)}')" class="min-h-14 w-full rounded-2xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-left text-sm font-extrabold text-rose-800 shadow-sm transition hover:border-rose-500 hover:bg-rose-100">
-                        ${i18n[currentLang].incident_report_button}
-                    </button>
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label class="block font-bold text-slate-700">Estado da Tarefa</label>
                         <select id="modal-status-${task.id}" ${userRole !== 'admin' ? 'disabled' : ''} class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs disabled:bg-slate-100 disabled:text-slate-500">
@@ -2665,6 +2717,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 });
             }
             document.getElementById('task-modal').classList.remove('hidden');
+            document.getElementById('btn-task-manual-sync').dataset.taskId = task.id;
+            document.getElementById('task-manual-sync-message').classList.add('hidden');
         }
 
         function renderTaskTimeActions(task) {
@@ -2965,13 +3019,40 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
             incidentTaskContext = { propertyId };
+            incidentIsPriority = false;
             const form = document.getElementById('incident-report-form');
             form.reset();
+            setIncidentPriority(false);
             document.getElementById('incident-report-message').classList.add('hidden');
             const preview = document.getElementById('incident-photo-preview');
             preview.removeAttribute('src');
             preview.classList.add('hidden');
             document.getElementById('incident-report-modal').classList.remove('hidden');
+        }
+
+        function setIncidentPriority(isPriority) {
+            incidentIsPriority = isPriority;
+            const button = document.getElementById('incident-priority-toggle');
+            const label = document.getElementById('incident-priority-label');
+            const track = document.getElementById('incident-priority-switch');
+            const thumb = document.getElementById('incident-priority-thumb');
+            if (!button || !label || !track || !thumb) return;
+
+            button.setAttribute('aria-pressed', String(isPriority));
+            button.classList.toggle('border-rose-300', isPriority);
+            button.classList.toggle('border-slate-200', !isPriority);
+            button.classList.toggle('bg-rose-50', isPriority);
+            button.classList.toggle('bg-slate-50', !isPriority);
+            label.textContent = i18n[currentLang][isPriority ? 'incident_priority' : 'incident_not_priority'];
+            label.classList.toggle('text-rose-700', isPriority);
+            label.classList.toggle('text-slate-700', !isPriority);
+            track.classList.toggle('bg-rose-600', isPriority);
+            track.classList.toggle('bg-slate-300', !isPriority);
+            thumb.classList.toggle('translate-x-5', isPriority);
+        }
+
+        function toggleIncidentPriority() {
+            setIncidentPriority(!incidentIsPriority);
         }
 
         function closeIncidentReportModal() {
@@ -3024,6 +3105,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     propertyId: incidentTaskContext.propertyId,
                     incidentType: document.getElementById('incident-type').value,
                     description: document.getElementById('incident-description').value.trim(),
+                    isPriority: incidentIsPriority,
                     file,
                     storagePath,
                     createdAtISO: new Date().toISOString()
@@ -3042,6 +3124,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     'success'
                 );
                 document.getElementById('incident-report-form').reset();
+                setIncidentPriority(false);
                 const preview = document.getElementById('incident-photo-preview');
                 if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
                 preview.removeAttribute('src');
@@ -3157,23 +3240,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
         }
 
-        function sendEmailNotification(task) {
-            const propName = task.properties?.name || 'Alojamento';
-            const subject = encodeURIComponent(`🧹 Lembrete de Limpeza: ${propName} (${task.scheduled_date})`);
-            
-            const body = encodeURIComponent(
-                `Olá!\n\nAqui estão os detalhes para a limpeza agendada:\n\n` +
-                `🏠 Imóvel: ${propName}\n` +
-                `📅 Data: ${task.scheduled_date}\n` +
-                `📍 Morada: ${task.properties?.address || 'Sem morada'}\n` +
-                `🔑 Keybox: ${task.properties?.access_code || 'N/A'}\n\n` +
-                `📋 Instruções: ${task.cleaner_notes || task.properties?.instructions || 'Nenhuma'}\n\n` +
-                `Bons trabalhos,\nHost a Cleaner`
-            );
-
-            window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        }
-
         function subscribePlan(plan) {
             const paymentLinks = {
                 starter: 'https://buy.stripe.com/test_3cIdR1h0leJFaZVcmodwc03',
@@ -3227,6 +3293,60 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             offlinePendingPhotoUrls = [];
         }
 
+        function setTaskModalSyncMessage(message, type) {
+            const element = document.getElementById('task-manual-sync-message');
+            element.textContent = message;
+            element.className = `text-[11px] font-semibold ${type === 'error' ? 'text-rose-600' : type === 'pending' ? 'text-amber-700' : 'text-emerald-700'}`;
+            element.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        }
+
+        async function syncTaskModalData() {
+            const button = document.getElementById('btn-task-manual-sync');
+            const icon = button.querySelector('span[aria-hidden="true"]');
+            const taskId = button.dataset.taskId;
+            const task = allTasksCache.find(item => String(item.id) === String(taskId));
+            button.disabled = true;
+            icon.classList.add('animate-spin');
+            try {
+                if (!currentUser) throw new Error(i18n[currentLang].offline_sync_account);
+                if (!task) throw new Error('A tarefa não está disponível para sincronizar.');
+
+                if (userRole === 'admin') {
+                    const cleanerNotes = document.getElementById('task-notes').value;
+                    const pending = await listPendingOfflineItems();
+                    const hasQueuedNotes = pending.some(item =>
+                        item.type === 'task_notes'
+                        && item.userId === currentUser.id
+                        && String(item.taskId) === String(task.id)
+                    );
+                    if (cleanerNotes !== (task.cleaner_notes || '') || hasQueuedNotes) {
+                        await queueTaskNotesForSync(task.id, cleanerNotes);
+                        task.cleaner_notes = cleanerNotes;
+                    }
+                }
+
+                if (!navigator.onLine) {
+                    await updateOfflineIndicator();
+                    setTaskModalSyncMessage(i18n[currentLang].task_sync_offline, 'pending');
+                    return;
+                }
+
+                await syncPendingData();
+                const remaining = await listPendingOfflineItems();
+                const hasPending = remaining.some(item => item.userId === currentUser.id);
+                setTaskModalSyncMessage(
+                    hasPending ? i18n[currentLang].task_sync_pending : i18n[currentLang].task_sync_complete,
+                    hasPending ? 'pending' : 'success'
+                );
+            } catch (error) {
+                console.error('Erro ao sincronizar dados locais da tarefa:', error);
+                setTaskModalSyncMessage(`${i18n[currentLang].task_sync_error}: ${error.message}`, 'error');
+            } finally {
+                button.disabled = false;
+                icon.classList.remove('animate-spin');
+            }
+        }
+
         async function saveTaskModalDetails(taskId) {
             if (!requireAdminAction()) return;
             const status = document.getElementById(`modal-status-${taskId}`).value;
@@ -3237,7 +3357,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 String(member.id) === String(assignedTeamMemberId)
             );
             const cleaner_notes = document.getElementById('task-notes').value;
-            const is_priority = document.getElementById('task-priority').checked;
             const hoursInput = document.getElementById(`modal-hours-${taskId}`);
             const hoursValue = hoursInput?.value.trim() || '';
             const hours_spent = hoursValue === '' ? null : Number(hoursValue);
@@ -3249,10 +3368,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 alert(i18n[currentLang].task_hours_invalid);
                 return;
             }
-            const taskUpdates = {
-                cleaner_notes,
-                is_priority
-            };
+            const taskUpdates = { cleaner_notes };
             taskUpdates.assigned_team_member_id = assignedTeamMemberId;
             if (hours_spent !== null) taskUpdates.hours_spent = hours_spent;
 
