@@ -32,6 +32,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let hostingReportsRequestId = 0;
         let hostingReportsCache = [];
         const activeOfflineTaskOperations = new Set();
+        const propertyHistoryPreviewUrls = new Map();
         let offlinePendingPhotoUrls = [];
         let offlinePendingIncidentUrls = [];
         let isOfflineMode = !navigator.onLine;
@@ -175,6 +176,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 incident_alerts_loading: "A carregar alertas...",
                 incident_alerts_empty: "Sem ocorrências pendentes.",
                 incident_alerts_error: "Não foi possível carregar os alertas",
+                property_history_title: "Histórico de Registos & Notas",
+                property_history_loading: "A carregar registos...",
+                property_history_empty: "Ainda não existem registos para este alojamento.",
+                property_history_offline: "Offline: apenas os registos pendentes guardados neste dispositivo estão disponíveis.",
+                property_history_error: "Não foi possível carregar o histórico",
+                property_history_retry: "Tentar novamente",
+                property_history_author: "Por",
+                property_history_unknown_author: "Utilizador",
+                property_history_pending: "Por sincronizar",
+                property_history_resolved: "Resolvido",
+                property_history_priority_urgent: "Urgente",
+                property_history_priority_normal: "Normal",
+                property_history_priority_low: "Baixa",
                 incident_resolve: "Marcar como resolvido",
                 incident_resolve_error: "Não foi possível resolver o incidente",
                 incident_pending: "Pendente",
@@ -466,6 +480,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 incident_alerts_loading: "Loading alerts...",
                 incident_alerts_empty: "No pending incidents.",
                 incident_alerts_error: "Could not load alerts",
+                property_history_title: "Records & Notes History",
+                property_history_loading: "Loading records...",
+                property_history_empty: "There are no records for this property yet.",
+                property_history_offline: "Offline: only pending records saved on this device are available.",
+                property_history_error: "Could not load history",
+                property_history_retry: "Try again",
+                property_history_author: "By",
+                property_history_unknown_author: "User",
+                property_history_pending: "Pending sync",
+                property_history_resolved: "Resolved",
+                property_history_priority_urgent: "Urgent",
+                property_history_priority_normal: "Normal",
+                property_history_priority_low: "Low",
                 incident_resolve: "Mark as resolved",
                 incident_resolve_error: "Could not resolve the incident",
                 incident_pending: "Pending",
@@ -1913,7 +1940,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         description: item.description,
                         photos: photoUrls,
                         photo_url: photoUrls[0] || null,
-                        is_priority: (item.priority || (item.isPriority ? 'urgent' : 'normal')) === 'urgent',
                         created_by: item.userId,
                         created_at: item.createdAtISO,
                         status: 'pending'
@@ -2071,6 +2097,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         async function carregarPropriedades() {
             const gridEl = document.getElementById('properties-grid');
             if (!gridEl) return;
+            propertyHistoryPreviewUrls.forEach(urls => urls.forEach(url => URL.revokeObjectURL(url)));
+            propertyHistoryPreviewUrls.clear();
 
             let data = allPropertiesCache;
             let error = null;
@@ -2148,6 +2176,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             `).join('') : `<p class="text-[10px] text-slate-400">${i18n[currentLang].property_no_cleaning_tasks}</p>`}
                         </div>
                     </details>
+                    <details class="property-incident-history rounded-xl border border-indigo-100 bg-white" data-property-id="${escapePropertyHTML(prop.id)}">
+                        <summary class="cursor-pointer list-none px-3 py-3 text-[11px] font-bold text-indigo-800">${i18n[currentLang].property_history_title}</summary>
+                        <div class="property-incident-history-list space-y-3 border-t border-indigo-50 p-3">
+                            <p class="text-[10px] text-slate-400">${i18n[currentLang].property_history_loading}</p>
+                        </div>
+                    </details>
                 </div>
             `;
             }).join('');
@@ -2167,6 +2201,169 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     if (task) void openTaskModal(task);
                 });
             });
+            gridEl.querySelectorAll('.property-incident-history').forEach(details => {
+                details.addEventListener('toggle', () => {
+                    if (details.open && details.dataset.loaded !== 'true') {
+                        void loadPropertyIncidentHistory(details);
+                    }
+                });
+            });
+        }
+
+        function propertyHistoryPriorityLabel(priority) {
+            const labels = {
+                urgent: i18n[currentLang].property_history_priority_urgent,
+                normal: i18n[currentLang].property_history_priority_normal,
+                low: i18n[currentLang].property_history_priority_low
+            };
+            return labels[priority] || labels.normal;
+        }
+
+        function safeIncidentPhotoUrl(value) {
+            if (typeof value !== 'string') return null;
+            try {
+                const url = new URL(value, window.location.href);
+                return ['https:', 'http:', 'blob:'].includes(url.protocol) ? url.href : null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function loadPropertyIncidentHistory(details) {
+            const propertyId = details.dataset.propertyId;
+            const list = details.querySelector('.property-incident-history-list');
+            if (!propertyId || !list) return;
+
+            const previousUrls = propertyHistoryPreviewUrls.get(propertyId) || [];
+            previousUrls.forEach(url => URL.revokeObjectURL(url));
+            propertyHistoryPreviewUrls.delete(propertyId);
+            list.innerHTML = `<p class="text-[10px] text-slate-400">${i18n[currentLang].property_history_loading}</p>`;
+
+            try {
+                let incidents = [];
+                if (navigator.onLine) {
+                    const { data, error } = await supabaseClient
+                        .from('property_incidents')
+                        .select('id, property_id, type, priority, description, photos, created_by, created_at, status')
+                        .eq('property_id', propertyId)
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+                    incidents = data || [];
+                }
+
+                const pending = (await listPendingOfflineItems()).filter(item =>
+                    item.type === 'incident'
+                    && item.userId === currentUser?.id
+                    && String(item.propertyId) === String(propertyId)
+                );
+                const savedIds = new Set(incidents.map(item => String(item.id)));
+                const queuedIncidents = pending
+                    .filter(item => !savedIds.has(String(item.incidentId)))
+                    .map(item => {
+                        const photos = (item.files || (item.file ? [{ file: item.file }] : []))
+                            .filter(photo => photo.file)
+                            .map(photo => URL.createObjectURL(photo.file));
+                        return {
+                            id: item.incidentId,
+                            type: item.incidentType,
+                            priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
+                            description: item.description,
+                            photos,
+                            created_by: item.userId,
+                            created_at: item.createdAtISO,
+                            status: 'pending',
+                            queued: true
+                        };
+                    });
+                const previewUrls = queuedIncidents.flatMap(item => item.photos);
+                if (previewUrls.length) propertyHistoryPreviewUrls.set(propertyId, previewUrls);
+                incidents = [...incidents, ...queuedIncidents]
+                    .sort((left, right) => String(right.created_at).localeCompare(String(left.created_at)));
+
+                const authors = new Map();
+                if (currentUser?.id) {
+                    authors.set(String(currentUser.id), currentUser.user_metadata?.full_name
+                        || currentUser.user_metadata?.name
+                        || currentUser.email
+                        || i18n[currentLang].property_history_unknown_author);
+                }
+                const authorIds = [...new Set(incidents
+                    .map(item => item.created_by)
+                    .filter(id => id && !authors.has(String(id))))];
+                if (authorIds.length) {
+                    const { data: members, error } = await supabaseClient
+                        .from('team_members')
+                        .select('auth_user_id, name, email')
+                        .in('auth_user_id', authorIds);
+                    if (error) {
+                        console.error('Erro ao carregar autores do histórico da propriedade:', error);
+                    } else {
+                        (members || []).forEach(member => {
+                            if (member.auth_user_id) {
+                                authors.set(String(member.auth_user_id), member.name || member.email);
+                            }
+                        });
+                    }
+                }
+
+                if (!incidents.length) {
+                    list.innerHTML = `<p class="rounded-xl border border-dashed border-slate-200 px-3 py-5 text-center text-[10px] text-slate-500">${navigator.onLine ? i18n[currentLang].property_history_empty : i18n[currentLang].property_history_offline}</p>`;
+                    if (navigator.onLine) details.dataset.loaded = 'true';
+                    return;
+                }
+
+                list.innerHTML = incidents.map(incident => {
+                    const priority = ['urgent', 'normal', 'low'].includes(incident.priority)
+                        ? incident.priority
+                        : 'normal';
+                    const priorityClasses = {
+                        urgent: 'border-rose-200 bg-rose-50 text-rose-700',
+                        normal: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+                        low: 'border-slate-200 bg-slate-100 text-slate-600'
+                    };
+                    const author = authors.get(String(incident.created_by))
+                        || (incident.created_by
+                            ? `${i18n[currentLang].property_history_unknown_author} · ${String(incident.created_by).slice(0, 8)}`
+                            : i18n[currentLang].property_history_unknown_author);
+                    const date = incident.created_at
+                        ? new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')
+                        : '';
+                    const photos = Array.isArray(incident.photos)
+                        ? incident.photos.map(safeIncidentPhotoUrl).filter(Boolean)
+                        : [];
+                    return `
+                        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5">
+                                <span class="text-[10px] font-semibold text-slate-500">${escapePropertyHTML(date)}</span>
+                                <span class="rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${priorityClasses[priority]}">${propertyHistoryPriorityLabel(priority)}</span>
+                            </div>
+                            <div class="space-y-2.5 p-3">
+                                <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                    <span class="font-bold text-slate-500">${i18n[currentLang].property_history_author}</span>
+                                    <span class="font-semibold text-slate-700">${escapePropertyHTML(author)}</span>
+                                    <span class="rounded-full bg-slate-200 px-2 py-0.5 font-bold text-slate-600">${getIncidentTypeLabel(incident.type)}</span>
+                                    ${incident.queued ? `<span class="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800">${i18n[currentLang].property_history_pending}</span>` : incident.status === 'resolved' ? `<span class="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">${i18n[currentLang].property_history_resolved}</span>` : ''}
+                                </div>
+                                <p class="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">${escapePropertyHTML(incident.description)}</p>
+                                ${photos.length ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-4">${photos.map(photoUrl => `<a href="${escapePropertyHTML(photoUrl)}" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white"><img src="${escapePropertyHTML(photoUrl)}" alt="" loading="lazy" class="h-full w-full object-cover transition hover:scale-105"></a>`).join('')}</div>` : ''}
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+                details.dataset.loaded = 'true';
+            } catch (error) {
+                console.error('Erro ao carregar histórico da propriedade:', error);
+                list.innerHTML = `
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 p-3" role="alert">
+                        <p class="text-[10px] font-semibold text-rose-700">${i18n[currentLang].property_history_error}: ${escapePropertyHTML(error.message)}</p>
+                        <button type="button" class="property-incident-history-retry mt-2 text-[10px] font-bold text-rose-700 underline">${i18n[currentLang].property_history_retry}</button>
+                    </div>
+                `;
+                list.querySelector('.property-incident-history-retry').addEventListener('click', () => {
+                    delete details.dataset.loaded;
+                    void loadPropertyIncidentHistory(details);
+                });
+            }
         }
 
         function loadPropertyForEdit(property) {
@@ -2282,7 +2479,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (navigator.onLine) {
                 const { data: incidents, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id, property_id, type, description, photos, photo_url, priority, is_priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
+                    .select('id, property_id, type, description, photos, photo_url, priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
                 if (requestId !== incidentRequestId) return;
@@ -2293,8 +2490,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
                 data = (incidents || []).map(incident => ({
                     ...incident,
-                    photo_urls: incident.photos?.length ? incident.photos : incident.photo_url ? [incident.photo_url] : [],
-                    is_priority: incident.priority === 'urgent' || incident.is_priority === true
+                    photo_urls: incident.photos?.length ? incident.photos : incident.photo_url ? [incident.photo_url] : []
                 }));
             } else {
                 try {
@@ -2311,7 +2507,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             .filter(photo => photo.file)
                             .map(photo => URL.createObjectURL(photo.file)),
                         priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
-                        is_priority: item.priority === 'urgent' || item.isPriority === true,
                         created_at: item.createdAtISO,
                         properties: {
                             name: allPropertiesCache.find(property =>
@@ -2336,7 +2531,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             list.innerHTML = data.map(incident => `
                 <article class="rounded-xl border border-rose-200 bg-white p-2.5 sm:p-3">
                     <div class="incident-alert-mobile flex items-center gap-2">
-                        <span class="shrink-0 text-base" title="${incident.is_priority ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}" aria-label="${incident.is_priority ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}">${incident.is_priority ? '🚨' : incident.type === 'note' ? '📝' : '⚠️'}</span>
+                        <span class="shrink-0 text-base" title="${incident.priority === 'urgent' ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}" aria-label="${incident.priority === 'urgent' ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}">${incident.priority === 'urgent' ? '🚨' : incident.type === 'note' ? '📝' : '⚠️'}</span>
                         <p class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title="${escapePropertyHTML(`${incident.properties?.name || 'Alojamento'} · ${getIncidentTypeLabel(incident.type)}: ${incident.description}`)}">
                             ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}: ${escapePropertyHTML(incident.description)}
                         </p>
@@ -2347,7 +2542,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}</p>
                             <span class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">${i18n[currentLang].incident_pending}</span>
-                            ${incident.is_priority ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">🚨 ${i18n[currentLang].incident_priority_badge}</span>` : ''}
+                            ${incident.priority === 'urgent' ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">🚨 ${i18n[currentLang].incident_priority_badge}</span>` : ''}
                             <p class="mt-1 whitespace-pre-wrap break-words text-xs text-slate-700">${escapePropertyHTML(incident.description)}</p>
                             <p class="mt-2 text-[10px] text-slate-500">${i18n[currentLang].incident_date}: ${new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')}</p>
                         </div>
@@ -5147,6 +5342,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
             window.addEventListener('online', () => {
                 updateIncidentNetworkStatus();
+                document.querySelectorAll('.property-incident-history[open]').forEach(details => {
+                    delete details.dataset.loaded;
+                    void loadPropertyIncidentHistory(details);
+                });
                 void resumePendingSync();
             });
             window.addEventListener('offline', () => {
