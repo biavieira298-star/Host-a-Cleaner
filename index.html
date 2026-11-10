@@ -634,9 +634,14 @@
 
             <div id="view-sub-employee-hours" class="space-y-6 hidden">
                 <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
-                    <header class="space-y-1">
-                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">Horas por Funcionário</p>
-                        <h3 class="text-lg font-extrabold text-slate-900">Controlo mensal da equipa</h3>
+                    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="space-y-1">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">Horas por Funcionário</p>
+                            <h3 class="text-lg font-extrabold text-slate-900">Controlo mensal da equipa</h3>
+                        </div>
+                        <button type="button" onclick="exportEmployeeHoursSummaryCsv()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">
+                            Exportar Mês (CSV)
+                        </button>
                     </header>
                     <div id="employee-hours-summary" class="space-y-3"></div>
                     <div id="employee-hours-grid" class="grid grid-cols-1 gap-4 xl:grid-cols-2"></div>
