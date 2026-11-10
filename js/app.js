@@ -4269,6 +4269,66 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${roundedValue.toFixed(roundedValue % 1 === 0 ? 0 : 1)}h`;
         }
 
+        function escapeCsvCell(value) {
+            const safeValue = String(value ?? '');
+            return `"${safeValue.replace(/"/g, '""')}"`;
+        }
+
+        function triggerCsvDownload(filename, rows) {
+            if (!Array.isArray(rows) || !rows.length) return;
+            const csv = rows.map(row => row.map(cell => escapeCsvCell(cell)).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function sanitizeCsvFilename(value) {
+            return String(value || 'funcionario')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 40) || 'funcionario';
+        }
+
+        function exportEmployeeHoursSummaryCsv() {
+            if (!Array.isArray(employeeHoursMonthlyData) || !employeeHoursMonthlyData.length) return;
+            const rows = [
+                ['Nome do Funcionário', 'Total de Limpezas', 'Total de Horas'],
+                ...employeeHoursMonthlyData.map(member => [
+                    member.name || 'Funcionário',
+                    Number(member.totalCleanings) || 0,
+                    Number(member.totalHours || 0).toFixed(2)
+                ])
+            ];
+            const monthValue = new Date().toISOString().slice(0, 7);
+            triggerCsvDownload(`horas-funcionarios-${monthValue}.csv`, rows);
+        }
+
+        function exportEmployeeHoursDetailCsv(memberId) {
+            const member = (employeeHoursMonthlyData || []).find(item => String(item.id) === String(memberId));
+            if (!member) return;
+            const rows = [
+                ['Data', 'Alojamento', 'Tipo de Tarefa', 'Duração'],
+                ...[...member.tasks]
+                    .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
+                    .map(task => [
+                        task.scheduledDate ? new Date(task.scheduledDate).toISOString().slice(0, 10) : '-',
+                        task.propertyName || 'Imóvel',
+                        task.type || 'Limpeza',
+                        Number(task.hours || 0).toFixed(2)
+                    ])
+            ];
+            const monthValue = new Date().toISOString().slice(0, 7);
+            triggerCsvDownload(`${sanitizeCsvFilename(member.name || 'funcionario')}-extrato-${monthValue}.csv`, rows);
+        }
+
         function openEmployeeHoursDetailModal(memberId) {
             const modal = document.getElementById('employee-hours-detail-modal');
             const body = document.getElementById('employee-hours-detail-modal-body');
@@ -4322,6 +4382,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         </div>
                     </div>
 
+                    <div class="flex justify-end">
+                        <button type="button" data-export-employee-detail="${escapePropertyHTML(String(member.id))}" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">
+                            Exportar Extrato (CSV)
+                        </button>
+                    </div>
+
                     <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full border-collapse">
@@ -4345,6 +4411,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     </div>
                 </div>
             `;
+
+            const exportButton = body.querySelector('[data-export-employee-detail]');
+            exportButton?.addEventListener('click', () => exportEmployeeHoursDetailCsv(member.id));
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
