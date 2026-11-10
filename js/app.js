@@ -1911,9 +1911,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function uploadQueuedTaskPhoto(item) {
+            const uploadFile = typeof item.file === 'string' ? dataURLtoBlob(item.file) : item.file;
             const storage = supabaseClient.storage.from('cleaning-photos');
-            const { error: uploadError } = await storage.upload(item.storagePath, item.file, {
-                contentType: item.file.type,
+            const { error: uploadError } = await storage.upload(item.storagePath, uploadFile, {
+                contentType: uploadFile?.type || 'application/octet-stream',
                 upsert: true
             });
             if (uploadError) throw uploadError;
@@ -1971,19 +1972,23 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
             if (item.type === 'incident') {
-                const legacyExtension = item.file ? getIncidentPhotoExtension(item.file) : null;
-                if (item.file && !legacyExtension) throw new Error(i18n[currentLang].incident_photo_error);
-                const files = item.files || (item.file ? [{
-                    file: item.file,
+                const legacyItemFile = typeof item.file === 'string' ? dataURLtoBlob(item.file) : item.file;
+                const legacyExtension = legacyItemFile ? getIncidentPhotoExtension(legacyItemFile) : null;
+                if (legacyItemFile && !legacyExtension) throw new Error(i18n[currentLang].incident_photo_error);
+                const files = (item.files || (legacyItemFile ? [{
+                    file: legacyItemFile,
                     storagePath: `${item.userId}/${item.propertyId}/${item.incidentId}/${item.incidentId}.${legacyExtension}`
-                }] : []);
+                }] : [])).map(photo => ({
+                    ...photo,
+                    file: typeof photo.file === 'string' ? dataURLtoBlob(photo.file) : photo.file
+                }));
                 const storage = supabaseClient.storage.from('property-incidents');
                 const photoUrls = [];
                 for (const photo of files) {
                     if (!photo.file || !photo.storagePath) continue;
                     try {
                         const { error: uploadError } = await storage.upload(photo.storagePath, photo.file, {
-                            contentType: photo.file.type,
+                            contentType: photo.file.type || 'application/octet-stream',
                             upsert: true
                         });
                         if (uploadError) throw uploadError;
@@ -3616,6 +3621,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return !pending.some(item => item.sequence === queued.sequence);
         }
 
+        function dataURLtoBlob(dataurl) {
+            if (!dataurl || !dataurl.startsWith('data:')) return dataurl;
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
         function getIncidentPhotoExtension(file) {
             const extensionByType = {
                 'image/jpeg': 'jpg',
@@ -3625,7 +3643,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 'image/heic': 'heic',
                 'image/heif': 'heif'
             };
-            return extensionByType[file.type.toLowerCase()] || null;
+            const fileType = typeof file === 'string' && file.startsWith('data:')
+                ? file.match(/^data:([^;,]+);/i)?.[1]
+                : file?.type;
+            if (!fileType) return null;
+            return extensionByType[fileType.toLowerCase()] || null;
         }
 
         function getIncidentTypeLabel(type) {
