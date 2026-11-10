@@ -1976,11 +1976,25 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const photoUrls = [];
                 for (const photo of files) {
                     if (!photo.file || !photo.storagePath) continue;
-                    const { error: uploadError } = await storage.upload(photo.storagePath, photo.file, {
-                        contentType: photo.file.type,
-                        upsert: true
-                    });
-                    if (uploadError) throw uploadError;
+                    try {
+                        const { error: uploadError } = await storage.upload(photo.storagePath, photo.file, {
+                            contentType: photo.file.type,
+                            upsert: true
+                        });
+                        if (uploadError) throw uploadError;
+                    } catch (error) {
+                        console.error('Falha ao enviar fotografia de incidente para o Storage:', {
+                            message: error?.message || String(error),
+                            name: error?.name,
+                            statusCode: error?.statusCode,
+                            error: error?.error,
+                            bucket: 'property-incidents',
+                            path: photo.storagePath,
+                            incidentId: item.incidentId,
+                            sequence: item.sequence
+                        });
+                        throw error;
+                    }
                     photoUrls.push(storage.getPublicUrl(photo.storagePath).data.publicUrl);
                 }
                 const { error } = await supabaseClient
@@ -2017,7 +2031,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     const pending = allPending.filter(item => item.userId === currentUser.id);
                     for (const item of pending) {
                         if (!navigator.onLine || !currentUser || item.userId !== currentUser.id) break;
-                        await syncPendingOfflineItem(item);
+                        try {
+                            await syncPendingOfflineItem(item);
+                        } catch (error) {
+                            console.error('Falha ao sincronizar item offline; o item permanece na fila:', {
+                                message: error?.message || String(error),
+                                name: error?.name,
+                                type: item.type,
+                                sequence: item.sequence,
+                                incidentId: item.incidentId,
+                                propertyId: item.propertyId
+                            });
+                            throw error;
+                        }
                         await deletePendingOfflineItem(item.sequence);
                         await updateOfflineIndicator();
                     }
@@ -2091,6 +2117,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             isOfflineMode = false;
             clearPendingSyncRetry();
             await syncPendingData();
+        }
+
+        async function forcePendingSync() {
+            if (!navigator.onLine || !currentUser) {
+                await updateOfflineIndicator();
+                return false;
+            }
+            if (syncPendingPromise) await syncPendingPromise;
+            clearPendingSyncRetry();
+            return syncPendingData();
         }
 
         function showPropertyMessage(elementId, message, type) {
@@ -2538,6 +2574,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             void loadGlobalIncidentHistory();
         }
 
+        async function refreshGlobalIncidentHistory() {
+            await forcePendingSync();
+            await loadGlobalIncidentHistory();
+        }
+
         function globalHistoryPriorityLabel(priority) {
             const labels = {
                 urgent: i18n[currentLang].history_urgent,
@@ -2712,7 +2753,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 list.innerHTML = `
                     <div class="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
                         <p class="text-xs font-semibold text-rose-700">${i18n[currentLang].history_error}: ${escapePropertyHTML(error.message)}</p>
-                        <button type="button" onclick="loadGlobalIncidentHistory()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].history_refresh}</button>
+                        <button type="button" onclick="refreshGlobalIncidentHistory()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].history_refresh}</button>
                     </div>
                 `;
             }
@@ -3840,7 +3881,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     return;
                 }
 
-                await syncPendingData();
+                await forcePendingSync();
                 const remaining = await listPendingOfflineItems();
                 const hasPending = remaining.some(item => item.userId === currentUser.id);
                 setTaskModalSyncMessage(
