@@ -16,7 +16,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let taskTeamMembers = [];
         let taskAwaitingTimeConfirmation = null;
         let incidentTaskContext = null;
-        let incidentIsPriority = false;
+        let incidentSelectedFiles = [];
         let incidentRequestId = 0;
         let offlineDatabasePromise = null;
         let syncPendingPromise = null;
@@ -147,20 +147,30 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 time_tracking_start_error: "Não foi possível iniciar a limpeza",
                 incident_report_button: "⚠️ Reportar Incidente",
                 incident_report_title: "Reportar Ocorrência / Danos",
-                incident_priority: "Prioritário",
+                incident_priority: "Prioridade",
                 incident_not_priority: "Não prioritário",
                 incident_priority_badge: "Prioritário",
                 incident_type: "Tipo de ocorrência",
+                incident_kind: "Incidente",
+                incident_note: "Nota",
+                incident_priority_urgent: "Urgente",
+                incident_priority_normal: "Normal",
+                incident_priority_low: "Baixa",
                 incident_damage: "Dano / Avaria",
                 incident_forgotten_item: "Objeto Esquecido",
                 incident_description: "Descrição do problema",
                 incident_description_placeholder: "Descreva brevemente o que aconteceu",
-                incident_photo: "Fotografia (opcional)",
+                incident_description_required: "Escreva uma descrição antes de enviar.",
+                incident_photo: "Fotografias (opcional)",
+                incident_take_photo: "Tirar fotografia",
+                incident_choose_photos: "Escolher da galeria",
+                incident_online: "Online — sincronização ativa",
+                incident_offline: "Offline — será sincronizado quando a ligação regressar",
                 incident_submit: "Enviar Incidente",
                 incident_submitting: "A enviar...",
                 incident_saved: "Incidente reportado com sucesso.",
                 incident_error: "Não foi possível reportar o incidente",
-                incident_photo_error: "Selecione uma imagem até 10 MB.",
+                incident_photo_error: "Selecione imagens compatíveis até 10 MB cada.",
                 incident_alerts_title: "Alertas Urgentes",
                 incident_alerts_loading: "A carregar alertas...",
                 incident_alerts_empty: "Sem ocorrências pendentes.",
@@ -432,16 +442,26 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 incident_not_priority: "Not a priority",
                 incident_priority_badge: "Priority",
                 incident_type: "Incident type",
+                incident_kind: "Incident",
+                incident_note: "Note",
+                incident_priority_urgent: "Urgent",
+                incident_priority_normal: "Normal",
+                incident_priority_low: "Low",
                 incident_damage: "Damage / Fault",
                 incident_forgotten_item: "Forgotten Item",
                 incident_description: "Problem description",
                 incident_description_placeholder: "Briefly describe what happened",
-                incident_photo: "Photo (optional)",
+                incident_description_required: "Enter a description before submitting.",
+                incident_photo: "Photos (optional)",
+                incident_take_photo: "Take photo",
+                incident_choose_photos: "Choose from gallery",
+                incident_online: "Online — sync active",
+                incident_offline: "Offline — will sync when connection returns",
                 incident_submit: "Submit Incident",
                 incident_submitting: "Submitting...",
                 incident_saved: "Incident reported successfully.",
                 incident_error: "Could not report the incident",
-                incident_photo_error: "Select an image up to 10 MB.",
+                incident_photo_error: "Select supported images up to 10 MB each.",
                 incident_alerts_title: "Urgent Alerts",
                 incident_alerts_loading: "Loading alerts...",
                 incident_alerts_empty: "No pending incidents.",
@@ -674,7 +694,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const key = el.getAttribute('data-i18n-aria-label');
                 if (i18n[lang] && i18n[lang][key]) el.setAttribute('aria-label', i18n[lang][key]);
             });
-            setIncidentPriority(incidentIsPriority);
+            updateIncidentNetworkStatus();
 
             // Re-renderiza o calendário para atualizar os dias da semana
             if (!document.getElementById('view-sub-agenda').classList.contains('hidden')) renderAgendaView();
@@ -1866,15 +1886,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
             if (item.type === 'incident') {
-                let photoUrl = null;
-                if (item.file && item.storagePath) {
-                    const storage = supabaseClient.storage.from('cleaning-photos');
-                    const { error: uploadError } = await storage.upload(item.storagePath, item.file, {
-                        contentType: item.file.type,
+                const legacyExtension = item.file ? getIncidentPhotoExtension(item.file) : null;
+                if (item.file && !legacyExtension) throw new Error(i18n[currentLang].incident_photo_error);
+                const files = item.files || (item.file ? [{
+                    file: item.file,
+                    storagePath: `${item.userId}/${item.propertyId}/${item.incidentId}/${item.incidentId}.${legacyExtension}`
+                }] : []);
+                const storage = supabaseClient.storage.from('property-incidents');
+                const photoUrls = [];
+                for (const photo of files) {
+                    if (!photo.file || !photo.storagePath) continue;
+                    const { error: uploadError } = await storage.upload(photo.storagePath, photo.file, {
+                        contentType: photo.file.type,
                         upsert: true
                     });
                     if (uploadError) throw uploadError;
-                    photoUrl = storage.getPublicUrl(item.storagePath).data.publicUrl;
+                    photoUrls.push(storage.getPublicUrl(photo.storagePath).data.publicUrl);
                 }
                 const { error } = await supabaseClient
                     .from('property_incidents')
@@ -1882,9 +1909,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         id: item.incidentId,
                         property_id: item.propertyId,
                         type: item.incidentType,
+                        priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
                         description: item.description,
-                        photo_url: photoUrl,
-                        is_priority: item.isPriority === true,
+                        photos: photoUrls,
+                        photo_url: photoUrls[0] || null,
+                        is_priority: (item.priority || (item.isPriority ? 'urgent' : 'normal')) === 'urgent',
                         created_by: item.userId,
                         created_at: item.createdAtISO,
                         status: 'pending'
@@ -2253,7 +2282,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (navigator.onLine) {
                 const { data: incidents, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id, property_id, type, description, photo_url, is_priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
+                    .select('id, property_id, type, description, photos, photo_url, priority, is_priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
                 if (requestId !== incidentRequestId) return;
@@ -2262,7 +2291,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(error.message)}</p>`;
                     return;
                 }
-                data = incidents || [];
+                data = (incidents || []).map(incident => ({
+                    ...incident,
+                    photo_urls: incident.photos?.length ? incident.photos : incident.photo_url ? [incident.photo_url] : [],
+                    is_priority: incident.priority === 'urgent' || incident.is_priority === true
+                }));
             } else {
                 try {
                     const queued = (await listPendingOfflineItems()).filter(item =>
@@ -2273,8 +2306,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         property_id: item.propertyId,
                         type: item.incidentType,
                         description: item.description,
-                        photo_url: item.file ? URL.createObjectURL(item.file) : null,
-                        is_priority: item.isPriority === true,
+                        photos: [],
+                        photo_urls: (item.files || (item.file ? [{ file: item.file }] : []))
+                            .filter(photo => photo.file)
+                            .map(photo => URL.createObjectURL(photo.file)),
+                        priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
+                        is_priority: item.priority === 'urgent' || item.isPriority === true,
                         created_at: item.createdAtISO,
                         properties: {
                             name: allPropertiesCache.find(property =>
@@ -2283,7 +2320,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         },
                         queued: true
                     }));
-                    offlinePendingIncidentUrls = data.map(item => item.photo_url).filter(Boolean);
+                    offlinePendingIncidentUrls = data.flatMap(item => item.photo_urls);
                 } catch (error) {
                     console.error('Erro ao carregar incidentes offline:', error);
                     list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(error.message)}</p>`;
@@ -2299,22 +2336,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             list.innerHTML = data.map(incident => `
                 <article class="rounded-xl border border-rose-200 bg-white p-2.5 sm:p-3">
                     <div class="incident-alert-mobile flex items-center gap-2">
-                        <span class="shrink-0 text-base" title="${incident.is_priority ? i18n[currentLang].incident_priority_badge : incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}" aria-label="${incident.is_priority ? i18n[currentLang].incident_priority_badge : incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}">${incident.is_priority ? '🚨' : incident.type === 'forgotten_item' ? '📦' : '⚠️'}</span>
-                        <p class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title="${escapePropertyHTML(`${incident.properties?.name || 'Alojamento'} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}: ${incident.description}`)}">
-                            ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}: ${escapePropertyHTML(incident.description)}
+                        <span class="shrink-0 text-base" title="${incident.is_priority ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}" aria-label="${incident.is_priority ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}">${incident.is_priority ? '🚨' : incident.type === 'note' ? '📝' : '⚠️'}</span>
+                        <p class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title="${escapePropertyHTML(`${incident.properties?.name || 'Alojamento'} · ${getIncidentTypeLabel(incident.type)}: ${incident.description}`)}">
+                            ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}: ${escapePropertyHTML(incident.description)}
                         </p>
-                        ${incident.photo_url ? `<a href="${escapePropertyHTML(incident.photo_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">📷</a>` : ''}
+                        ${incident.photo_urls.length ? `<a href="${escapePropertyHTML(incident.photo_urls[0])}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">📷 ${incident.photo_urls.length > 1 ? incident.photo_urls.length : ''}</a>` : ''}
                         ${incident.queued ? `<span title="${escapePropertyHTML(i18n[currentLang].offline_photo_pending)}" class="max-w-24 shrink-0 truncate text-right text-[10px] font-semibold text-slate-500">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="min-h-10 shrink-0 rounded-lg bg-rose-600 px-2.5 text-[11px] font-bold text-white hover:bg-rose-700">${currentLang === 'pt' ? 'Resolver' : 'Resolve'}</button>`}
                     </div>
                     <div class="incident-alert-desktop flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0 flex-1">
-                            <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${incident.type === 'forgotten_item' ? i18n[currentLang].incident_forgotten_item : i18n[currentLang].incident_damage}</p>
+                            <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}</p>
                             <span class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">${i18n[currentLang].incident_pending}</span>
                             ${incident.is_priority ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">🚨 ${i18n[currentLang].incident_priority_badge}</span>` : ''}
                             <p class="mt-1 whitespace-pre-wrap break-words text-xs text-slate-700">${escapePropertyHTML(incident.description)}</p>
                             <p class="mt-2 text-[10px] text-slate-500">${i18n[currentLang].incident_date}: ${new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')}</p>
                         </div>
-                        ${incident.photo_url ? `<a href="${escapePropertyHTML(incident.photo_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}"><img src="${escapePropertyHTML(incident.photo_url)}" alt="" class="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover"></a>` : ''}
+                        ${incident.photo_urls.length ? `<div class="flex shrink-0 flex-wrap gap-2">${incident.photo_urls.map(photoUrl => `<a href="${escapePropertyHTML(photoUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}"><img src="${escapePropertyHTML(photoUrl)}" alt="" class="h-20 w-20 rounded-lg border border-slate-200 object-cover"></a>`).join('')}</div>` : ''}
                     </div>
                     ${incident.queued ? '' : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="incident-alert-desktop-action mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
                 </article>
@@ -3013,54 +3050,101 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return !pending.some(item => item.sequence === queued.sequence);
         }
 
+        function getIncidentPhotoExtension(file) {
+            const extensionByType = {
+                'image/jpeg': 'jpg',
+                'image/png': 'png',
+                'image/webp': 'webp',
+                'image/gif': 'gif',
+                'image/heic': 'heic',
+                'image/heif': 'heif'
+            };
+            return extensionByType[file.type.toLowerCase()] || null;
+        }
+
+        function getIncidentTypeLabel(type) {
+            if (type === 'note') return i18n[currentLang].incident_note;
+            if (type === 'forgotten_item') return i18n[currentLang].incident_forgotten_item;
+            if (type === 'damage') return i18n[currentLang].incident_damage;
+            return i18n[currentLang].incident_kind;
+        }
+
         function openIncidentReportModal(propertyId) {
             if (!currentUser || !propertyId) {
                 alert(i18n[currentLang].incident_error);
                 return;
             }
             incidentTaskContext = { propertyId };
-            incidentIsPriority = false;
             const form = document.getElementById('incident-report-form');
             form.reset();
-            setIncidentPriority(false);
+            clearIncidentPhotos();
+            updateIncidentNetworkStatus();
             document.getElementById('incident-report-message').classList.add('hidden');
-            const preview = document.getElementById('incident-photo-preview');
-            preview.removeAttribute('src');
-            preview.classList.add('hidden');
             document.getElementById('incident-report-modal').classList.remove('hidden');
         }
 
-        function setIncidentPriority(isPriority) {
-            incidentIsPriority = isPriority;
-            const button = document.getElementById('incident-priority-toggle');
-            const label = document.getElementById('incident-priority-label');
-            const track = document.getElementById('incident-priority-switch');
-            const thumb = document.getElementById('incident-priority-thumb');
-            if (!button || !label || !track || !thumb) return;
-
-            button.setAttribute('aria-pressed', String(isPriority));
-            button.classList.toggle('border-rose-300', isPriority);
-            button.classList.toggle('border-slate-200', !isPriority);
-            button.classList.toggle('bg-rose-50', isPriority);
-            button.classList.toggle('bg-slate-50', !isPriority);
-            label.textContent = i18n[currentLang][isPriority ? 'incident_priority' : 'incident_not_priority'];
-            label.classList.toggle('text-rose-700', isPriority);
-            label.classList.toggle('text-slate-700', !isPriority);
-            track.classList.toggle('bg-rose-600', isPriority);
-            track.classList.toggle('bg-slate-300', !isPriority);
-            thumb.classList.toggle('translate-x-5', isPriority);
+        function updateIncidentNetworkStatus() {
+            const status = document.getElementById('incident-network-status');
+            if (!status) return;
+            const online = navigator.onLine;
+            status.textContent = online ? `● ${i18n[currentLang].incident_online}` : `● ${i18n[currentLang].incident_offline}`;
+            status.classList.toggle('bg-emerald-50', online);
+            status.classList.toggle('text-emerald-800', online);
+            status.classList.toggle('bg-amber-50', !online);
+            status.classList.toggle('text-amber-800', !online);
         }
 
-        function toggleIncidentPriority() {
-            setIncidentPriority(!incidentIsPriority);
+        function clearIncidentPhotos() {
+            incidentSelectedFiles.forEach(photo => URL.revokeObjectURL(photo.previewUrl));
+            incidentSelectedFiles = [];
+            document.getElementById('incident-photo-preview').replaceChildren();
+            document.getElementById('incident-camera-input').value = '';
+            document.getElementById('incident-gallery-input').value = '';
+        }
+
+        function renderIncidentPhotoPreviews() {
+            const preview = document.getElementById('incident-photo-preview');
+            preview.replaceChildren(...incidentSelectedFiles.map((photo, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative aspect-square';
+                const image = document.createElement('img');
+                image.src = photo.previewUrl;
+                image.alt = '';
+                image.className = 'h-full w-full rounded-xl border border-slate-200 object-cover';
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'absolute right-1 top-1 rounded-full bg-slate-950/75 px-2 py-1 text-xs font-bold text-white';
+                removeButton.setAttribute('aria-label', currentLang === 'pt' ? 'Remover fotografia' : 'Remove photo');
+                removeButton.textContent = '×';
+                removeButton.addEventListener('click', () => {
+                    URL.revokeObjectURL(incidentSelectedFiles[index].previewUrl);
+                    incidentSelectedFiles.splice(index, 1);
+                    renderIncidentPhotoPreviews();
+                });
+                wrapper.append(image, removeButton);
+                return wrapper;
+            }));
+        }
+
+        function addIncidentPhotos(fileList, input) {
+            const files = Array.from(fileList || []);
+            if (files.some(file => !getIncidentPhotoExtension(file) || file.size > 10 * 1024 * 1024)) {
+                showPropertyMessage('incident-report-message', i18n[currentLang].incident_photo_error, 'error');
+                input.value = '';
+                return;
+            }
+            files.forEach(file => incidentSelectedFiles.push({
+                file,
+                previewUrl: URL.createObjectURL(file)
+            }));
+            input.value = '';
+            renderIncidentPhotoPreviews();
+            document.getElementById('incident-report-message').classList.add('hidden');
         }
 
         function closeIncidentReportModal() {
             document.getElementById('incident-report-modal').classList.add('hidden');
-            const preview = document.getElementById('incident-photo-preview');
-            if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
-            preview.removeAttribute('src');
-            preview.classList.add('hidden');
+            clearIncidentPhotos();
             incidentTaskContext = null;
         }
 
@@ -3071,9 +3155,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
 
-            const file = document.getElementById('incident-photo').files?.[0] || null;
-            if (file && (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024)) {
+            if (incidentSelectedFiles.some(photo =>
+                !getIncidentPhotoExtension(photo.file) || photo.file.size > 10 * 1024 * 1024
+            )) {
                 showPropertyMessage('incident-report-message', i18n[currentLang].incident_photo_error, 'error');
+                return;
+            }
+            const description = document.getElementById('incident-description').value.trim();
+            if (!description) {
+                showPropertyMessage('incident-report-message', i18n[currentLang].incident_description_required, 'error');
                 return;
             }
             const submitButton = document.getElementById('incident-submit-button');
@@ -3084,30 +3174,21 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             try {
                 const incidentId = crypto.randomUUID();
-                let storagePath = null;
-                if (file) {
-                    const extensionByType = {
-                        'image/jpeg': 'jpg',
-                        'image/png': 'png',
-                        'image/webp': 'webp',
-                        'image/gif': 'gif',
-                        'image/heic': 'heic',
-                        'image/heif': 'heif'
-                    };
-                    const extension = extensionByType[file.type.toLowerCase()];
-                    if (!extension) throw new Error(i18n[currentLang].incident_photo_error);
-                    storagePath = `${currentUser.id}/incidents/${incidentTaskContext.propertyId}/${incidentId}.${extension}`;
-                }
+                const files = incidentSelectedFiles.map(({ file }) => ({
+                    file,
+                    storagePath: `${currentUser.id}/${incidentTaskContext.propertyId}/${incidentId}/${crypto.randomUUID()}.${getIncidentPhotoExtension(file)}`
+                }));
+                const priority = document.getElementById('incident-priority').value;
 
                 const queued = await savePendingOfflineItem({
                     type: 'incident',
                     incidentId,
                     propertyId: incidentTaskContext.propertyId,
                     incidentType: document.getElementById('incident-type').value,
-                    description: document.getElementById('incident-description').value.trim(),
-                    isPriority: incidentIsPriority,
-                    file,
-                    storagePath,
+                    description,
+                    priority,
+                    isPriority: priority === 'urgent',
+                    files,
                     createdAtISO: new Date().toISOString()
                 });
                 let synced = false;
@@ -3124,11 +3205,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     'success'
                 );
                 document.getElementById('incident-report-form').reset();
-                setIncidentPriority(false);
-                const preview = document.getElementById('incident-photo-preview');
-                if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
-                preview.removeAttribute('src');
-                preview.classList.add('hidden');
+                clearIncidentPhotos();
                 if (synced && userRole === 'admin') void carregarAlertasIncidentes();
             } catch (error) {
                 console.error('Erro ao reportar incidente:', error);
@@ -3139,25 +3216,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
-        document.getElementById('incident-photo')?.addEventListener('change', event => {
-            const file = event.target.files?.[0];
-            const preview = document.getElementById('incident-photo-preview');
-            if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
-            if (!file) {
-                preview.removeAttribute('src');
-                preview.classList.add('hidden');
-                return;
-            }
-            if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
-                showPropertyMessage('incident-report-message', i18n[currentLang].incident_photo_error, 'error');
-                event.target.value = '';
-                preview.removeAttribute('src');
-                preview.classList.add('hidden');
-                return;
-            }
-            preview.src = URL.createObjectURL(file);
-            preview.classList.remove('hidden');
-            document.getElementById('incident-report-message').classList.add('hidden');
+        document.getElementById('incident-camera-input')?.addEventListener('change', event => {
+            addIncidentPhotos(event.target.files, event.target);
+        });
+        document.getElementById('incident-gallery-input')?.addEventListener('change', event => {
+            addIncidentPhotos(event.target.files, event.target);
         });
 
         async function handleTaskPhotoUpload(event, taskId, propertyId) {
@@ -5083,10 +5146,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 fileInput.dispatchEvent(new Event('change', { bubbles: true }));
             });
             window.addEventListener('online', () => {
+                updateIncidentNetworkStatus();
                 void resumePendingSync();
             });
             window.addEventListener('offline', () => {
                 isOfflineMode = true;
+                updateIncidentNetworkStatus();
                 void updateOfflineIndicator();
             });
             window.addEventListener('focus', () => {
