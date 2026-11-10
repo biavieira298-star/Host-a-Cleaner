@@ -2364,56 +2364,30 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
 
-            gridEl.innerHTML = data.map(prop => {
-                const assignedCleaner = propertyCleaners.find(cleaner => String(cleaner.id) === String(prop.assigned_team_member_id));
-                const cleanerName = assignedCleaner?.name || assignedCleaner?.email || 'Sem atribuição';
-                const propertyTasks = allTasksCache
-                    .filter(task => String(task.property_id) === String(prop.id))
-                    .sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
-                const monthlyCompleted = propertyTasks.filter(task => isTaskCompleted(task) && (() => {
-                    const taskDate = new Date(task.scheduled_date || task.completed_at || task.created_at || new Date());
-                    const now = new Date();
-                    return taskDate.getFullYear() === now.getFullYear() && taskDate.getMonth() === now.getMonth();
-                })()).length;
-                const status = getPropertyOperationalStatus(prop);
-                const isPriority = propertyTasks.some(task => task.is_priority === true);
+            gridEl.innerHTML = data.map(prop => `
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-2.5 shadow-sm transition hover:border-indigo-300 hover:bg-white">
+                    <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-row-button block w-full rounded-xl text-left">
+                        <div class="flex items-start gap-2">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-[10px] font-black text-indigo-700">${escapePropertyHTML((prop.name || 'P').slice(0, 2).toUpperCase())}</div>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="truncate text-[12px] font-bold text-slate-900">${escapePropertyHTML(prop.name)}</h4>
+                                <p class="mt-0.5 truncate text-[10px] text-slate-500">${escapePropertyHTML(prop.address || 'Sem morada')}</p>
+                            </div>
+                        </div>
+                    </button>
 
-                return `
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm transition hover:border-indigo-300 hover:bg-white">
-                        <div class="flex items-center gap-2">
-                            <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-row-button flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left">
-                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-[11px] font-black text-indigo-700">${escapePropertyHTML((prop.name || 'P').slice(0, 2).toUpperCase())}</div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2">
-                                        <h4 class="truncate text-sm font-bold text-slate-900">${escapePropertyHTML(prop.name)}</h4>
-                                        ${isPriority ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">⚑</span>` : ''}
-                                    </div>
-                                    <div class="mt-0.5 flex items-center gap-2 text-[10px] text-slate-500">
-                                        <span class="truncate">${escapePropertyHTML(prop.address || 'Sem morada')}</span>
-                                    </div>
-                                </div>
-                                <div class="flex shrink-0 items-center gap-1.5">
-                                    <span class="rounded-full px-2 py-1 text-[9px] font-bold ${status.tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : status.tone === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}">${status.label}</span>
-                                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-700">${monthlyCompleted} / mês</span>
-                                </div>
+                    <div class="mt-2 flex gap-1.5">
+                        <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-view-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600">
+                            Detalhes
+                        </button>
+                        ${userRole === 'admin' ? `
+                            <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600">
+                                Editar
                             </button>
-
-                            ${userRole === 'admin' ? `
-                                <div class="flex shrink-0 items-center gap-1">
-                                    <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button rounded-lg border border-slate-200 bg-white p-1.5 text-[10px] hover:border-indigo-300 hover:text-indigo-600">✏️</button>
-                                    <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Apagar" aria-label="Apagar ${escapePropertyHTML(prop.name)}" class="delete-property-button rounded-lg border border-slate-200 bg-white p-1.5 text-[10px] hover:border-rose-200 hover:text-rose-600">🗑️</button>
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        <div class="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
-                            <span class="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">${escapePropertyHTML(cleanerName)}</span>
-                            <span class="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-600">${escapePropertyHTML(prop.access_code || 'N/A')}</span>
-                            <span class="rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">${escapePropertyHTML(prop.hourly_rate || 10.00)}€/h</span>
-                        </div>
+                        ` : ''}
                     </div>
-                `;
-            }).join('');
+                </article>
+            `).join('');
 
             const modal = document.getElementById('property-quick-modal');
             if (modal && !modal.dataset.bound) {
@@ -2428,7 +2402,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 });
             }
 
-            gridEl.querySelectorAll('.property-row-button').forEach(button => {
+            gridEl.querySelectorAll('.property-row-button, .property-view-button').forEach(button => {
                 button.addEventListener('click', () => {
                     const property = data.find(item => String(item.id) === button.dataset.propertyId);
                     if (property) openPropertyQuickModal(property);
@@ -2440,12 +2414,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     event.stopPropagation();
                     const property = data.find(item => String(item.id) === button.dataset.propertyId);
                     if (property) loadPropertyForEdit(property);
-                });
-            });
-            gridEl.querySelectorAll('.delete-property-button').forEach(button => {
-                button.addEventListener('click', event => {
-                    event.stopPropagation();
-                    deleteProperty(button.dataset.propertyId);
                 });
             });
         }
