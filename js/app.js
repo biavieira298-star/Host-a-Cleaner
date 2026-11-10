@@ -1922,14 +1922,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const photoUrl = storage.getPublicUrl(item.storagePath).data.publicUrl;
             const { error: photoError } = await supabaseClient
                 .from('cleaning_task_photos')
-                .upsert([{
+                .insert([{
                     property_id: item.propertyId,
                     task_id: item.taskId,
                     uploaded_by: item.userId,
                     photo_url: photoUrl,
                     storage_path: item.storagePath
-                }], { onConflict: 'storage_path', ignoreDuplicates: true });
-            if (photoError) throw photoError;
+                }]);
+            if (photoError && !/duplicate|already exists|already.*processed|23505|42P10/i.test(String(photoError.message || photoError.details || photoError.code || ''))) {
+                throw photoError;
+            }
             if (item.photoField) {
                 const { error: taskError } = await supabaseClient
                     .from('cleaning_tasks')
@@ -2007,21 +2009,23 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     }
                     photoUrls.push(storage.getPublicUrl(photo.storagePath).data.publicUrl);
                 }
+                const insertPayload = {
+                    property_id: item.propertyId,
+                    type: item.incidentType,
+                    priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
+                    description: item.description,
+                    photos: photoUrls,
+                    photo_url: photoUrls[0] || null,
+                    created_by: item.userId,
+                    created_at: item.createdAtISO,
+                    status: 'pending'
+                };
                 const { error } = await supabaseClient
                     .from('property_incidents')
-                    .upsert([{
-                        id: item.incidentId,
-                        property_id: item.propertyId,
-                        type: item.incidentType,
-                        priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
-                        description: item.description,
-                        photos: photoUrls,
-                        photo_url: photoUrls[0] || null,
-                        created_by: item.userId,
-                        created_at: item.createdAtISO,
-                        status: 'pending'
-                    }], { onConflict: 'id', ignoreDuplicates: true });
-                if (error) throw error;
+                    .insert([insertPayload]);
+                if (error && !/duplicate|already exists|already.*processed|23505|42P10/i.test(String(error.message || error.details || error.code || ''))) {
+                    throw error;
+                }
                 return;
             }
             throw new Error(`Tipo de sincronização desconhecido: ${item.type}`);
@@ -2043,7 +2047,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         if (!navigator.onLine || !currentUser || item.userId !== currentUser.id) break;
                         try {
                             await syncPendingOfflineItem(item);
+                            await deletePendingOfflineItem(item.sequence);
+                            await updateOfflineIndicator();
                         } catch (error) {
+                            const errorText = String(error?.message || error?.details || error || '');
+                            const alreadyProcessed = /duplicate|already exists|already.*processed|23505|42P10/i.test(errorText);
+                            if (alreadyProcessed) {
+                                await deletePendingOfflineItem(item.sequence).catch(() => undefined);
+                                await updateOfflineIndicator();
+                                continue;
+                            }
                             console.error('Falha ao sincronizar item offline; o item permanece na fila:', {
                                 message: error?.message || String(error),
                                 name: error?.name,
@@ -2054,8 +2067,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             });
                             throw error;
                         }
-                        await deletePendingOfflineItem(item.sequence);
-                        await updateOfflineIndicator();
                     }
                     const remaining = await listPendingOfflineItems();
                     const ownPending = remaining.some(item => item.userId === currentUser.id);
