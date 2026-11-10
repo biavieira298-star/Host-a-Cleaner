@@ -2952,7 +2952,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 alert(`${i18n[currentLang].incident_resolve_error}: ${error.message}`);
                 return;
             }
-            await carregarAlertasIncidentes();
+            await refreshTaskAndIncidentViews();
         }
 
         async function fetchAgendaTasks() {
@@ -3094,7 +3094,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 selectedDate = scheduled_date;
                 currentCalendarDate = parseLocalDate(scheduled_date);
                 document.getElementById('calendar-date-picker').value = scheduled_date;
-                await loadData();
+                await refreshTaskAndIncidentViews();
             }
 
             btn.disabled = false;
@@ -3370,6 +3370,22 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${hours}h ${String(minutes).padStart(2, '0')}min`;
         }
 
+        async function refreshTaskAndIncidentViews() {
+            await loadData();
+            if (document.getElementById('tasks-list-container')) {
+                await fetchAgendaTasks();
+                renderAgendaSummary();
+                renderAgendaView();
+            }
+            if (document.getElementById('history-records-list')) {
+                await loadGlobalIncidentHistory();
+            }
+            if (document.getElementById('urgent-incidents-list') && userRole === 'admin') {
+                await carregarAlertasIncidentes();
+            }
+            await refreshUrgentIncidentBadge();
+        }
+
         async function refreshTaskModal(taskId) {
             await loadData();
             const updatedTask = allTasksCache.find(task => String(task.id) === String(taskId));
@@ -3497,7 +3513,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             try {
                 const { synced } = await queueCleaningCompletion(task, null);
                 closeTaskModal();
-                if (synced) await loadData();
+                if (synced) await refreshTaskAndIncidentViews();
             } catch (error) {
                 console.error('Erro ao concluir a limpeza:', error);
                 alert(`${i18n[currentLang].time_confirmation_error}: ${error.message}`);
@@ -3547,7 +3563,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('time-confirmation-modal').classList.add('hidden');
                 closeTaskModal();
                 if (synced) {
-                    await loadData();
+                    await refreshTaskAndIncidentViews();
                     const finishedTask = allTasksCache.find(item => String(item.id) === String(taskId));
                     if (finishedTask) await openTaskModal(finishedTask);
                 }
@@ -3805,7 +3821,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 );
                 document.getElementById('incident-report-form').reset();
                 clearIncidentPhotos();
-                if (synced && userRole === 'admin') void carregarAlertasIncidentes();
+                if (synced) {
+                    await refreshTaskAndIncidentViews();
+                } else if (userRole === 'admin') {
+                    await carregarAlertasIncidentes();
+                }
             } catch (error) {
                 console.error('Erro ao reportar incidente:', error);
                 showPropertyMessage('incident-report-message', `${i18n[currentLang].incident_error}: ${error.message}`, 'error');
@@ -3945,7 +3965,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             alert('Limpeza apagada!');
             closeTaskModal();
             closeDayTasksModal();
-            await loadData();
+            await refreshTaskAndIncidentViews();
         }
 
         function closeTaskModal() {
@@ -4077,7 +4097,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             alert('Atualizado com sucesso!');
             closeTaskModal();
             closeDayTasksModal();
-            await loadData();
+            await refreshTaskAndIncidentViews();
         }
 
         async function fetchHistoryAdmin() {
