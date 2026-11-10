@@ -86,6 +86,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let selectedDate = getLocalDateString();
         let selectedPropertyFilter = 'all';
         let editingPropertyId = null;
+        let employeeHoursMonthlyData = [];
         
         let calendarMode = 'day';
         let currentCalendarDate = new Date();
@@ -2237,6 +2238,95 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             select.disabled = false;
         }
 
+        function getPropertyOperationalStatus(property) {
+            const tasks = (allTasksCache || []).filter(task => String(task.property_id) === String(property.id));
+            if (!tasks.length) return { label: 'Disponível', tone: 'slate', count: 0 };
+            const currentMonth = new Date();
+            const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+            const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+            const currentMonthTasks = tasks.filter(task => {
+                const taskDate = new Date(task.scheduled_date || task.completed_at || task.created_at || new Date());
+                return !Number.isNaN(taskDate.getTime()) && taskDate >= monthStart && taskDate <= monthEnd;
+            });
+            if (currentMonthTasks.some(task => isTaskInProgress(task))) return { label: 'Em Limpeza', tone: 'amber', count: currentMonthTasks.filter(task => isTaskCompleted(task)).length };
+            if (currentMonthTasks.some(task => isTaskPending(task))) return { label: 'Pendente', tone: 'slate', count: currentMonthTasks.filter(task => isTaskCompleted(task)).length };
+            if (currentMonthTasks.some(task => isTaskCompleted(task))) return { label: 'Pronta', tone: 'emerald', count: currentMonthTasks.filter(task => isTaskCompleted(task)).length };
+            return { label: 'Disponível', tone: 'slate', count: currentMonthTasks.filter(task => isTaskCompleted(task)).length };
+        }
+
+        function openPropertyQuickModal(property) {
+            const modal = document.getElementById('property-quick-modal');
+            const body = document.getElementById('property-quick-modal-body');
+            const title = document.getElementById('property-quick-modal-title');
+            if (!modal || !body || !title || !property) return;
+
+            const assignedCleaner = propertyCleaners.find(cleaner => String(cleaner.id) === String(property.assigned_team_member_id));
+            const cleanerName = assignedCleaner?.name || assignedCleaner?.email || 'Sem atribuição';
+            const status = getPropertyOperationalStatus(property);
+            const monthCleanings = (allTasksCache || []).filter(task =>
+                String(task.property_id) === String(property.id) &&
+                isTaskCompleted(task) &&
+                (() => {
+                    const taskDate = new Date(task.scheduled_date || task.completed_at || task.created_at || new Date());
+                    const now = new Date();
+                    return taskDate.getFullYear() === now.getFullYear() && taskDate.getMonth() === now.getMonth();
+                })()
+            ).length;
+
+            title.textContent = property.name || 'Alojamento';
+            body.innerHTML = `
+                <div class="space-y-4">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Resumo</p>
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                            <div class="rounded-xl border border-slate-200 bg-white p-2">
+                                <p class="text-slate-500">Estado</p>
+                                <p class="mt-1 font-bold ${status.tone === 'emerald' ? 'text-emerald-700' : status.tone === 'amber' ? 'text-amber-700' : 'text-slate-700'}">${status.label}</p>
+                            </div>
+                            <div class="rounded-xl border border-slate-200 bg-white p-2">
+                                <p class="text-slate-500">Limpezas</p>
+                                <p class="mt-1 font-black text-slate-900">${monthCleanings}</p>
+                            </div>
+                            <div class="rounded-xl border border-slate-200 bg-white p-2 col-span-2">
+                                <p class="text-slate-500">Atribuição</p>
+                                <p class="mt-1 font-bold text-slate-800">${escapePropertyHTML(cleanerName)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-[11px] text-slate-600">
+                        <p><span class="font-bold text-slate-700">Morada:</span> ${escapePropertyHTML(property.address || 'Sem morada')}</p>
+                        <p><span class="font-bold text-slate-700">Keybox:</span> ${escapePropertyHTML(property.access_code || 'N/A')}</p>
+                        <p><span class="font-bold text-slate-700">Taxa:</span> ${escapePropertyHTML(property.hourly_rate || 10.00)}€/h</p>
+                        ${property.instructions ? `<p><span class="font-bold text-slate-700">Instruções:</span> ${escapePropertyHTML(property.instructions)}</p>` : ''}
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        ${userRole === 'admin' ? `<button type="button" data-property-edit-id="${escapePropertyHTML(String(property.id))}" class="property-edit-modal-btn flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-indigo-700">Editar</button>` : ''}
+                        <button type="button" onclick="closePropertyQuickModal()" class="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Fechar</button>
+                    </div>
+                </div>
+            `;
+
+            body.querySelector('.property-edit-modal-btn')?.addEventListener('click', () => {
+                const propertyToEdit = allPropertiesCache.find(item => String(item.id) === String(property.id));
+                if (propertyToEdit) loadPropertyForEdit(propertyToEdit);
+                closePropertyQuickModal();
+            });
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closePropertyQuickModal() {
+            const modal = document.getElementById('property-quick-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        }
+
         async function carregarPropriedades() {
             const gridEl = document.getElementById('properties-grid');
             if (!gridEl) return;
@@ -2246,7 +2336,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             let data = allPropertiesCache;
             let error = null;
             if (navigator.onLine) {
-                gridEl.innerHTML = `<p class="text-slate-400 text-xs col-span-full">${i18n[currentLang].loading_properties}</p>`;
+                gridEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].loading_properties}</p>`;
                 const result = await supabaseClient.from('properties').select('*').order('created_at', { ascending: false });
                 data = result.data;
                 error = result.error;
@@ -2256,7 +2346,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (error) {
                 console.error('Erro ao carregar alojamentos:', error);
                 gridEl.innerHTML = `
-                    <div class="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
                         <p class="text-rose-700 text-xs">${i18n[currentLang].error_properties}: ${escapePropertyHTML(error.message)}</p>
                         <button type="button" onclick="carregarPropriedades()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].retry}</button>
                     </div>
@@ -2266,7 +2356,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             if (!data || data.length === 0) {
                 gridEl.innerHTML = `
-                    <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-6 text-center">
+                    <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
                         <p class="text-slate-500 text-xs">${i18n[currentLang].empty_properties}</p>
                         ${userRole === 'admin' ? `<button type="button" onclick="abrirFormularioPropriedade()" class="mt-3 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
                     </div>
@@ -2280,75 +2370,82 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const propertyTasks = allTasksCache
                     .filter(task => String(task.property_id) === String(prop.id))
                     .sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
+                const monthlyCompleted = propertyTasks.filter(task => isTaskCompleted(task) && (() => {
+                    const taskDate = new Date(task.scheduled_date || task.completed_at || task.created_at || new Date());
+                    const now = new Date();
+                    return taskDate.getFullYear() === now.getFullYear() && taskDate.getMonth() === now.getMonth();
+                })()).length;
+                const status = getPropertyOperationalStatus(prop);
                 const isPriority = propertyTasks.some(task => task.is_priority === true);
+
                 return `
-                <div class="border border-slate-200/80 bg-slate-50 p-5 rounded-2xl space-y-3 relative group hover:border-indigo-300 transition">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <h4 class="font-bold text-slate-900 text-sm">${escapePropertyHTML(prop.name)}</h4>
-                                ${isPriority ? `<span class="property-priority-badge rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">⚑ ${i18n[currentLang].property_priority_badge}</span>` : ''}
-                            </div>
-                            <p class="text-xs text-slate-500">${escapePropertyHTML(prop.address || 'Sem morada')}</p>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm transition hover:border-indigo-300 hover:bg-white">
+                        <div class="flex items-center gap-2">
+                            <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-row-button flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-[11px] font-black text-indigo-700">${escapePropertyHTML((prop.name || 'P').slice(0, 2).toUpperCase())}</div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="truncate text-sm font-bold text-slate-900">${escapePropertyHTML(prop.name)}</h4>
+                                        ${isPriority ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">⚑</span>` : ''}
+                                    </div>
+                                    <div class="mt-0.5 flex items-center gap-2 text-[10px] text-slate-500">
+                                        <span class="truncate">${escapePropertyHTML(prop.address || 'Sem morada')}</span>
+                                    </div>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    <span class="rounded-full px-2 py-1 text-[9px] font-bold ${status.tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : status.tone === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'}">${status.label}</span>
+                                    <span class="rounded-full border border-slate-200 bg-white px-2 py-1 text-[9px] font-bold text-slate-700">${monthlyCompleted} / mês</span>
+                                </div>
+                            </button>
+
+                            ${userRole === 'admin' ? `
+                                <div class="flex shrink-0 items-center gap-1">
+                                    <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button rounded-lg border border-slate-200 bg-white p-1.5 text-[10px] hover:border-indigo-300 hover:text-indigo-600">✏️</button>
+                                    <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Apagar" aria-label="Apagar ${escapePropertyHTML(prop.name)}" class="delete-property-button rounded-lg border border-slate-200 bg-white p-1.5 text-[10px] hover:border-rose-200 hover:text-rose-600">🗑️</button>
+                                </div>
+                            ` : ''}
                         </div>
-                        ${userRole === 'admin' ? `
-                            <div class="flex items-center gap-1">
-                                <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button p-2 text-slate-400 hover:text-indigo-600 transition">✏️</button>
-                                <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Apagar" aria-label="Apagar ${escapePropertyHTML(prop.name)}" class="delete-property-button p-2 text-slate-400 hover:text-rose-600 transition">🗑️</button>
-                            </div>
-                        ` : ''}
+
+                        <div class="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+                            <span class="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">${escapePropertyHTML(cleanerName)}</span>
+                            <span class="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-600">${escapePropertyHTML(prop.access_code || 'N/A')}</span>
+                            <span class="rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">${escapePropertyHTML(prop.hourly_rate || 10.00)}€/h</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 flex-wrap text-[11px]">
-                        <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-bold border border-indigo-100">${i18n[currentLang].property_access_label} ${escapePropertyHTML(prop.access_code || 'N/A')}</span>
-                        <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold border border-emerald-100">💶 ${escapePropertyHTML(prop.hourly_rate || 10.00)}€/h</span>
-                    </div>
-                    ${prop.instructions ? `<p class="text-[11px] text-slate-500 break-words">${escapePropertyHTML(prop.instructions)}</p>` : ''}
-                    <p class="text-[11px] text-slate-600"><span class="font-bold">${i18n[currentLang].property_cleaner_label}</span> ${escapePropertyHTML(cleanerName)}</p>
-                    ${userRole === 'admin' ? `<div class="text-[10px] text-emerald-700 font-mono truncate bg-white p-2 rounded-lg border border-slate-200">🔗 ${escapePropertyHTML(prop.ical_url || 'Sem link iCal')}</div>` : ''}
-                    <details class="rounded-xl border border-slate-200 bg-white">
-                        <summary class="cursor-pointer list-none px-3 py-2.5 text-[11px] font-bold text-slate-700">${i18n[currentLang].property_cleaning_tasks} <span class="ml-1 text-slate-400">(${propertyTasks.length})</span></summary>
-                        <div class="space-y-2 border-t border-slate-100 p-3">
-                            ${propertyTasks.length ? propertyTasks.map(task => `
-                                <button type="button" data-property-task-id="${escapePropertyHTML(task.id)}" class="property-task-button flex w-full items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-left transition hover:bg-indigo-50">
-                                    <span class="min-w-0">
-                                        <span class="block truncate text-[11px] font-semibold text-slate-800">${escapePropertyHTML(task.scheduled_date || '')}</span>
-                                        <span class="block truncate text-[10px] text-slate-500">${isTaskCompleted(task) ? 'Concluída' : isTaskInProgress(task) ? 'Em curso' : 'Pendente'}${task.cleaner_notes ? ` · ${escapePropertyHTML(task.cleaner_notes)}` : ''}</span>
-                                    </span>
-                                    ${task.is_priority ? `<span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-800">⚑ ${i18n[currentLang].property_priority_badge}</span>` : ''}
-                                </button>
-                            `).join('') : `<p class="text-[10px] text-slate-400">${i18n[currentLang].property_no_cleaning_tasks}</p>`}
-                        </div>
-                    </details>
-                    <details class="property-incident-history rounded-xl border border-indigo-100 bg-white" data-property-id="${escapePropertyHTML(prop.id)}">
-                        <summary class="cursor-pointer list-none px-3 py-3 text-[11px] font-bold text-indigo-800">${i18n[currentLang].property_history_title}</summary>
-                        <div class="property-incident-history-list space-y-3 border-t border-indigo-50 p-3">
-                            <p class="text-[10px] text-slate-400">${i18n[currentLang].property_history_loading}</p>
-                        </div>
-                    </details>
-                </div>
-            `;
+                `;
             }).join('');
 
-            gridEl.querySelectorAll('.edit-property-button').forEach(button => {
+            const modal = document.getElementById('property-quick-modal');
+            if (modal && !modal.dataset.bound) {
+                modal.dataset.bound = 'true';
+                modal.addEventListener('click', event => {
+                    if (event.target === modal) closePropertyQuickModal();
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                        closePropertyQuickModal();
+                    }
+                });
+            }
+
+            gridEl.querySelectorAll('.property-row-button').forEach(button => {
                 button.addEventListener('click', () => {
+                    const property = data.find(item => String(item.id) === button.dataset.propertyId);
+                    if (property) openPropertyQuickModal(property);
+                });
+            });
+
+            gridEl.querySelectorAll('.edit-property-button').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
                     const property = data.find(item => String(item.id) === button.dataset.propertyId);
                     if (property) loadPropertyForEdit(property);
                 });
             });
             gridEl.querySelectorAll('.delete-property-button').forEach(button => {
-                button.addEventListener('click', () => deleteProperty(button.dataset.propertyId));
-            });
-            gridEl.querySelectorAll('.property-task-button').forEach(button => {
-                button.addEventListener('click', () => {
-                    const task = allTasksCache.find(item => String(item.id) === button.dataset.propertyTaskId);
-                    if (task) void openTaskModal(task);
-                });
-            });
-            gridEl.querySelectorAll('.property-incident-history').forEach(details => {
-                details.addEventListener('toggle', () => {
-                    if (details.open && details.dataset.loaded !== 'true') {
-                        void loadPropertyIncidentHistory(details);
-                    }
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    deleteProperty(button.dataset.propertyId);
                 });
             });
         }
@@ -4204,6 +4301,96 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${roundedValue.toFixed(roundedValue % 1 === 0 ? 0 : 1)}h`;
         }
 
+        function openEmployeeHoursDetailModal(memberId) {
+            const modal = document.getElementById('employee-hours-detail-modal');
+            const body = document.getElementById('employee-hours-detail-modal-body');
+            const title = document.getElementById('employee-hours-detail-title');
+            if (!modal || !body || !title) return;
+
+            const member = (employeeHoursMonthlyData || []).find(item => String(item.id) === String(memberId));
+            if (!member) return;
+
+            const rows = [...member.tasks]
+                .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
+                .map(task => {
+                    const taskType = task.type || 'Limpeza';
+                    return `
+                        <tr class="border-b border-slate-200 text-left text-[11px] text-slate-600 last:border-b-0">
+                            <td class="px-2 py-2">${escapePropertyHTML(task.scheduledDate ? new Date(task.scheduledDate).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'pt-PT') : '--')}</td>
+                            <td class="px-2 py-2 font-semibold text-slate-700">${escapePropertyHTML(task.propertyName)}</td>
+                            <td class="px-2 py-2">${escapePropertyHTML(taskType)}</td>
+                            <td class="px-2 py-2 text-right font-bold text-slate-800">${formatEmployeeHoursHours(task.hours)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            const initials = (member.name || 'F')
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(part => part[0].toUpperCase())
+                .join('') || 'F';
+
+            title.textContent = member.name || 'Funcionário';
+            body.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-base font-black text-indigo-700">${escapePropertyHTML(initials)}</div>
+                            <div>
+                                <h4 class="text-base font-extrabold text-slate-900">${escapePropertyHTML(member.name)}</h4>
+                                <p class="text-[11px] text-slate-500">${member.totalCleanings} ${currentLang === 'en' ? 'cleanings' : 'limpezas'} neste mês</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="rounded-2xl bg-indigo-600 px-3 py-2 text-left text-white">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-100">${currentLang === 'en' ? 'Hours' : 'Horas'}</p>
+                                <p class="text-lg font-black">${formatEmployeeHoursHours(member.totalHours)}</p>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Cleanings' : 'Limpezas'}</p>
+                                <p class="text-lg font-black text-slate-900">${member.totalCleanings}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse">
+                                <thead class="bg-slate-100">
+                                    <tr class="text-left text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                                        <th class="px-2 py-2">${currentLang === 'en' ? 'Date' : 'Data'}</th>
+                                        <th class="px-2 py-2">${currentLang === 'en' ? 'Accommodation' : 'Alojamento'}</th>
+                                        <th class="px-2 py-2">${currentLang === 'en' ? 'Task type' : 'Tipo de tarefa'}</th>
+                                        <th class="px-2 py-2 text-right">${currentLang === 'en' ? 'Duration' : 'Duração'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows || `
+                                        <tr>
+                                            <td colspan="4" class="px-2 py-4 text-center text-[11px] text-slate-500">${currentLang === 'en' ? 'No tasks recorded for this member in the current month.' : 'Sem tarefas registadas para este colaborador no mês atual.'}</td>
+                                        </tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeEmployeeHoursDetailModal() {
+            const modal = document.getElementById('employee-hours-detail-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        }
+
         function renderEmployeeHoursView() {
             const summaryContainer = document.getElementById('employee-hours-summary');
             const gridContainer = document.getElementById('employee-hours-grid');
@@ -4253,11 +4440,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     propertyName,
                     hours,
                     scheduledDate: task.scheduled_date || task.completed_at || task.created_at || new Date().toISOString(),
-                    status: task.status
+                    status: task.status,
+                    type: task.task_type || task.type || 'Limpeza'
                 });
             });
 
-            const members = [...memberMap.values()].sort((a, b) => b.totalHours - a.totalHours || b.totalCleanings - a.totalCleanings);
+            employeeHoursMonthlyData = [...memberMap.values()].sort((a, b) => b.totalHours - a.totalHours || b.totalCleanings - a.totalCleanings);
+            const members = [...employeeHoursMonthlyData];
             const totalTeamHours = members.reduce((sum, member) => sum + (Number(member.totalHours) || 0), 0);
             const totalTeamCleanings = members.reduce((sum, member) => sum + (Number(member.totalCleanings) || 0), 0);
             const monthLabel = monthFormatter.format(currentMonth);
@@ -4312,8 +4501,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const recentTasks = [...member.tasks]
                     .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
                     .slice(0, 3);
-                const detailTasks = [...member.tasks]
-                    .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
 
                 return `
                     <article class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -4340,20 +4527,36 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             `).join('')}
                         </div>
 
-                        <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                            <summary class="cursor-pointer list-none text-[11px] font-bold text-indigo-700">${currentLang === 'en' ? 'View full detail' : 'Ver detalhe completo'}</summary>
-                            <div class="mt-3 space-y-2 border-t border-slate-200 pt-3">
-                                ${detailTasks.map(task => `
-                                    <div class="flex items-center justify-between gap-3 text-[11px] text-slate-600">
-                                        <span class="truncate">${escapePropertyHTML(task.propertyName)}</span>
-                                        <span class="font-bold text-slate-800">${formatEmployeeHoursHours(task.hours)}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </details>
+                        <button type="button" data-employee-detail-id="${escapePropertyHTML(String(member.id))}" class="employee-hours-detail-btn mt-4 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-100">
+                            ${currentLang === 'en' ? 'View full detail' : 'Ver detalhe completo'}
+                        </button>
                     </article>
                 `;
             }).join('');
+
+            const modal = document.getElementById('employee-hours-detail-modal');
+            if (modal && !modal.dataset.bound) {
+                modal.dataset.bound = 'true';
+                modal.addEventListener('click', event => {
+                    if (event.target === modal) closeEmployeeHoursDetailModal();
+                });
+            }
+
+            if (!window.__employeeHoursEscapeBound) {
+                window.__employeeHoursEscapeBound = true;
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape') {
+                        const modalRef = document.getElementById('employee-hours-detail-modal');
+                        if (modalRef && !modalRef.classList.contains('hidden')) {
+                            closeEmployeeHoursDetailModal();
+                        }
+                    }
+                });
+            }
+
+            gridContainer.querySelectorAll('.employee-hours-detail-btn').forEach(button => {
+                button.addEventListener('click', () => openEmployeeHoursDetailModal(button.dataset.employeeDetailId));
+            });
         }
 
         async function carregarRegistosHoras() {
