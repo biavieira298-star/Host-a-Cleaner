@@ -303,7 +303,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 finance_overview: "Visão geral",
                 finance_tab_overview: "Visão Geral",
                 finance_tab_reports: "Documentos",
-                finance_tab_manual_entries: "Lançamentos",
+                finance_tab_manual_entries: "Finanças",
                 finance_manual_entries_eyebrow: "Gestão financeira",
                 finance_filter_month: "Mês",
                 finance_filter_property: "Imóvel",
@@ -5155,18 +5155,20 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             submitButton.disabled = true;
             hidePropertyMessage('financial-entry-message');
             try {
+                const entryRow = {
+                    property_id: propertyId,
+                    user_id: currentUser.id,
+                    entry_type: entryType,
+                    category,
+                    amount,
+                    description,
+                    entry_date: occurredOn,
+                    occurred_on: occurredOn,
+                    status: 'paid'
+                };
                 const { error } = await supabaseClient
                     .from('property_financial_entries')
-                    .insert([{
-                        property_id: propertyId,
-                        user_id: currentUser.id,
-                        entry_type: entryType,
-                        category,
-                        amount,
-                        description,
-                        occurred_on: occurredOn,
-                        status: 'paid'
-                    }]);
+                    .insert([entryRow]);
                 if (error) throw error;
 
                 document.getElementById('financial-entry-form').reset();
@@ -5189,7 +5191,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             try {
                 const { data, error } = await supabaseClient
                     .from('property_financial_entries')
-                    .select('id, property_id, entry_type, amount, description, category, occurred_on, created_at, properties(name)')
+                    .select('id, property_id, entry_type, amount, description, category, entry_date, occurred_on, created_at, properties(name)')
                     .eq('user_id', currentUser.id)
                     .order('occurred_on', { ascending: false })
                     .order('created_at', { ascending: false })
@@ -5201,9 +5203,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
                 tbody.innerHTML = data.map(entry => {
                     const income = entry.entry_type === 'income';
+                    const entryDate = entry.entry_date ?? entry.occurred_on ?? '';
                     return `
                         <tr>
-                            <td class="whitespace-nowrap px-2 py-2">${escapePropertyHTML(entry.occurred_on)}</td>
+                            <td class="whitespace-nowrap px-2 py-2">${escapePropertyHTML(entryDate)}</td>
                             <td class="max-w-40 truncate px-2 py-2">${escapePropertyHTML(entry.properties?.name || '')}</td>
                             <td class="px-2 py-2"><span class="${income ? 'text-emerald-300' : 'text-rose-300'}">${income ? 'Receita' : 'Despesa'}</span></td>
                             <td class="px-2 py-2">${escapePropertyHTML(entry.category || 'Geral')}</td>
@@ -5422,7 +5425,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     return;
                 }
                 existingKeys.add(key);
-                newEntries.push({ ...earning, user_id: currentUser.id });
+                newEntries.push({
+                    ...earning,
+                    user_id: currentUser.id,
+                    entry_date: earning.occurred_on
+                });
             });
 
             if (newEntries.length) {
