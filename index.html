@@ -215,7 +215,6 @@
                             <span id="settings-menu-chevron" class="sidebar-text transition-transform">⌄</span>
                         </button>
                         <div id="settings-menu-items" class="hidden space-y-1 pl-3 border-l border-slate-700 ml-4">
-                            <button type="button" onclick="switchTab('sub-properties-add')" id="btn-sub-properties-add" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">➕ <span class="sidebar-text" data-i18n="nav_add_property">Adicionar Alojamento</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">🏠 <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
                             <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
                             <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-directory" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_team_directory">Equipa (consulta)</span></button>
@@ -378,8 +377,8 @@
                     </div>
                     <p class="cleaner-only hidden rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs font-semibold text-indigo-800" data-i18n="role_read_only">Modo de consulta</p>
                     <p id="properties-list-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
-                    <div id="properties-grid" class="space-y-2">
-                        <p class="text-slate-400 text-xs">A carregar alojamentos...</p>
+                    <div id="properties-grid" class="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+                        <p class="text-slate-400 text-xs col-span-full">A carregar alojamentos...</p>
                     </div>
                 </div>
             </div>
