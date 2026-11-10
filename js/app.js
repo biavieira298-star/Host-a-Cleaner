@@ -4276,8 +4276,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         function triggerCsvDownload(filename, rows) {
             if (!Array.isArray(rows) || !rows.length) return;
-            const csv = rows.map(row => row.map(cell => escapeCsvCell(cell)).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const csvContent = '\uFEFF' + rows.map(row => row.map(cell => escapeCsvCell(cell)).join(';')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
