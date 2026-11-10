@@ -958,27 +958,35 @@
                 <button type="button" onclick="closeIncidentReportModal()" data-i18n-aria-label="incident_close" aria-label="Fechar" class="rounded-xl p-2 text-slate-500 hover:bg-slate-100">✕</button>
             </header>
             <form id="incident-report-form" onsubmit="submitPropertyIncident(event)" class="space-y-4">
+                <p id="incident-network-status" class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800" role="status" aria-live="polite"></p>
                 <div>
                     <label for="incident-type" data-i18n="incident_type" class="mb-1 block text-sm font-bold text-slate-700">Tipo de ocorrência</label>
                     <select id="incident-type" required class="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
-                        <option value="damage" data-i18n="incident_damage">Dano / Avaria</option>
-                        <option value="forgotten_item" data-i18n="incident_forgotten_item">Objeto Esquecido</option>
+                        <option value="incident" data-i18n="incident_kind">Incidente</option>
+                        <option value="note" data-i18n="incident_note">Nota</option>
                     </select>
                 </div>
-                <button id="incident-priority-toggle" type="button" onclick="toggleIncidentPriority()" aria-pressed="false" class="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-rose-500">
-                    <span id="incident-priority-label" class="text-sm font-bold text-slate-700">Não prioritário</span>
-                    <span id="incident-priority-switch" aria-hidden="true" class="flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 p-0.5 transition">
-                        <span id="incident-priority-thumb" class="h-5 w-5 rounded-full bg-white shadow transition"></span>
-                    </span>
-                </button>
+                <div>
+                    <label for="incident-priority" data-i18n="incident_priority" class="mb-1 block text-sm font-bold text-slate-700">Prioridade</label>
+                    <select id="incident-priority" required class="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="urgent" data-i18n="incident_priority_urgent">Urgente</option>
+                        <option value="normal" data-i18n="incident_priority_normal">Normal</option>
+                        <option value="low" data-i18n="incident_priority_low">Baixa</option>
+                    </select>
+                </div>
                 <div>
                     <label for="incident-description" data-i18n="incident_description" class="mb-1 block text-sm font-bold text-slate-700">Descrição do problema</label>
                     <textarea id="incident-description" required maxlength="1000" data-i18n-placeholder="incident_description_placeholder" placeholder="Descreva brevemente o que aconteceu" class="min-h-24 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
                 </div>
                 <div>
-                    <label for="incident-photo" data-i18n="incident_photo" class="mb-1 block text-sm font-bold text-slate-700">Fotografia (opcional)</label>
-                    <input id="incident-photo" type="file" accept="image/*" capture="environment" class="min-h-12 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-rose-100 file:px-3 file:py-2 file:font-bold file:text-rose-800">
-                    <img id="incident-photo-preview" alt="" class="mt-3 hidden max-h-48 w-full rounded-xl border border-slate-200 object-contain">
+                    <span data-i18n="incident_photo" class="mb-1 block text-sm font-bold text-slate-700">Fotografias (opcional)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label for="incident-camera-input" data-i18n="incident_take_photo" class="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm font-bold text-rose-800">Tirar fotografia</label>
+                        <label for="incident-gallery-input" data-i18n="incident_choose_photos" class="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-bold text-slate-700">Escolher da galeria</label>
+                    </div>
+                    <input id="incident-camera-input" type="file" accept="image/*" capture="environment" class="sr-only">
+                    <input id="incident-gallery-input" type="file" accept="image/*" multiple class="sr-only">
+                    <div id="incident-photo-preview" class="mt-3 grid grid-cols-3 gap-2" aria-live="polite"></div>
                 </div>
                 <p id="incident-report-message" role="status" aria-live="polite" class="hidden text-sm font-semibold"></p>
                 <div class="grid grid-cols-2 gap-3">
