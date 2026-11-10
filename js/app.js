@@ -5396,6 +5396,44 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${parsedYear}-${String(parsedMonth).padStart(2, '0')}-${String(parsedDay).padStart(2, '0')}`;
         }
 
+        function resolvePlatformReportDate(lines, fallbackDate = null) {
+            const text = (lines || []).join(' ');
+            const monthNameMap = {
+                jan: 1, january: 1, janeiro: 1,
+                feb: 2, february: 2, fevereiro: 2,
+                mar: 3, march: 3, marco: 3, março: 3,
+                apr: 4, april: 4, abril: 4,
+                may: 5, maio: 5,
+                jun: 6, june: 6, junho: 6,
+                jul: 7, july: 7, julho: 7,
+                aug: 8, august: 8, agosto: 8,
+                sep: 9, sept: 9, september: 9, setembro: 9,
+                oct: 10, october: 10, outubro: 10,
+                nov: 11, november: 11, novembro: 11,
+                dec: 12, december: 12, dezembro: 12
+            };
+
+            const monthNameMatch = [...text.matchAll(/\b([a-zA-ZÀ-ÿ]+)\s*(?:de)?\s*(\d{4})\b/g)]
+                .map(match => {
+                    const monthKey = match[1].trim().toLowerCase();
+                    const monthNumber = monthNameMap[monthKey];
+                    if (!monthNumber) return null;
+                    return { monthNumber, year: Number(match[2]) };
+                })
+                .find(Boolean);
+            if (monthNameMatch) {
+                return `${monthNameMatch.year}-${String(monthNameMatch.monthNumber).padStart(2, '0')}-01`;
+            }
+
+            const candidateDates = [...text.matchAll(/\b(?:\d{1,2}[/. -]\d{1,2}[/. -]\d{4}|\d{4}-\d{2}-\d{2})\b/g)]
+                .map(match => parseAirbnbPdfDate(match[0]))
+                .filter(Boolean)
+                .sort();
+
+            if (candidateDates.length) return candidateDates[0];
+            return fallbackDate || getLocalDateString();
+        }
+
         function extractEuroAmounts(text) {
             const pattern = /(?:€|EUR)\s*([+-]?\d[\d.,\u00a0 ]*)|([+-]?\d[\d.,\u00a0 ]*)\s*(?:€|EUR)(?![A-Za-z])/gi;
             return [...text.matchAll(pattern)].map(match => {
@@ -5528,7 +5566,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         category: 'Ganhos',
                         amount: Math.round(fallbackAmount * 100) / 100,
                         description: 'Airbnb: Relatório global',
-                        occurred_on: getLocalDateString(),
+                        occurred_on: resolvePlatformReportDate(lines, getLocalDateString()),
                         status: 'paid'
                     });
                 }
@@ -5601,7 +5639,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         category: 'Ganhos',
                         amount,
                         description: 'Booking.com: Reservas consolidadas',
-                        occurred_on: latestDate || getLocalDateString(),
+                        occurred_on: latestDate || resolvePlatformReportDate(block, getLocalDateString()),
                         status: 'paid'
                     });
                 }
@@ -5616,7 +5654,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         category: 'Ganhos',
                         amount: Math.round(fallbackAmount * 100) / 100,
                         description: 'Booking.com: Relatório global',
-                        occurred_on: getLocalDateString(),
+                        occurred_on: resolvePlatformReportDate(lines, getLocalDateString()),
                         status: 'paid'
                     });
                 }
