@@ -856,6 +856,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
             showAppLayout();
             await loadData();
+            await refreshUrgentIncidentBadge();
             await activeViewRenderPromise;
             if (navigator.onLine) void syncPendingData();
         }
@@ -1625,6 +1626,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 carregarPropriedadesDocumentos();
                 void carregarDocumentosHosting();
             }
+            await refreshUrgentIncidentBadge();
         }
 
         async function fetchAllTasksCache() {
@@ -1823,6 +1825,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 transaction.oncomplete = () => resolve({ ...record, sequence });
                 transaction.onabort = () => reject(transaction.error || new Error('Não foi possível guardar o item offline.'));
             });
+            if (saved?.type === 'incident') {
+                await refreshUrgentIncidentBadge();
+            }
             await updateOfflineIndicator();
             void requestBackgroundSync();
             if (navigator.onLine && currentUser) {
@@ -2063,6 +2068,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     if (document.getElementById('view-sub-agenda') && !document.getElementById('view-sub-agenda').classList.contains('hidden')) {
                         await loadData();
                     }
+                    await refreshUrgentIncidentBadge();
                     if (userRole === 'admin' && !document.getElementById('view-sub-financial-entries').classList.contains('hidden')) {
                         await fetchHistoryAdmin();
                     }
@@ -2554,6 +2560,79 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 String(todayTasks.filter(task => task.status === 'completed').length);
             document.getElementById('agenda-today-pending').innerText =
                 String(todayTasks.filter(task => task.status === 'pending').length);
+        }
+
+        function setUrgentIncidentBadge(count) {
+            const navHistoryButton = document.getElementById('nav-history');
+            if (!navHistoryButton) return;
+            let badge = navHistoryButton.querySelector('.urgent-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'urgent-badge hidden ml-auto min-w-5 h-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white';
+                navHistoryButton.appendChild(badge);
+            }
+
+            const urgentCount = Number.isFinite(count) ? Math.max(0, Number(count)) : 0;
+            if (urgentCount > 0) {
+                badge.textContent = urgentCount > 99 ? '99+' : String(urgentCount);
+                badge.classList.remove('hidden');
+                badge.classList.add('inline-flex');
+                badge.setAttribute('aria-label', `${urgentCount} incidentes urgentes`);
+            } else {
+                badge.textContent = '0';
+                badge.classList.add('hidden');
+                badge.classList.remove('inline-flex');
+                badge.removeAttribute('aria-label');
+            }
+        }
+
+        async function getUrgentIncidentCount() {
+            let total = 0;
+
+            try {
+                const { count, error } = await supabaseClient
+                    .from('property_incidents')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('priority', 'urgent');
+                if (!error) total += Number(count || 0);
+            } catch (error) {
+                console.warn('Não foi possível verificar incidentes urgentes na base de dados:', error);
+            }
+
+            try {
+                const pendingItems = await listPendingOfflineItems();
+                total += pendingItems.filter(item =>
+                    item?.type === 'incident' &&
+                    (currentUser ? item.userId === currentUser.id : true) &&
+                    (item.priority === 'urgent' || item.isPriority === true)
+                ).length;
+            } catch (error) {
+                console.warn('Não foi possível verificar incidentes urgentes locais:', error);
+            }
+
+            try {
+                const queueRaw = localStorage.getItem('host_cleaner_offline_queue');
+                if (queueRaw) {
+                    const queue = JSON.parse(queueRaw);
+                    if (Array.isArray(queue)) {
+                        total += queue.filter(item =>
+                            item && item.type === 'incident' &&
+                            (currentUser ? item.userId === currentUser.id : true) &&
+                            (item.priority === 'urgent' || item.isPriority === true)
+                        ).length;
+                    }
+                }
+            } catch (error) {
+                console.warn('Não foi possível verificar incidentes urgentes guardados em localStorage:', error);
+            }
+
+            return total;
+        }
+
+        async function refreshUrgentIncidentBadge() {
+            const count = await getUrgentIncidentCount();
+            setUrgentIncidentBadge(count);
+            return count;
         }
 
         function setGlobalIncidentPriorityFilter(priority) {
