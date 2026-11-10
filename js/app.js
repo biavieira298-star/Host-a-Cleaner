@@ -31,6 +31,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let financialChartEndDate = null;
         let hostingReportsRequestId = 0;
         let hostingReportsCache = [];
+        let globalIncidentHistoryRequestId = 0;
+        let globalHistoryPreviewUrls = [];
+        let globalIncidentPriorityFilter = 'all';
         const activeOfflineTaskOperations = new Set();
         const propertyHistoryPreviewUrls = new Map();
         let offlinePendingPhotoUrls = [];
@@ -85,6 +88,29 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Tarefas Diárias (Lista)",
                 nav_overview_cal: "Vista Semanal / Mensal",
+                nav_history: "Histórico & Notas",
+                history_eyebrow: "Registos operacionais",
+                history_description: "Consulte incidentes, notas, prioridades e fotografias dos alojamentos.",
+                history_priority_filter: "Prioridade",
+                history_filter_all: "Todos",
+                history_filter_urgent: "Urgentes",
+                history_date_filter: "Data",
+                history_property_filter: "Alojamento",
+                history_all_properties: "Todos os alojamentos",
+                history_sort: "Ordenação",
+                history_sort_newest: "Mais recentes",
+                history_sort_oldest: "Mais antigos",
+                history_refresh: "Atualizar",
+                history_loading: "A carregar registos...",
+                history_empty: "Não foram encontrados registos com estes filtros.",
+                history_error: "Não foi possível carregar o histórico",
+                history_results_count: "{count} registos",
+                history_offline: "Offline — a mostrar apenas registos pendentes neste dispositivo.",
+                history_pending_sync: "Por sincronizar",
+                history_resolved: "Resolvido",
+                history_urgent: "Urgente",
+                history_normal: "Normal",
+                history_low: "Baixa",
                 nav_settings: "Definições",
                 nav_add_property: "Adicionar Alojamento",
                 nav_manage_properties: "Gestão de Alojamento",
@@ -389,6 +415,29 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Daily Tasks (List)",
                 nav_overview_cal: "Weekly / Monthly View",
+                nav_history: "History & Notes",
+                history_eyebrow: "Operational records",
+                history_description: "Browse property incidents, notes, priorities, and photos.",
+                history_priority_filter: "Priority",
+                history_filter_all: "All",
+                history_filter_urgent: "Urgent",
+                history_date_filter: "Date",
+                history_property_filter: "Property",
+                history_all_properties: "All properties",
+                history_sort: "Sort",
+                history_sort_newest: "Newest first",
+                history_sort_oldest: "Oldest first",
+                history_refresh: "Refresh",
+                history_loading: "Loading records...",
+                history_empty: "No records match these filters.",
+                history_error: "Could not load history",
+                history_results_count: "{count} records",
+                history_offline: "Offline — showing only pending records on this device.",
+                history_pending_sync: "Pending sync",
+                history_resolved: "Resolved",
+                history_urgent: "Urgent",
+                history_normal: "Normal",
+                history_low: "Low",
                 nav_settings: "Settings",
                 nav_add_property: "Add Property",
                 nav_manage_properties: "Property Management",
@@ -742,6 +791,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             void updateOfflineIndicator();
             if (!document.getElementById('view-sub-time-entries').classList.contains('hidden')) {
                 carregarRegistosHoras();
+            }
+            if (!document.getElementById('view-history').classList.contains('hidden')) {
+                void loadGlobalIncidentHistory();
             }
         }
 
@@ -1444,11 +1496,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-agenda', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-team-management', 'sub-time-entries', 'sub-profile-settings'];
+            const tabs = ['sub-agenda', 'history', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-team-management', 'sub-time-entries', 'sub-profile-settings'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
-                const btn = document.getElementById(`btn-${t}`);
+                const btn = document.getElementById(t === 'history' ? 'nav-history' : `btn-${t}`);
                 if (btn) {
                     const isActive = t === subtabId && !(userRole === 'cleaner' && t === 'sub-team-management');
                     btn.classList.toggle('font-bold', isActive);
@@ -1479,6 +1531,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             if (subtabId === 'sub-agenda') viewRenderTasks.push(fetchAgendaTasks());
+            if (subtabId === 'history') viewRenderTasks.push(loadGlobalIncidentHistory());
             if (subtabId === 'sub-properties-list') viewRenderTasks.push(carregarPropriedades());
             if (subtabId === 'sub-properties-add' && !editingPropertyId) viewRenderTasks.push(carregarCleaners());
             if (subtabId === 'sub-reports' || subtabId === 'sub-financial-entries') {
@@ -2465,6 +2518,204 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 String(todayTasks.filter(task => task.status === 'completed').length);
             document.getElementById('agenda-today-pending').innerText =
                 String(todayTasks.filter(task => task.status === 'pending').length);
+        }
+
+        function setGlobalIncidentPriorityFilter(priority) {
+            globalIncidentPriorityFilter = priority === 'urgent' ? 'urgent' : 'all';
+            const allButton = document.getElementById('history-filter-all');
+            const urgentButton = document.getElementById('history-filter-urgent');
+            [[allButton, globalIncidentPriorityFilter === 'all'], [urgentButton, globalIncidentPriorityFilter === 'urgent']]
+                .forEach(([button, active]) => {
+                    if (!button) return;
+                    button.setAttribute('aria-pressed', String(active));
+                    button.classList.toggle('bg-white', active);
+                    button.classList.toggle('text-indigo-700', active);
+                    button.classList.toggle('shadow-sm', active);
+                    button.classList.toggle('font-bold', active);
+                    button.classList.toggle('text-slate-600', !active);
+                    button.classList.toggle('font-semibold', !active);
+                });
+            void loadGlobalIncidentHistory();
+        }
+
+        function globalHistoryPriorityLabel(priority) {
+            const labels = {
+                urgent: i18n[currentLang].history_urgent,
+                normal: i18n[currentLang].history_normal,
+                low: i18n[currentLang].history_low
+            };
+            return labels[priority] || labels.normal;
+        }
+
+        function getGlobalHistoryPriorityClasses(priority) {
+            if (priority === 'urgent') return 'border-rose-200 bg-rose-50 text-rose-700';
+            if (priority === 'low') return 'border-slate-200 bg-slate-100 text-slate-600';
+            return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+        }
+
+        async function loadGlobalIncidentHistory() {
+            const list = document.getElementById('history-records-list');
+            const count = document.getElementById('history-results-count');
+            const propertyFilter = document.getElementById('history-property-filter');
+            const dateFilter = document.getElementById('history-date-filter');
+            const sortFilter = document.getElementById('history-sort');
+            if (!list || !count || !propertyFilter || !dateFilter || !sortFilter) return;
+
+            const requestId = ++globalIncidentHistoryRequestId;
+            globalHistoryPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+            globalHistoryPreviewUrls = [];
+            count.textContent = '';
+            list.innerHTML = `<p class="col-span-full text-xs text-slate-400">${i18n[currentLang].history_loading}</p>`;
+
+            try {
+                if (!allPropertiesCache.length && navigator.onLine) {
+                    const { data: properties, error: propertyError } = await supabaseClient
+                        .from('properties')
+                        .select('id, name')
+                        .order('name');
+                    if (propertyError) throw propertyError;
+                    allPropertiesCache = properties || [];
+                }
+                const selectedProperty = propertyFilter.value;
+                propertyFilter.replaceChildren(
+                    new Option(i18n[currentLang].history_all_properties, 'all'),
+                    ...allPropertiesCache.map(property => new Option(property.name || 'Alojamento', String(property.id)))
+                );
+                propertyFilter.value = allPropertiesCache.some(property => String(property.id) === selectedProperty)
+                    ? selectedProperty
+                    : 'all';
+
+                const pending = (await listPendingOfflineItems()).filter(item =>
+                    item.type === 'incident' && item.userId === currentUser?.id
+                );
+                let incidents = [];
+                if (navigator.onLine) {
+                    const pageSize = 500;
+                    for (let offset = 0; ; offset += pageSize) {
+                        let query = supabaseClient
+                            .from('property_incidents')
+                            .select('id, property_id, type, priority, description, photos, photo_url, created_at, status, properties!property_incidents_property_id_fkey!inner(name)')
+                            .order('created_at', { ascending: sortFilter.value !== 'asc' })
+                            .range(offset, offset + pageSize - 1);
+                        if (globalIncidentPriorityFilter === 'urgent') query = query.eq('priority', 'urgent');
+                        if (propertyFilter.value !== 'all') query = query.eq('property_id', propertyFilter.value);
+                        if (dateFilter.value) {
+                            const startDate = new Date(`${dateFilter.value}T00:00:00`);
+                            const endDate = new Date(startDate);
+                            endDate.setDate(endDate.getDate() + 1);
+                            query = query
+                                .gte('created_at', startDate.toISOString())
+                                .lt('created_at', endDate.toISOString());
+                        }
+                        const { data, error } = await query;
+                        if (error) throw error;
+                        if (requestId !== globalIncidentHistoryRequestId) return;
+                        const page = data || [];
+                        incidents.push(...page);
+                        if (page.length < pageSize) break;
+                    }
+                }
+
+                const existingIds = new Set(incidents.map(item => String(item.id)));
+                const queuedPreviewUrls = [];
+                const queuedIncidents = pending
+                    .filter(item => !existingIds.has(String(item.incidentId)))
+                    .map(item => {
+                        const photos = (item.files || (item.file ? [{ file: item.file }] : []))
+                            .filter(photo => photo.file)
+                            .map(photo => {
+                                const url = URL.createObjectURL(photo.file);
+                                queuedPreviewUrls.push(url);
+                                return url;
+                            });
+                        return {
+                            id: item.incidentId,
+                            property_id: item.propertyId,
+                            type: item.incidentType,
+                            priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
+                            description: item.description,
+                            photos,
+                            created_at: item.createdAtISO,
+                            status: 'pending',
+                            queued: true,
+                            properties: {
+                                name: allPropertiesCache.find(property =>
+                                    String(property.id) === String(item.propertyId)
+                                )?.name || 'Alojamento'
+                            }
+                        };
+                    })
+                    .filter(item => {
+                        if (globalIncidentPriorityFilter === 'urgent' && item.priority !== 'urgent') return false;
+                        if (propertyFilter.value !== 'all' && String(item.property_id) !== propertyFilter.value) return false;
+                        if (dateFilter.value
+                            && (!item.created_at || getLocalDateString(new Date(item.created_at)) !== dateFilter.value)) return false;
+                        return true;
+                    });
+                incidents = [...incidents, ...queuedIncidents]
+                    .sort((left, right) => {
+                        const difference = new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+                        return sortFilter.value === 'asc' ? difference : -difference;
+                    });
+
+                if (requestId !== globalIncidentHistoryRequestId) {
+                    queuedPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+                    return;
+                }
+                globalHistoryPreviewUrls = queuedPreviewUrls;
+
+                const resultCount = i18n[currentLang].history_results_count.replace('{count}', String(incidents.length));
+                count.textContent = navigator.onLine
+                    ? resultCount
+                    : `${i18n[currentLang].history_offline} ${resultCount}`;
+                if (!incidents.length) {
+                    list.innerHTML = `<p class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-xs text-slate-500">${i18n[currentLang].history_empty}</p>`;
+                    return;
+                }
+
+                list.innerHTML = incidents.map(incident => {
+                    const priority = ['urgent', 'normal', 'low'].includes(incident.priority)
+                        ? incident.priority
+                        : 'normal';
+                    const createdAt = incident.created_at && !Number.isNaN(new Date(incident.created_at).getTime())
+                        ? new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')
+                        : '';
+                    const photos = Array.isArray(incident.photos)
+                        ? incident.photos.map(safeIncidentPhotoUrl).filter(Boolean)
+                        : incident.photo_url ? [safeIncidentPhotoUrl(incident.photo_url)].filter(Boolean) : [];
+                    const propertyName = incident.properties?.name
+                        || allPropertiesCache.find(property => String(property.id) === String(incident.property_id))?.name
+                        || 'Alojamento';
+                    return `
+                        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+                            <header class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                                <div class="min-w-0">
+                                    <h3 class="truncate text-xs font-extrabold text-slate-900">${escapePropertyHTML(propertyName)}</h3>
+                                    <time class="mt-1 block text-[10px] font-medium text-slate-500">${escapePropertyHTML(createdAt)}</time>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${getGlobalHistoryPriorityClasses(priority)}">${globalHistoryPriorityLabel(priority)}</span>
+                                    <span class="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold text-slate-700">${getIncidentTypeLabel(incident.type)}</span>
+                                </div>
+                            </header>
+                            <div class="space-y-3 p-4">
+                                <p class="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">${escapePropertyHTML(incident.description)}</p>
+                                ${incident.queued || incident.status === 'resolved' ? `<p class="text-[10px] text-slate-500">${incident.queued ? `<span class="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800">${i18n[currentLang].history_pending_sync}</span>` : `<span class="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">${i18n[currentLang].history_resolved}</span>`}</p>` : ''}
+                                ${photos.length ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-4">${photos.map(photoUrl => `<a href="${escapePropertyHTML(photoUrl)}" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src="${escapePropertyHTML(photoUrl)}" alt="" loading="lazy" class="h-full w-full object-cover transition hover:scale-105"></a>`).join('')}</div>` : ''}
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+            } catch (error) {
+                if (requestId !== globalIncidentHistoryRequestId) return;
+                console.error('Erro ao carregar histórico global de incidentes:', error);
+                list.innerHTML = `
+                    <div class="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
+                        <p class="text-xs font-semibold text-rose-700">${i18n[currentLang].history_error}: ${escapePropertyHTML(error.message)}</p>
+                        <button type="button" onclick="loadGlobalIncidentHistory()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].history_refresh}</button>
+                    </div>
+                `;
+            }
         }
 
         async function carregarAlertasIncidentes() {
@@ -5346,6 +5597,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     delete details.dataset.loaded;
                     void loadPropertyIncidentHistory(details);
                 });
+                if (!document.getElementById('view-history').classList.contains('hidden')) {
+                    void loadGlobalIncidentHistory();
+                }
                 void resumePendingSync();
             });
             window.addEventListener('offline', () => {
