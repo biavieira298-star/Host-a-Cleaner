@@ -329,10 +329,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_error: "Não foi possível enviar o documento",
                 hosting_no_property: "Sem imóvel associado",
                 hosting_airbnb_import_success: "Documento enviado. Ganhos Airbnb importados: {count}; duplicados ignorados: {duplicates}.",
-                hosting_airbnb_import_none: "Documento enviado, mas não foram encontrados ganhos Airbnb associados a imóveis registados.",
+                hosting_airbnb_import_none: "Documento enviado, mas não foram encontrados imóveis correspondentes no relatório. Selecione o imóvel no menu dropdown antes de fazer upload.",
                 hosting_airbnb_import_error: "Documento enviado, mas não foi possível importar os ganhos Airbnb",
                 hosting_booking_import_success: "Documento enviado. Ganhos Booking.com consolidados: {count}; duplicados ignorados: {duplicates}.",
-                hosting_booking_import_none: "Documento enviado, mas não foram encontrados ganhos Booking.com associados a imóveis registados.",
+                hosting_booking_import_none: "Documento enviado, mas não foram encontrados imóveis correspondentes no relatório. Selecione o imóvel no menu dropdown antes de fazer upload.",
                 hosting_booking_import_error: "Documento enviado, mas não foi possível importar os ganhos Booking.com",
                 financial_entries_loading: "A carregar lançamentos...",
                 financial_entries_empty: "Ainda não existem lançamentos.",
@@ -656,10 +656,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_error: "Could not upload the document",
                 hosting_no_property: "No property linked",
                 hosting_airbnb_import_success: "Document uploaded. Airbnb earnings imported: {count}; duplicates skipped: {duplicates}.",
-                hosting_airbnb_import_none: "Document uploaded, but no Airbnb earnings matched registered properties.",
+                hosting_airbnb_import_none: "Document uploaded, but no matching properties were found in the report. Select the property in the dropdown before uploading.",
                 hosting_airbnb_import_error: "Document uploaded, but Airbnb earnings could not be imported",
                 hosting_booking_import_success: "Document uploaded. Booking.com earnings consolidated: {count}; duplicates skipped: {duplicates}.",
-                hosting_booking_import_none: "Document uploaded, but no Booking.com earnings matched registered properties.",
+                hosting_booking_import_none: "Document uploaded, but no matching properties were found in the report. Select the property in the dropdown before uploading.",
                 hosting_booking_import_error: "Document uploaded, but Booking.com earnings could not be imported",
                 financial_entries_loading: "Loading entries...",
                 financial_entries_empty: "No entries have been recorded yet.",
@@ -5274,10 +5274,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         function normalizeAirbnbText(value) {
             return String(value || '')
+                .trim()
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
                 .trim();
         }
 
@@ -5285,13 +5287,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const normalizedText = normalizeAirbnbText(text);
             const normalizedName = normalizeAirbnbText(propertyName);
             if (!normalizedText || !normalizedName) return 0;
-            if (` ${normalizedText} `.includes(` ${normalizedName} `)) {
+            if (normalizedText.includes(normalizedName) || normalizedName.includes(normalizedText)) {
                 return 2 + normalizedName.length / 1000;
             }
 
             const ignoredWords = new Set(['a', 'an', 'and', 'da', 'das', 'de', 'do', 'dos', 'e', 'of', 'the']);
-            const nameTokens = normalizedName.split(' ').filter(token => !ignoredWords.has(token));
-            const textTokens = normalizedText.split(' ');
+            const nameTokens = normalizedName.split(' ').filter(token => token && !ignoredWords.has(token));
+            const textTokens = normalizedText.split(' ').filter(token => token);
             if (!nameTokens.length || !textTokens.length) return 0;
 
             let matchedTokens = 0;
@@ -5441,13 +5443,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return { matched: earnings.length, inserted: newEntries.length, duplicates };
         }
 
-        async function processAirbnbPDF(file, properties) {
+        async function processAirbnbPDF(file, properties, forcedPropertyId = null) {
             const text = await extractTextFromPDF(file);
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const selectedProperty = forcedPropertyId ? (properties || []).find(property => String(property?.id) === String(forcedPropertyId)) : null;
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
-            const propertyRows = collectPropertyRows(lines, validProperties);
+            const propertyRows = selectedProperty
+                ? [{ index: 0, property: selectedProperty }]
+                : collectPropertyRows(lines, validProperties);
 
             const earnings = [];
             for (let rowIndex = 0; rowIndex < propertyRows.length; rowIndex += 1) {
@@ -5500,13 +5505,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return persistPlatformEarnings('Airbnb', earnings);
         }
 
-        async function processBookingPDF(file, properties) {
+        async function processBookingPDF(file, properties, forcedPropertyId = null) {
             const text = await extractTextFromPDF(file);
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const selectedProperty = forcedPropertyId ? (properties || []).find(property => String(property?.id) === String(forcedPropertyId)) : null;
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
-            const propertyRows = collectPropertyRows(lines, validProperties);
+            const propertyRows = selectedProperty
+                ? [{ index: 0, property: selectedProperty }]
+                : collectPropertyRows(lines, validProperties);
 
             const totalsByProperty = new Map();
             const transactionPattern = /\b(?:reservation|booking|confirmation|payment|payout|paid|net(?:\s+amount)?|gross|total|amount|valor|montante|reserva|pagamento|liquido|liquida)\b/i;
@@ -5647,9 +5655,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             .eq('user_id', user.id);
                         if (propertiesError) throw propertiesError;
                         if (normalizedPlatformName === 'airbnb') {
-                            platformImportResult = await processAirbnbPDF(file, properties || []);
+                            platformImportResult = await processAirbnbPDF(file, properties || [], propertyId);
                         } else {
-                            platformImportResult = await processBookingPDF(file, properties || []);
+                            platformImportResult = await processBookingPDF(file, properties || [], propertyId);
                         }
                     } catch (error) {
                         platformImportError = error;
