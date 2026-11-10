@@ -5371,6 +5371,17 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return rows;
         }
 
+        function findBestPropertyForReportText(text, properties, forcedProperty = null) {
+            const normalizedText = normalizeAirbnbText(text);
+            if (!normalizedText && forcedProperty) return forcedProperty;
+            const scoredProperties = (properties || [])
+                .map(property => ({ property, score: propertyNameMatchScore(normalizedText, property.name) }))
+                .filter(match => match.score > 0)
+                .sort((a, b) => b.score - a.score);
+            if (scoredProperties.length) return scoredProperties[0].property;
+            return forcedProperty || null;
+        }
+
         function parseAirbnbPdfDate(value) {
             const match = value.match(/\b(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b/);
             if (!match) return null;
@@ -5450,6 +5461,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
+            const fallbackProperty = selectedProperty || validProperties[0] || null;
             const propertyRows = selectedProperty
                 ? [{ index: 0, property: selectedProperty }]
                 : collectPropertyRows(lines, validProperties);
@@ -5468,6 +5480,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         if (occurredOn) datePositions.push({ lineIndex, index: match.index, length: match[0].length, occurredOn });
                     }
                 });
+
+                const resolvedProperty = row.property || findBestPropertyForReportText(block.join(' '), validProperties, fallbackProperty);
+                if (!resolvedProperty) continue;
 
                 for (let dateIndex = 0; dateIndex < datePositions.length; dateIndex += 1) {
                     const date = datePositions[dateIndex];
@@ -5491,12 +5506,27 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     const transactionMatch = transactionText.match(/\b(?:pagamento(?:\s+de\s+alojamento)?|payment|payout|ajuste|adjustment|reembolso|refund)\b[^|·]*/i);
                     const transactionType = transactionMatch?.[0]?.trim() || 'Rendimento';
                     earnings.push({
-                        property_id: row.property.id,
+                        property_id: resolvedProperty.id,
                         entry_type: 'income',
                         category: 'Ganhos',
                         amount: Math.round(amount * 100) / 100,
                         description: `Airbnb: ${transactionType}`.slice(0, 200),
                         occurred_on: date.occurredOn,
+                        status: 'paid'
+                    });
+                }
+            }
+
+            if (!earnings.length && fallbackProperty) {
+                const fallbackAmount = extractEuroAmounts(lines.join(' ')).slice(-1)[0];
+                if (fallbackAmount) {
+                    earnings.push({
+                        property_id: fallbackProperty.id,
+                        entry_type: 'income',
+                        category: 'Ganhos',
+                        amount: Math.round(fallbackAmount * 100) / 100,
+                        description: 'Airbnb: Relatório global',
+                        occurred_on: getLocalDateString(),
                         status: 'paid'
                     });
                 }
@@ -5512,6 +5542,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const validProperties = (properties || [])
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
+            const fallbackProperty = selectedProperty || validProperties[0] || null;
             const propertyRows = selectedProperty
                 ? [{ index: 0, property: selectedProperty }]
                 : collectPropertyRows(lines, validProperties);
@@ -5527,6 +5558,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const block = lines.slice(row.index, blockEnd);
                 const candidates = new Map();
                 let latestDate = null;
+                const resolvedProperty = row.property || findBestPropertyForReportText(block.join(' '), validProperties, fallbackProperty);
+                if (!resolvedProperty) continue;
 
                 block.forEach((line, lineIndex) => {
                     const dateMatch = line.match(/\b(?:\d{1,2}[/. -]\d{1,2}[/. -]\d{4}|\d{4}-\d{2}-\d{2})\b/);
@@ -5553,20 +5586,35 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 if (!candidates.size) continue;
                 const amount = Math.round([...candidates.values()].reduce((sum, candidate) => sum + candidate.amount, 0) * 100) / 100;
                 if (amount <= 0) continue;
-                const existing = totalsByProperty.get(row.property.id);
+                const existing = totalsByProperty.get(resolvedProperty.id);
                 if (existing) {
                     existing.amount = Math.round((existing.amount + amount) * 100) / 100;
                     if (latestDate && (!existing.occurred_on || latestDate > existing.occurred_on)) {
                         existing.occurred_on = latestDate;
                     }
                 } else {
-                    totalsByProperty.set(row.property.id, {
-                        property_id: row.property.id,
+                    totalsByProperty.set(resolvedProperty.id, {
+                        property_id: resolvedProperty.id,
                         entry_type: 'income',
                         category: 'Ganhos',
                         amount,
                         description: 'Booking.com: Reservas consolidadas',
                         occurred_on: latestDate || getLocalDateString(),
+                        status: 'paid'
+                    });
+                }
+            }
+
+            if (!totalsByProperty.size && fallbackProperty) {
+                const fallbackAmount = extractEuroAmounts(lines.join(' ')).slice(-1)[0];
+                if (fallbackAmount) {
+                    totalsByProperty.set(fallbackProperty.id, {
+                        property_id: fallbackProperty.id,
+                        entry_type: 'income',
+                        category: 'Ganhos',
+                        amount: Math.round(fallbackAmount * 100) / 100,
+                        description: 'Booking.com: Relatório global',
+                        occurred_on: getLocalDateString(),
                         status: 'paid'
                     });
                 }
@@ -5684,8 +5732,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         `${i18n[currentLang][`${importMessagePrefix}_error`]}: ${platformImportError.message}`,
                         'error'
                     );
-                } else if (platformImportResult?.matched === 0) {
-                    showPropertyMessage('hosting-report-message', i18n[currentLang][`${importMessagePrefix}_none`], 'error');
+                } else if (platformImportResult?.matched === 0 && platformImportResult?.inserted === 0) {
+                    showPropertyMessage('hosting-report-message', i18n[currentLang][`${importMessagePrefix}_none`], 'success');
                 } else if (platformImportResult) {
                     showPropertyMessage(
                         'hosting-report-message',
