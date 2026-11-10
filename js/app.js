@@ -1505,8 +1505,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 alert(i18n[currentLang].role_locked);
                 return;
             }
+            if (subtabId === 'sub-employee-hours' && userRole !== 'admin') {
+                alert(i18n[currentLang].role_locked);
+                return;
+            }
 
-            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries'].includes(subtabId)) {
+            if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-employee-hours'].includes(subtabId)) {
                 alert(i18n[currentLang].role_locked);
                 return;
             }
@@ -1524,7 +1528,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             localStorage.setItem('host_cleaner_active_tab', subtabId);
 
-            const tabs = ['sub-agenda', 'history', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-team-management', 'sub-time-entries', 'sub-profile-settings'];
+            const tabs = ['sub-agenda', 'history', 'sub-properties-list', 'sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-employee-hours', 'sub-team-management', 'sub-time-entries', 'sub-profile-settings'];
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) el.classList.toggle('hidden', t !== subtabId);
@@ -1589,6 +1593,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     applyOperationalPreferencesToInviteForm();
                 }));
             }
+            if (subtabId === 'sub-employee-hours') viewRenderTasks.push(renderEmployeeHoursView());
             if (subtabId === 'sub-time-entries') viewRenderTasks.push(carregarRegistosHoras());
             if (subtabId === 'sub-profile-settings') {
                 switchProfileTab(profileSettingsTab);
@@ -4190,6 +4195,165 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 style: 'currency',
                 currency: 'EUR'
             }).format(amount);
+        }
+
+        function formatEmployeeHoursHours(value) {
+            const numericValue = Number(value) || 0;
+            if (!Number.isFinite(numericValue)) return '0h';
+            const roundedValue = Math.round((numericValue + Number.EPSILON) * 10) / 10;
+            return `${roundedValue.toFixed(roundedValue % 1 === 0 ? 0 : 1)}h`;
+        }
+
+        function renderEmployeeHoursView() {
+            const summaryContainer = document.getElementById('employee-hours-summary');
+            const gridContainer = document.getElementById('employee-hours-grid');
+            if (!summaryContainer || !gridContainer) return;
+
+            const currentMonth = new Date();
+            const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+            const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+            const monthFormatter = new Intl.DateTimeFormat(currentLang === 'en' ? 'en-US' : 'pt-PT', {
+                month: 'long',
+                year: 'numeric'
+            });
+
+            const memberMap = new Map();
+            const completedTasks = (allTasksCache || []).filter(task => {
+                const taskDateString = task.scheduled_date || task.completed_at || task.created_at;
+                if (!taskDateString || !task.assigned_team_member_id || !isTaskCompleted(task)) return false;
+                const taskDate = new Date(taskDateString);
+                if (Number.isNaN(taskDate.getTime())) return false;
+                return taskDate >= monthStart && taskDate <= monthEnd;
+            });
+
+            completedTasks.forEach(task => {
+                const memberId = String(task.assigned_team_member_id);
+                const memberMeta = allTeamMembersCache.find(member => String(member.id) === memberId)
+                    || propertyCleaners.find(member => String(member.id) === memberId)
+                    || { id: memberId, name: 'Funcionário sem nome', email: '' };
+                const hours = Number(task.hours_spent ?? (task.total_duration_minutes ? task.total_duration_minutes / 60 : 0)) || 0;
+                const propertyName = task.properties?.name
+                    || allPropertiesCache.find(property => String(property.id) === String(task.property_id))?.name
+                    || 'Imóvel';
+
+                if (!memberMap.has(memberId)) {
+                    memberMap.set(memberId, {
+                        id: memberId,
+                        name: memberMeta.name || memberMeta.email || 'Funcionário sem nome',
+                        totalHours: 0,
+                        totalCleanings: 0,
+                        tasks: []
+                    });
+                }
+
+                const member = memberMap.get(memberId);
+                member.totalHours += hours;
+                member.totalCleanings += 1;
+                member.tasks.push({
+                    propertyName,
+                    hours,
+                    scheduledDate: task.scheduled_date || task.completed_at || task.created_at || new Date().toISOString(),
+                    status: task.status
+                });
+            });
+
+            const members = [...memberMap.values()].sort((a, b) => b.totalHours - a.totalHours || b.totalCleanings - a.totalCleanings);
+            const totalTeamHours = members.reduce((sum, member) => sum + (Number(member.totalHours) || 0), 0);
+            const totalTeamCleanings = members.reduce((sum, member) => sum + (Number(member.totalCleanings) || 0), 0);
+            const monthLabel = monthFormatter.format(currentMonth);
+
+            summaryContainer.innerHTML = `
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">${currentLang === 'en' ? 'Current month' : 'Mês atual'}</p>
+                        <h3 class="mt-1 text-lg font-extrabold text-slate-900">${monthLabel}</h3>
+                    </div>
+                    <div class="rounded-2xl bg-indigo-600 px-4 py-3 text-left text-white shadow-md xl:text-right">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-100">${currentLang === 'en' ? 'Team total' : 'Total da equipa'}</p>
+                        <p class="mt-1 text-2xl font-black">${formatEmployeeHoursHours(totalTeamHours)}</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Employees' : 'Funcionários'}</p>
+                        <p class="mt-1 text-xl font-black text-slate-900">${members.length}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Cleanings' : 'Limpezas'}</p>
+                        <p class="mt-1 text-xl font-black text-slate-900">${totalTeamCleanings}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Average' : 'Média'}</p>
+                        <p class="mt-1 text-xl font-black text-slate-900">${members.length ? formatEmployeeHoursHours(totalTeamHours / members.length) : '0h'}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Completed' : 'Concluídas'}</p>
+                        <p class="mt-1 text-xl font-black text-slate-900">${completedTasks.length}</p>
+                    </div>
+                </div>
+            `;
+
+            if (!members.length) {
+                gridContainer.innerHTML = `
+                    <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                        <p class="text-xs font-semibold text-slate-500">${currentLang === 'en' ? 'No completed cleanings were recorded for this month yet.' : 'Ainda não existem limpezas concluídas neste mês.'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            gridContainer.innerHTML = members.map(member => {
+                const initials = (member.name || 'F')
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(part => part[0].toUpperCase())
+                    .join('') || 'F';
+                const recentTasks = [...member.tasks]
+                    .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
+                    .slice(0, 3);
+                const detailTasks = [...member.tasks]
+                    .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
+
+                return `
+                    <article class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-sm font-black text-indigo-700">${escapePropertyHTML(initials)}</div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">${escapePropertyHTML(member.name)}</h4>
+                                    <p class="text-[11px] text-slate-500">${member.totalCleanings} ${currentLang === 'en' ? 'cleanings' : 'limpezas'}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">${currentLang === 'en' ? 'Hours' : 'Horas'}</p>
+                                <p class="text-xl font-black text-slate-900">${formatEmployeeHoursHours(member.totalHours)}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 space-y-2">
+                            ${recentTasks.map(task => `
+                                <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
+                                    <span class="truncate font-semibold">${escapePropertyHTML(task.propertyName)}</span>
+                                    <span class="shrink-0 font-bold text-slate-800">${formatEmployeeHoursHours(task.hours)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                            <summary class="cursor-pointer list-none text-[11px] font-bold text-indigo-700">${currentLang === 'en' ? 'View full detail' : 'Ver detalhe completo'}</summary>
+                            <div class="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                                ${detailTasks.map(task => `
+                                    <div class="flex items-center justify-between gap-3 text-[11px] text-slate-600">
+                                        <span class="truncate">${escapePropertyHTML(task.propertyName)}</span>
+                                        <span class="font-bold text-slate-800">${formatEmployeeHoursHours(task.hours)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                    </article>
+                `;
+            }).join('');
         }
 
         async function carregarRegistosHoras() {
