@@ -5432,7 +5432,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const newEntries = [];
             let duplicates = 0;
             earnings.forEach(earning => {
-                const key = `${earning.property_id}|${earning.occurred_on}|${earning.description}|${earning.amount.toFixed(2)}`;
+                const key = `${earning.property_id}|${earning.occurred_on}|${earning.description}|${Number(earning.amount).toFixed(2)}`;
                 if (existingKeys.has(key)) {
                     duplicates += 1;
                     return;
@@ -5441,7 +5441,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 newEntries.push({
                     ...earning,
                     user_id: currentUser.id,
-                    entry_date: earning.occurred_on
+                    entry_date: earning.occurred_on,
+                    occurred_on: earning.occurred_on,
+                    status: 'paid'
                 });
             });
 
