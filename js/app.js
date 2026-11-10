@@ -56,6 +56,33 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${year}-${month}-${day}`;
         }
 
+        function normalizeTaskStatus(status) {
+            return String(status ?? '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-zA-Z0-9]+/g, '')
+                .trim()
+                .toLowerCase();
+        }
+
+        function isTaskStatus(taskOrStatus, expectedStatuses) {
+            const status = typeof taskOrStatus === 'string' ? taskOrStatus : taskOrStatus?.status;
+            const normalizedStatus = normalizeTaskStatus(status);
+            return expectedStatuses.some(expected => normalizedStatus === normalizeTaskStatus(expected));
+        }
+
+        function isTaskCompleted(taskOrStatus) {
+            return isTaskStatus(taskOrStatus, ['completed', 'concluida', 'concluido']);
+        }
+
+        function isTaskPending(taskOrStatus) {
+            return isTaskStatus(taskOrStatus, ['pending', 'pendente']);
+        }
+
+        function isTaskInProgress(taskOrStatus) {
+            return isTaskStatus(taskOrStatus, ['in_progress', 'inprogress', 'emandamento', 'emcurso']);
+        }
+
         let selectedDate = getLocalDateString();
         let selectedPropertyFilter = 'all';
         let editingPropertyId = null;
@@ -2280,7 +2307,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                                 <button type="button" data-property-task-id="${escapePropertyHTML(task.id)}" class="property-task-button flex w-full items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-left transition hover:bg-indigo-50">
                                     <span class="min-w-0">
                                         <span class="block truncate text-[11px] font-semibold text-slate-800">${escapePropertyHTML(task.scheduled_date || '')}</span>
-                                        <span class="block truncate text-[10px] text-slate-500">${task.status === 'completed' ? 'Concluída' : task.status === 'in_progress' ? 'Em curso' : 'Pendente'}${task.cleaner_notes ? ` · ${escapePropertyHTML(task.cleaner_notes)}` : ''}</span>
+                                        <span class="block truncate text-[10px] text-slate-500">${isTaskCompleted(task) ? 'Concluída' : isTaskInProgress(task) ? 'Em curso' : 'Pendente'}${task.cleaner_notes ? ` · ${escapePropertyHTML(task.cleaner_notes)}` : ''}</span>
                                     </span>
                                     ${task.is_priority ? `<span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-800">⚑ ${i18n[currentLang].property_priority_badge}</span>` : ''}
                                 </button>
@@ -2573,9 +2600,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             );
             document.getElementById('agenda-today-total').innerText = String(todayTasks.length);
             document.getElementById('agenda-today-completed').innerText =
-                String(todayTasks.filter(task => task.status === 'completed').length);
+                String(todayTasks.filter(task => isTaskCompleted(task)).length);
             document.getElementById('agenda-today-pending').innerText =
-                String(todayTasks.filter(task => task.status === 'pending').length);
+                String(todayTasks.filter(task => isTaskPending(task)).length);
         }
 
         function setUrgentIncidentBadge(count) {
@@ -3037,8 +3064,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         </div>
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
-                        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in_progress' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}">
-                            ${task.status === 'completed' ? '🟢 Concluída' : task.status === 'in_progress' ? '🔄 Em Andamento' : '⏳ Pendente'}
+                        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${isTaskCompleted(task) ? 'bg-emerald-100 text-emerald-800' : isTaskInProgress(task) ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}">
+                            ${isTaskCompleted(task) ? '🟢 Concluída' : isTaskInProgress(task) ? '🔄 Em Andamento' : '⏳ Pendente'}
                         </span>
                     </div>
                 </div>
@@ -3119,8 +3146,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             <span class="text-[10px] text-slate-500">📍 ${task.properties?.address || '---'}</span>
                             ${task.cleaner_notes ? `<span class="text-[10px] text-slate-600 block mt-1">📝 ${task.cleaner_notes}</span>` : ''}
                         </div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">
-                            ${task.status === 'completed' ? '🟢 Concluída' : '⏳ Pendente'}
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isTaskCompleted(task) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">
+                            ${isTaskCompleted(task) ? '🟢 Concluída' : '⏳ Pendente'}
                         </span>
                     </div>
                 `).join('');
@@ -3310,9 +3337,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label class="block font-bold text-slate-700">Estado da Tarefa</label>
                         <select id="modal-status-${task.id}" ${userRole !== 'admin' ? 'disabled' : ''} class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs disabled:bg-slate-100 disabled:text-slate-500">
-                            <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>⏳ Pendente</option>
-                            <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>🔄 Em Andamento</option>
-                            <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>🟢 Concluída</option>
+                            <option value="pending" ${isTaskPending(task) ? 'selected' : ''}>⏳ Pendente</option>
+                            <option value="in_progress" ${isTaskInProgress(task) ? 'selected' : ''}>🔄 Em Andamento</option>
+                            <option value="completed" ${isTaskCompleted(task) ? 'selected' : ''}>🟢 Concluída</option>
                         </select>
                     </div>
 
@@ -3346,13 +3373,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 && String(task.assigned_team_member_id) === String(currentTeamMemberId);
             if (!isAssignedCleaner) return '';
 
-            if (task.status === 'completed') {
+            if (isTaskCompleted(task)) {
                 return task.total_duration_minutes
                     ? `<p class="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">${i18n[currentLang].time_duration_total}: ${formatTaskDuration(task.total_duration_minutes)}</p>`
                     : '';
             }
 
-            if (task.status === 'in_progress' && task.started_at) {
+            if (isTaskInProgress(task) && task.started_at) {
                 return `
                     <div class="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
                         <p class="text-[11px] font-semibold text-indigo-800">${i18n[currentLang].time_started_at}: ${new Date(task.started_at).toLocaleTimeString(currentLang === 'pt' ? 'pt-PT' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
@@ -3405,7 +3432,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (!task || activeOfflineTaskOperations.has(operationKey)) return;
             activeOfflineTaskOperations.add(operationKey);
             try {
-                if (task.started_at && task.status === 'in_progress') {
+                if (task.started_at && isTaskInProgress(task)) {
                     throw new Error('Esta limpeza já foi iniciada.');
                 }
                 const pending = await listPendingOfflineItems();
@@ -4046,14 +4073,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 alert(i18n[currentLang].task_hours_invalid);
                 return;
             }
-            if (status === 'completed' && task.status !== 'completed' && assignedMember?.track_hours && hours_spent === null) {
+            if (normalizeTaskStatus(status) === 'completed' && !isTaskCompleted(task) && assignedMember?.track_hours && hours_spent === null) {
                 alert(i18n[currentLang].task_hours_invalid);
                 return;
             }
+
             const taskUpdates = { cleaner_notes };
             taskUpdates.assigned_team_member_id = assignedTeamMemberId;
             if (hours_spent !== null) taskUpdates.hours_spent = hours_spent;
-
             try {
                 const { error: detailsError } = await supabaseClient
                     .from('cleaning_tasks')
@@ -4061,7 +4088,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     .eq('id', taskId);
                 if (detailsError) throw detailsError;
 
-                if (status === 'completed' && task.status !== 'completed') {
+                if (normalizeTaskStatus(status) === 'completed' && !isTaskCompleted(task)) {
                     let startedAt = task.started_at;
                     if (!startedAt) {
                         const requestedStart = new Date().toISOString();
@@ -4106,7 +4133,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const totalAmountBadge = document.getElementById('total-amount-badge');
             if (!historyListEl || !currentUser) return;
 
-            const completedTasks = allTasksCache.filter(t => t.status === 'completed');
+            const completedTasks = allTasksCache.filter(t => isTaskCompleted(t));
 
             if (completedTasks.length === 0) {
                 historyListEl.innerHTML = `<p class="text-slate-400 text-xs">Sem limpezas concluídas.</p>`;
