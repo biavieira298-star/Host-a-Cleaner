@@ -29,19 +29,25 @@ function makeClassList(initial = []) {
 }
 
 function roleContext(profile, member = null, profileError = null, metadata = {}) {
+    const calls = [];
+    const logs = [];
     const context = {
         currentUser: { id: 'user', app_metadata: metadata },
-        userRole: 'admin',
+        userRole: null,
+        profileRoleVerified: false,
         financialsAllowed: false,
         currentTeamMemberId: null,
         currentTeamManagerId: null,
         currentTeamMemberPreferences: {},
-        console: { warn() {}, error() {} },
+        console: { log: (...args) => logs.push(args), warn() {}, error() {} },
+        calls,
+        logs,
         supabaseClient: {
             from(table) {
+                calls.push(['from', table]);
                 return {
                     select() { return this; },
-                    eq() { return this; },
+                    eq(column, value) { calls.push(['eq', table, column, value]); return this; },
                     async maybeSingle() {
                         return table === 'profiles'
                             ? { data: profile, error: profileError }
@@ -58,18 +64,124 @@ function roleContext(profile, member = null, profileError = null, metadata = {})
 }
 
 test('profile flag, roles and profile errors determine financial access', async () => {
-    for (const [profile, member, error, metadata, allowed] of [
-        [{ role: 'admin', can_view_financials: false }, null, null, {}, false],
-        [{ role: 'admin', can_view_financials: true }, null, null, {}, true],
-        [{ role: 'admin' }, null, null, {}, true],
-        [{ role: 'cleaner', can_view_financials: true }, null, null, {}, false],
-        [{ role: 'assistant', can_view_financials: true }, null, null, {}, false],
-        [{ role: 'admin' }, { role: 'assistant', id: 'm', manager_id: 'owner' }, null, {}, false],
-        [null, null, { message: 'denied' }, { role: 'admin' }, false]
+    for (const [profile, member, role, allowed] of [
+        [{ role: 'admin', can_view_financials: false }, null, 'admin', false],
+        [{ role: 'admin', can_view_financials: true }, null, 'admin', true],
+        [{ role: 'admin' }, { role: 'assistant', id: 'm', manager_id: 'owner' }, 'admin', true],
+        [{ role: 'cleaner', subscription_plan: 'admin' }, { role: 'cleaner', id: 'm' }, 'admin', true],
+        [{ role: 'cleaner', can_view_financials: true }, null, 'cleaner', false],
+        [{ role: 'assistant', can_view_financials: true }, null, 'cleaner', false]
     ]) {
-        const context = roleContext(profile, member, error, metadata);
+        const context = roleContext(profile, member);
         await context.checkUserRole();
+        assert.equal(context.userRole, role);
         assert.equal(context.canViewFinancials(), allowed);
+        assert.equal(context.profileRoleVerified, true);
+        assert.equal(context.logs[0][1], profile);
+        assert.ok(context.calls.some(call => call[0] === 'eq' && call[1] === 'profiles' && call[2] === 'id' && call[3] === 'user'));
+        if (role === 'admin') assert.equal(context.calls.some(call => call[1] === 'team_members'), false);
+    }
+});
+
+test('missing, inaccessible or unrecognised profiles never fall back to metadata or cleaner', async () => {
+    for (const [profile, error] of [
+        [null, null],
+        [null, { message: 'denied' }],
+        [{ role: null, subscription_plan: 'pro' }, null]
+    ]) {
+        const context = roleContext(profile, null, error, { role: 'admin' });
+        await assert.rejects(context.checkUserRole());
+        assert.equal(context.userRole, null);
+        assert.equal(context.profileRoleVerified, false);
+        assert.equal(context.canViewFinancials(), false);
+    }
+});
+
+test('a cleaner profile still loads its team assignment and preferences', async () => {
+    const context = roleContext({ role: 'cleaner' }, {
+        id: 'member', manager_id: 'owner', track_hours: true, require_photos: true
+    });
+    await context.checkUserRole();
+    assert.equal(context.userRole, 'cleaner');
+    assert.equal(context.currentTeamMemberId, 'member');
+    assert.equal(context.currentTeamManagerId, 'owner');
+    assert.equal(context.currentTeamMemberPreferences.track_hours, true);
+    assert.equal(context.currentTeamMemberPreferences.require_photos, true);
+});
+
+test('administrator profiles immediately unlock the admin sidebar even when a team membership exists', async () => {
+    for (const profile of [{ role: 'admin' }, { role: 'cleaner', subscription_plan: 'admin' }]) {
+        const context = roleContext(profile, { role: 'cleaner', id: 'm', manager_id: 'owner' });
+        const adminElement = { classList: makeClassList(['hidden']) };
+        const cleanerElement = { classList: makeClassList() };
+        const button = {
+            disabled: true, classList: makeClassList(['cursor-not-allowed', 'opacity-70']),
+            setAttribute() {}, querySelector: () => null
+        };
+        const subtitle = {};
+        Object.assign(context, {
+            reportsRequestId: 0, financialChartRequestId: 0, hostingReportsRequestId: 0,
+            currentLang: 'pt', i18n: { pt: { role_locked: 'blocked' } },
+            document: {
+                querySelectorAll: selector => ({
+                    '.admin-only': [adminElement], '.cleaner-only': [cleanerElement],
+                    '[data-admin-route]': [button], '[data-financial-access]': []
+                })[selector] || [],
+                getElementById: id => id === 'sidebar-role-subtitle' ? subtitle : null
+            }
+        });
+        vm.runInContext(extract('function applyRolePermissionsUI()', 'function canViewFinancials()'), context);
+        await context.checkUserRole();
+        context.applyRolePermissionsUI();
+        assert.equal(adminElement.classList.contains('hidden'), false);
+        assert.equal(cleanerElement.classList.contains('hidden'), true);
+        assert.equal(button.disabled, false);
+        assert.equal(subtitle.innerText, 'Admin Hub');
+    }
+});
+
+test('a profile response from a previous login cannot change the current account role', async () => {
+    const context = roleContext(null);
+    let resolveProfile;
+    context.supabaseClient.from = () => ({
+        select() { return this; },
+        eq() { return this; },
+        maybeSingle: () => new Promise(resolve => { resolveProfile = resolve; })
+    });
+    const loading = context.checkUserRole();
+    context.currentUser = { id: 'other-user' };
+    resolveProfile({ data: { role: 'admin' }, error: null });
+    assert.equal(await loading, false);
+    assert.equal(context.userRole, null);
+});
+
+test('initialization reports profile and offline snapshot errors without opening an assumed role', async () => {
+    for (const online of [true, false]) {
+        const messages = [];
+        let opened = false;
+        const context = {
+            currentUser: { id: 'user' },
+            userRole: 'admin', profileRoleVerified: true, financialsAllowed: true,
+            currentTeamMemberId: null, currentTeamManagerId: null, currentTeamMemberPreferences: {},
+            navigator: { onLine: online },
+            isOfflineNetworkError: () => false,
+            checkUserRole: async () => { throw new Error('profile denied'); },
+            restoreOfflineSnapshot: async () => false,
+            showAppLayout: () => { opened = true; },
+            showLoginScreen: () => {},
+            mostrarMensagemAuth: (...args) => messages.push(args),
+            currentLang: 'pt',
+            i18n: { pt: { auth_profile_error: 'Perfil indisponível', auth_offline_profile_missing: 'Ligue-se à Internet' } },
+            console: { warn() {}, error() {} }
+        };
+        vm.createContext(context);
+        vm.runInContext(extract('async function initializeAuthenticatedApp()', 'function isOfflineNetworkError('), context);
+        await context.initializeAuthenticatedApp();
+        assert.equal(opened, false);
+        assert.equal(context.userRole, null);
+        assert.equal(context.profileRoleVerified, false);
+        assert.equal(context.financialsAllowed, false);
+        assert.match(messages[0][0], online ? /profile denied/ : /Ligue-se à Internet/);
     }
 });
 
@@ -150,10 +262,11 @@ test('forced financial routes and aliases return to the agenda without rendering
 });
 
 test('offline snapshots restore the saved restriction and cannot override a freshly loaded permission', async () => {
-    let snapshot = { userRole: 'admin', financialsAllowed: false };
+    let snapshot = { userRole: 'admin', profileRoleVerified: true, financialsAllowed: false };
     const context = {
         currentUser: { id: 'user' },
         userRole: 'admin',
+        profileRoleVerified: false,
         financialsAllowed: true,
         openOfflineDatabase: async () => ({
             transaction: () => ({
@@ -185,15 +298,21 @@ test('offline snapshots restore the saved restriction and cannot override a fres
     vm.runInContext(extract('async function restoreOfflineSnapshot(', 'async function listPendingOfflineItems('), context);
     await context.restoreOfflineSnapshot();
     assert.equal(context.financialsAllowed, false);
-    snapshot = { userRole: 'admin', financialsAllowed: true };
+    snapshot = { userRole: 'admin', profileRoleVerified: true, financialsAllowed: true };
     context.userRole = 'cleaner';
+    context.currentTeamManagerId = 'fresh-manager';
     await context.restoreOfflineSnapshot(false);
     assert.equal(context.userRole, 'cleaner');
     assert.equal(context.financialsAllowed, false);
-    snapshot = { userRole: 'admin' };
+    assert.equal(context.currentTeamManagerId, 'fresh-manager');
+    snapshot = { userRole: 'admin', profileRoleVerified: true };
     context.financialsAllowed = true;
     await context.restoreOfflineSnapshot();
     assert.equal(context.financialsAllowed, false);
+    snapshot = { userRole: 'cleaner', financialsAllowed: true };
+    context.userRole = null;
+    assert.equal(await context.restoreOfflineSnapshot(), false);
+    assert.equal(context.userRole, null);
 });
 
 test('financial date queries are blocked without permission', async () => {
