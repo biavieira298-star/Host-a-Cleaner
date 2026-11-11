@@ -6,7 +6,8 @@ if ('serviceWorker' in navigator) {
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let userRole = 'admin';
+        let userRole = null;
+        let profileRoleVerified = false;
         let financialsAllowed = false;
         let currentTeamMemberPreferences = { track_hours: false, require_photos: false };
         let operationalPreferences = { track_hours: false, require_photos: false };
@@ -173,10 +174,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 settings_load_error: "Não foi possível carregar as preferências",
                 settings_theme_saved: "Tema guardado.",
                 settings_subscription_heading: "Plano de Subscrição",
+                auth_profile_error: "Não foi possível carregar o perfil da conta",
+                auth_offline_profile_missing: "O perfil ainda não foi verificado neste dispositivo. Ligue-se à Internet e tente novamente.",
                 subscription_loading: "A carregar o plano...",
                 subscription_load_error: "Não foi possível carregar o plano. Volte a abrir este separador para tentar novamente.",
                 subscription_current: "Plano Atual",
                 subscription_free: "Gratuito",
+                subscription_admin: "Administrador",
                 subscription_subscribe: "Subscrever",
                 subscription_status_label: "Estado",
                 subscription_no_status: "Sem subscrição Stripe",
@@ -518,10 +522,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 settings_load_error: "Could not load preferences",
                 settings_theme_saved: "Theme saved.",
                 settings_subscription_heading: "Subscription Plan",
+                auth_profile_error: "Could not load the account profile",
+                auth_offline_profile_missing: "The profile has not been verified on this device. Connect to the Internet and try again.",
                 subscription_loading: "Loading plan...",
                 subscription_load_error: "Could not load the plan. Reopen this tab to retry.",
                 subscription_current: "Current Plan",
                 subscription_free: "Free",
+                subscription_admin: "Administrator",
                 subscription_subscribe: "Subscribe to",
                 subscription_status_label: "Status",
                 subscription_no_status: "No Stripe subscription",
@@ -896,7 +903,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (currentUser) {
                     await initializeAuthenticatedApp();
                 } else {
+                    userRole = null;
+                    profileRoleVerified = false;
                     financialsAllowed = false;
+                    currentTeamMemberId = null;
+                    currentTeamManagerId = null;
+                    currentTeamMemberPreferences = { track_hours: false, require_photos: false };
                     showLoginScreen();
                     void updateOfflineIndicator();
                 }
@@ -904,30 +916,41 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function initializeAuthenticatedApp() {
+            const userId = currentUser?.id;
+            if (!userId) return;
+            userRole = null;
+            profileRoleVerified = false;
             financialsAllowed = false;
-            if (navigator.onLine) {
-                try {
-                    await checkUserRole();
-                    isOfflineMode = false;
-                } catch (error) {
-                    if (!isOfflineNetworkError(error)) throw error;
-                    console.warn('Sem ligação durante a identificação da conta; a usar o estado guardado localmente.');
-                    isOfflineMode = true;
-                    if (!await restoreOfflineSnapshot()) throw error;
-                }
-            } else {
-                isOfflineMode = true;
-                try {
-                    const restored = await restoreOfflineSnapshot();
-                    if (!restored) {
-                        const metadataRole = currentUser.app_metadata?.role;
-                        userRole = metadataRole === 'admin' ? 'admin' : 'cleaner';
+            currentTeamMemberId = null;
+            currentTeamManagerId = null;
+            currentTeamMemberPreferences = { track_hours: false, require_photos: false };
+            try {
+                if (navigator.onLine) {
+                    try {
+                        if (!await checkUserRole()) return;
+                        isOfflineMode = false;
+                    } catch (error) {
+                        if (!isOfflineNetworkError(error)) throw error;
+                        console.warn('Sem ligação durante a identificação da conta; a usar o estado guardado localmente.');
+                        isOfflineMode = true;
+                        if (!await restoreOfflineSnapshot()) throw error;
                     }
-                } catch (error) {
-                    console.error('Não foi possível restaurar o estado offline:', error);
-                    userRole = 'cleaner';
-                    await updateOfflineIndicator(`${i18n[currentLang].offline_storage_error}: ${error.message}`);
+                } else {
+                    isOfflineMode = true;
+                    if (!await restoreOfflineSnapshot()) {
+                        throw new Error(i18n[currentLang].auth_offline_profile_missing);
+                    }
                 }
+                if (currentUser?.id !== userId) return;
+            } catch (error) {
+                if (currentUser?.id !== userId) return;
+                userRole = null;
+                profileRoleVerified = false;
+                financialsAllowed = false;
+                console.error('Não foi possível carregar o perfil da conta:', error);
+                showLoginScreen();
+                mostrarMensagemAuth(`${i18n[currentLang].auth_profile_error}: ${error?.message || String(error)}`, 'error');
+                return;
             }
             showAppLayout();
             await loadData();
@@ -944,61 +967,53 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function checkUserRole() {
-            if (!currentUser) return;
-            const [{ data: member, error: memberError }, { data: profile, error: profileError }] = await Promise.all([
-                supabaseClient
+            const userId = currentUser?.id;
+            if (!userId) return false;
+            const { data: profile, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+            console.log('Perfil Supabase carregado:', profile);
+            if (currentUser?.id !== userId) return false;
+            if (profileError) {
+                console.error('Erro ao carregar o perfil Supabase:', profileError);
+                throw profileError;
+            }
+            if (!profile) throw new Error('Perfil não encontrado para a conta autenticada.');
+
+            const role = String(profile.role || '').trim().toLowerCase();
+            const plan = String(profile.subscription_plan || '').trim().toLowerCase();
+            const resolvedRole = role === 'admin' || plan === 'admin'
+                ? 'admin'
+                : ['cleaner', 'assistant', 'assistente'].includes(role) ? 'cleaner' : null;
+            if (!resolvedRole) throw new Error('O perfil não tem um papel de acesso válido.');
+
+            let member = null;
+            if (resolvedRole === 'cleaner') {
+                const { data, error } = await supabaseClient
                     .from('team_members')
                     .select('id, role, track_hours, require_photos, manager_id')
-                    .eq('auth_user_id', currentUser.id)
-                    .maybeSingle(),
-                supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', currentUser.id)
-                    .maybeSingle()
-            ]);
-            if (memberError) {
-                console.error('Erro ao carregar o perfil do membro da equipa:', memberError);
-                throw memberError;
-            }
-            if (profileError) {
-                console.warn('Não foi possível ler o perfil; o acesso financeiro ficará bloqueado.', profileError);
-            }
-            financialsAllowed = !profileError && profile?.can_view_financials !== false;
-
-            currentTeamManagerId = null;
-            currentTeamMemberId = null;
-            if (['cleaner', 'assistant', 'assistente'].includes(member?.role)) {
-                userRole = 'cleaner';
-                currentTeamMemberId = member.id;
-                currentTeamManagerId = member.manager_id;
-                currentTeamMemberPreferences = {
-                    track_hours: member.track_hours === true,
-                    require_photos: member.require_photos === true
-                };
-                return;
-            }
-
-            const validRoles = ['admin', 'cleaner'];
-            const normalizeRole = role => ['assistant', 'assistente'].includes(role) ? 'cleaner' : role;
-            const profileRole = validRoles.includes(normalizeRole(profile?.role)) ? normalizeRole(profile.role) : null;
-            const appMetadataRole = normalizeRole(currentUser.app_metadata?.role);
-            const userMetadataRole = normalizeRole(currentUser.user_metadata?.role) === 'cleaner' ? 'cleaner' : null;
-            const metadataRole = validRoles.includes(appMetadataRole) ? appMetadataRole : userMetadataRole;
-            const resolvedRole = profileRole || metadataRole;
-            if (resolvedRole) {
-                userRole = resolvedRole;
-            } else {
-                const { count, error: propertyError } = await supabaseClient
-                    .from('properties')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', currentUser.id);
-                if (propertyError) {
-                    console.warn('Não foi possível determinar o papel pela propriedade dos alojamentos.', propertyError);
+                    .eq('auth_user_id', userId)
+                    .maybeSingle();
+                if (currentUser?.id !== userId) return false;
+                if (error) {
+                    console.error('Erro ao carregar os dados do membro da equipa:', error);
+                    throw error;
                 }
-                userRole = count > 0 ? 'admin' : 'cleaner';
+                member = data;
             }
-            currentTeamMemberPreferences = { track_hours: false, require_photos: false };
+
+            userRole = resolvedRole;
+            profileRoleVerified = true;
+            financialsAllowed = profile.can_view_financials !== false;
+            currentTeamMemberId = member?.id || null;
+            currentTeamManagerId = member?.manager_id || null;
+            currentTeamMemberPreferences = {
+                track_hours: member?.track_hours === true,
+                require_photos: member?.require_photos === true
+            };
+            return true;
         }
 
         function applyRolePermissionsUI() {
@@ -1285,7 +1300,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         async function handleLogout() {
             localStorage.removeItem('host_cleaner_active_tab');
             await supabaseClient.auth.signOut();
-            currentUser = null; userRole = 'admin'; financialsAllowed = false; showLoginScreen();
+            currentUser = null; userRole = null; profileRoleVerified = false; financialsAllowed = false; showLoginScreen();
         }
 
         function switchProfileTab(tab) {
@@ -1330,10 +1345,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (requestId !== subscriptionLoadRequestId || currentUser?.id !== userId) return;
                 const plan = String(profile.subscription_plan || '').trim().toLowerCase();
                 const normalizedPlan = plan === 'free' ? 'gratuito' : plan;
-                if (!['gratuito', 'starter', 'pro', 'business'].includes(normalizedPlan)) {
+                if (!['gratuito', 'starter', 'pro', 'business', 'admin'].includes(normalizedPlan)) {
                     throw new Error('Unknown subscription plan');
                 }
-                const labels = { gratuito: i18n[currentLang].subscription_free, starter: 'Starter', pro: 'Pro', business: 'Business' };
+                const labels = { gratuito: i18n[currentLang].subscription_free, starter: 'Starter', pro: 'Pro', business: 'Business', admin: i18n[currentLang].subscription_admin };
                 const stripeStatus = profile.stripe_subscription_status || i18n[currentLang].subscription_no_status;
                 status.textContent = `${labels[normalizedPlan]} · ${i18n[currentLang].subscription_status_label}: ${stripeStatus}`;
                 buttons.forEach(button => {
@@ -1957,6 +1972,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 userId: currentUser.id,
                 savedAt: new Date().toISOString(),
                 userRole,
+                profileRoleVerified,
                 financialsAllowed,
                 currentTeamMemberId,
                 currentTeamManagerId,
@@ -1977,22 +1993,26 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function restoreOfflineSnapshot(restorePermissions = true) {
             if (!currentUser) return false;
+            const userId = currentUser.id;
             const database = await openOfflineDatabase();
+            if (currentUser?.id !== userId) return false;
             const snapshot = await new Promise((resolve, reject) => {
                 const transaction = database.transaction('snapshots', 'readonly');
-                const request = transaction.objectStore('snapshots').get(currentUser.id);
+                const request = transaction.objectStore('snapshots').get(userId);
                 request.onsuccess = () => resolve(request.result || null);
                 request.onerror = () => reject(request.error || new Error('Não foi possível ler a cópia offline.'));
             });
-            if (!snapshot) return false;
+            if (!snapshot || currentUser?.id !== userId) return false;
 
             if (restorePermissions) {
-                userRole = snapshot.userRole === 'admin' ? 'admin' : 'cleaner';
+                if (!snapshot.profileRoleVerified || !['admin', 'cleaner'].includes(snapshot.userRole)) return false;
+                userRole = snapshot.userRole;
+                profileRoleVerified = true;
                 financialsAllowed = snapshot.financialsAllowed === true;
+                currentTeamMemberId = snapshot.currentTeamMemberId || null;
+                currentTeamManagerId = snapshot.currentTeamManagerId || null;
+                currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
             }
-            currentTeamMemberId = snapshot.currentTeamMemberId || null;
-            currentTeamManagerId = snapshot.currentTeamManagerId || null;
-            currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
             allPropertiesCache = snapshot.allProperties || [];
             allTasksCache = snapshot.allTasks || [];
             allTeamMembersCache = snapshot.teamMembers || [];
