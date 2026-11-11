@@ -1,4 +1,6 @@
 const teamInviteTokens = new Map();
+const teamInviteRequests = new Map();
+const TEAM_INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function fetchTeamMembers() {
     const listEl = document.getElementById('team-members-list');
@@ -67,7 +69,7 @@ async function fetchTeamMembers() {
                 </label>
             </div>` : ''}
             ${member.role === 'cleaner' && !member.auth_user_id ? `<div class="border-t border-slate-200 pt-3 flex flex-wrap gap-2">
-                <button type="button" data-team-whatsapp-id="${escapeTeamMemberAttribute(member.id)}" class="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-700 transition" ${member.phone ? '' : 'disabled'}>
+                <button type="button" data-team-whatsapp-id="${escapeTeamMemberAttribute(member.id)}" class="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-700 transition">
                     💬 <span data-i18n="team_whatsapp_invite">Enviar acesso por WhatsApp</span>
                 </button>
                 <button type="button" data-team-copy-id="${escapeTeamMemberAttribute(member.id)}" class="rounded-xl bg-slate-200 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-300 transition">
@@ -119,6 +121,8 @@ async function handleAddTeamMember(event) {
 
     try {
         if (!await checkSubscriptionLimit('cleaners')) return;
+        const managerId = currentUser.id;
+        const requestedAt = Date.now();
         const { data, error } = await supabaseClient.rpc('create_team_member_invite', {
             p_name: name,
             p_phone: phone,
@@ -132,7 +136,12 @@ async function handleAddTeamMember(event) {
             throw new Error('A base de dados não devolveu os dados do convite.');
         }
 
-        teamInviteTokens.set(String(invite.member_id), invite.invite_token);
+        if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a criação do convite. Atualize a lista antes de continuar.');
+        teamInviteTokens.set(String(invite.member_id), {
+            token: invite.invite_token,
+            managerId,
+            expiresAt: requestedAt + TEAM_INVITE_LIFETIME_MS
+        });
         showToast(`Membro ${name} criado. Use WhatsApp ou Copiar Link na lista para partilhar o convite.`);
         document.getElementById('team-add-form').reset();
         await fetchTeamMembers();
@@ -149,7 +158,7 @@ function normalizeTeamPhone(phone) {
     if (!value) return '';
     let digits = value.replace(/\D/g, '');
     if (value.startsWith('00')) digits = digits.slice(2);
-    if (!value.startsWith('+') && !digits.startsWith('351')) digits = `351${digits}`;
+    if (!value.startsWith('+') && !value.startsWith('00') && !digits.startsWith('351')) digits = `351${digits}`;
     return `+${digits}`;
 }
 
@@ -195,25 +204,46 @@ async function saveTeamMemberField(memberId, field, value) {
 
 async function getTeamAccessLink(memberId) {
     if (!requireAdminAction()) throw new Error(i18n[currentLang].role_locked);
-    let token = teamInviteTokens.get(String(memberId));
-    if (!token) {
-        const { data, error } = await supabaseClient.rpc('rotate_team_member_invite', {
-            p_member_id: memberId
-        });
-        if (error) throw error;
-        const invite = Array.isArray(data) ? data[0] : data;
-        token = invite && invite.invite_token;
-        if (!token) throw new Error('A base de dados não devolveu um token de convite.');
-        teamInviteTokens.set(String(memberId), token);
+    const url = new URL(window.location.href);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('Abra a aplicação através do seu endereço web antes de gerar o convite.');
+    }
+    const managerId = currentUser.id;
+    const key = String(memberId);
+    let cached = teamInviteTokens.get(key);
+    if (!cached || cached.managerId !== managerId || cached.expiresAt <= Date.now()) {
+        const requestKey = `${managerId}:${key}`;
+        let request = teamInviteRequests.get(requestKey);
+        if (!request) {
+            const requestedAt = Date.now();
+            request = (async () => {
+                const { data, error } = await supabaseClient.rpc('rotate_team_member_invite', {
+                    p_member_id: memberId
+                });
+                if (error) throw error;
+                const invite = Array.isArray(data) ? data[0] : data;
+                if (!invite?.invite_token) throw new Error('A base de dados não devolveu um token de convite.');
+                return { token: invite.invite_token, managerId, expiresAt: requestedAt + TEAM_INVITE_LIFETIME_MS };
+            })();
+            teamInviteRequests.set(requestKey, request);
+        }
+        try {
+            cached = await request;
+        } finally {
+            if (teamInviteRequests.get(requestKey) === request) teamInviteRequests.delete(requestKey);
+        }
+        if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a geração do convite.');
+        teamInviteTokens.set(key, cached);
     }
 
-    const url = new URL(window.location.href);
-    url.searchParams.set('invite', token);
+    url.search = '';
+    url.searchParams.set('invite', cached.token);
     url.hash = '';
     return url.toString();
 }
 
 async function sendTeamAccessByWhatsApp(memberId) {
+    if (!requireAdminAction()) return;
     const phoneInput = [...document.querySelectorAll('[data-team-phone-id]')]
         .find(input => input.dataset.teamPhoneId === String(memberId));
     const nameInput = [...document.querySelectorAll('[data-team-name-id]')]
@@ -223,13 +253,19 @@ async function sendTeamAccessByWhatsApp(memberId) {
         return;
     }
 
+    let phone;
+    try {
+        phone = formatPhoneForWhatsApp(phoneInput.value);
+    } catch (error) {
+        showToast(error.message, 'error');
+        return;
+    }
     const whatsappWindow = window.open('about:blank', '_blank');
     if (!whatsappWindow) {
-        showToast('Permita a abertura de janelas pop-up para enviar o convite por WhatsApp.', 'error');
+        showToast('Permita janelas pop-up para abrir o WhatsApp ou use "Copiar Link" para enviar o convite.', 'error');
         return;
     }
     try {
-        const phone = formatPhoneForWhatsApp(phoneInput.value);
         const link = await getTeamAccessLink(memberId);
         const memberName = nameInput && nameInput.value.trim() || 'Membro da equipa';
         const message = `Olá ${memberName}! 👋 É com muito prazer que o convidamos para se juntar à nossa equipa na aplicação Host a Cleaner. \n\nPor favor, clique no link abaixo para criar a sua conta:\n\n${link}\n\nSe tiver alguma dúvida, não hesite em contactar-nos. Até breve! 😊`;
