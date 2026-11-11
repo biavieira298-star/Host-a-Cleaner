@@ -1,4 +1,4 @@
-const CACHE_NAME = 'host-a-cleaner-v7';
+const CACHE_NAME = 'host-a-cleaner-v8';
 const APP_SHELL = [
     './index.html',
     './styles.css',
