@@ -35,7 +35,6 @@ function roleContext(profile, member = null, profileError = null, metadata = {})
         currentUser: { id: 'user', app_metadata: metadata },
         userRole: null,
         profileRoleVerified: false,
-        financialsAllowed: false,
         currentTeamMemberId: null,
         currentTeamManagerId: null,
         currentTeamMemberPreferences: {},
@@ -63,12 +62,12 @@ function roleContext(profile, member = null, profileError = null, metadata = {})
     return context;
 }
 
-test('profile flag, roles and profile errors determine financial access', async () => {
+test('administrator role or subscription grants frontend financial access', async () => {
     for (const [profile, member, role, allowed] of [
-        [{ role: 'admin', can_view_financials: false }, null, 'admin', false],
+        [{ role: 'admin', can_view_financials: false }, null, 'admin', true],
         [{ role: 'admin', can_view_financials: true }, null, 'admin', true],
         [{ role: 'admin' }, { role: 'assistant', id: 'm', manager_id: 'owner' }, 'admin', true],
-        [{ role: 'cleaner', subscription_plan: 'admin' }, { role: 'cleaner', id: 'm' }, 'admin', true],
+        [{ role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }, { role: 'cleaner', id: 'm' }, 'admin', true],
         [{ role: 'cleaner', can_view_financials: true }, null, 'cleaner', false],
         [{ role: 'assistant', can_view_financials: true }, null, 'cleaner', false]
     ]) {
@@ -161,7 +160,7 @@ test('initialization reports profile and offline snapshot errors without opening
         let opened = false;
         const context = {
             currentUser: { id: 'user' },
-            userRole: 'admin', profileRoleVerified: true, financialsAllowed: true,
+            userRole: 'admin', profileRoleVerified: true,
             currentTeamMemberId: null, currentTeamManagerId: null, currentTeamMemberPreferences: {},
             navigator: { onLine: online },
             isOfflineNetworkError: () => false,
@@ -180,15 +179,14 @@ test('initialization reports profile and offline snapshot errors without opening
         assert.equal(opened, false);
         assert.equal(context.userRole, null);
         assert.equal(context.profileRoleVerified, false);
-        assert.equal(context.financialsAllowed, false);
         assert.match(messages[0][0], online ? /profile denied/ : /Ligue-se à Internet/);
     }
 });
 
-test('finance sidebar is visible for admin roles and plans without exposing restricted data', async () => {
+test('finance sidebar and financial fields are available to admin roles and plans', async () => {
     for (const [profile, visible, permitted] of [
-        [{ role: 'admin', can_view_financials: false }, true, false],
-        [{ role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }, true, false],
+        [{ role: 'admin', can_view_financials: false }, true, true],
+        [{ role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }, true, true],
         [{ role: 'admin', can_view_financials: true }, true, true],
         [{ role: 'cleaner', can_view_financials: true }, false, false]
     ]) {
@@ -223,14 +221,13 @@ test('finance sidebar is visible for admin roles and plans without exposing rest
     }
 });
 
-test('financial details remain hidden and an already open export modal is closed', () => {
+test('financial details remain hidden for cleaners and an open export modal is closed', () => {
     const rate = { classList: makeClassList() };
     const modal = { classList: makeClassList() };
     const subtitle = {};
     const context = {
-        userRole: 'admin',
+        userRole: 'cleaner',
         currentUser: { id: 'user' },
-        financialsAllowed: false,
         reportsRequestId: 0,
         financialChartRequestId: 0,
         hostingReportsRequestId: 0,
@@ -247,7 +244,7 @@ test('financial details remain hidden and an already open export modal is closed
     assert.equal(rate.classList.contains('hidden'), true);
     assert.equal(modal.classList.contains('hidden'), true);
     assert.equal(context.financialChartRequestId, 1);
-    context.financialsAllowed = true;
+    context.userRole = 'admin';
     context.applyRolePermissionsUI();
     assert.equal(rate.classList.contains('hidden'), false);
 });
@@ -257,8 +254,7 @@ test('forced financial routes and aliases return to the agenda without rendering
     const calls = [];
     const context = {
         currentUser: { id: 'user' },
-        userRole: 'admin',
-        financialsAllowed: false,
+        userRole: 'cleaner',
         currentLang: 'pt',
         i18n: { pt: { role_locked: 'blocked' } },
         profileSettingsTab: 'account',
@@ -293,13 +289,52 @@ test('forced financial routes and aliases return to the agenda without rendering
     assert.equal(elements.get('view-sub-agenda').classList.contains('hidden'), false);
 });
 
-test('offline snapshots restore the saved restriction and cannot override a freshly loaded permission', async () => {
-    let snapshot = { userRole: 'admin', profileRoleVerified: true, financialsAllowed: false };
+test('admin roles and subscriptions can open finance routes despite the legacy flag', async () => {
+    for (const profile of [
+        { role: 'admin', can_view_financials: false },
+        { role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }
+    ]) {
+        const context = roleContext(profile);
+        const elements = new Map();
+        const calls = [];
+        Object.assign(context, {
+            currentLang: 'pt', i18n: { pt: { role_locked: 'blocked' } },
+            profileSettingsTab: 'account', viewRenderRequestId: 0,
+            activeViewRenderPromise: null,
+            document: { getElementById(id) {
+                if (!elements.has(id)) elements.set(id, {
+                    classList: makeClassList(['hidden']), dataset: {}, setAttribute() {}
+                });
+                return elements.get(id);
+            } },
+            localStorage: { setItem() {} }, closeMenuAfterAction() {},
+            showToast: (...args) => calls.push(['toast', ...args]),
+            carregarRelatorios: async () => calls.push('reports'),
+            renderFinancialChart: async () => calls.push('chart'),
+            carregarLancamentosManuais: async () => calls.push('entries'),
+            fetchHistoryAdmin: async () => calls.push('history'),
+            carregarDocumentosHosting: async () => calls.push('documents'),
+            requestAnimationFrame: fn => fn()
+        });
+        vm.runInContext(extract('function denyFinancialAccess()', 'function requireAdminAction()'), context);
+        vm.runInContext(extract('function switchTab(', 'async function loadData()'), context);
+        await context.checkUserRole();
+        context.switchTab('sub-reports');
+        context.switchTab('sub-financial-entries');
+        context.switchTab('sub-hosting-reports');
+        await context.activeViewRenderPromise;
+        assert.ok(['reports', 'chart', 'entries', 'history', 'documents'].every(call => calls.includes(call)));
+        assert.equal(calls.some(call => Array.isArray(call) && call[0] === 'toast'), false);
+        assert.equal(elements.get('view-sub-hosting-reports').classList.contains('hidden'), false);
+    }
+});
+
+test('offline snapshots restore verified roles without overriding a freshly loaded role', async () => {
+    let snapshot = { userRole: 'admin', profileRoleVerified: true };
     const context = {
         currentUser: { id: 'user' },
         userRole: 'admin',
         profileRoleVerified: false,
-        financialsAllowed: true,
         openOfflineDatabase: async () => ({
             transaction: () => ({
                 objectStore: () => ({
@@ -329,19 +364,17 @@ test('offline snapshots restore the saved restriction and cannot override a fres
     vm.createContext(context);
     vm.runInContext(extract('async function restoreOfflineSnapshot(', 'async function listPendingOfflineItems('), context);
     await context.restoreOfflineSnapshot();
-    assert.equal(context.financialsAllowed, false);
-    snapshot = { userRole: 'admin', profileRoleVerified: true, financialsAllowed: true };
+    assert.equal(context.userRole, 'admin');
+    snapshot = { userRole: 'admin', profileRoleVerified: true };
     context.userRole = 'cleaner';
     context.currentTeamManagerId = 'fresh-manager';
     await context.restoreOfflineSnapshot(false);
     assert.equal(context.userRole, 'cleaner');
-    assert.equal(context.financialsAllowed, false);
     assert.equal(context.currentTeamManagerId, 'fresh-manager');
     snapshot = { userRole: 'admin', profileRoleVerified: true };
-    context.financialsAllowed = true;
     await context.restoreOfflineSnapshot();
-    assert.equal(context.financialsAllowed, false);
-    snapshot = { userRole: 'cleaner', financialsAllowed: true };
+    assert.equal(context.userRole, 'admin');
+    snapshot = { userRole: 'cleaner' };
     context.userRole = null;
     assert.equal(await context.restoreOfflineSnapshot(), false);
     assert.equal(context.userRole, null);
@@ -360,4 +393,28 @@ test('financial date queries are blocked without permission', async () => {
     vm.runInContext(extract('async function fetchFinancialEntriesForDateRange(', 'async function renderFinancialChart('), context);
     await assert.rejects(context.fetchFinancialEntriesForDateRange('2026-01-01', '2026-01-31'), /blocked/);
     assert.equal(queries, 0);
+});
+
+test('financial date query logs and propagates the Supabase permission error', async () => {
+    const error = { code: '42501', message: 'permission denied' };
+    const logs = [];
+    const query = {
+        select() { return this; },
+        eq() { return this; },
+        gte() { return this; },
+        lte() { return this; },
+        async order() { return { data: null, error }; }
+    };
+    const context = {
+        canViewFinancials: () => true,
+        validateFinancialDateRange() {},
+        currentUser: { id: 'user' },
+        supabaseClient: { from: table => { assert.equal(table, 'property_financial_entries'); return query; } },
+        console: { log: (...args) => logs.push(args) }
+    };
+    vm.createContext(context);
+    vm.runInContext(extract('async function fetchFinancialEntriesForDateRange(', 'async function renderFinancialChart('), context);
+    await assert.rejects(context.fetchFinancialEntriesForDateRange('2026-01-01', '2026-01-31'), caught => caught === error);
+    assert.match(logs[0][0], /property_financial_entries/);
+    assert.equal(logs[0][1], error);
 });
