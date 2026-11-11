@@ -5856,7 +5856,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     `;
                 }).join('');
                 listEl.querySelectorAll('[data-hosting-download]').forEach(button => {
-                    button.addEventListener('click', () => void downloadHostingReport(button.dataset.hostingDownload));
+                    button.addEventListener('click', () => void runButtonAction(button, () => downloadHostingReport(button.dataset.hostingDownload)));
                 });
                 listEl.querySelectorAll('[data-hosting-delete]').forEach(button => {
                     button.addEventListener('click', () => openHostingDeleteModal(button.dataset.hostingDelete));
@@ -5876,19 +5876,25 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return;
             }
             try {
-                getPlatformDocumentStoragePath(report.file_url);
-                const downloadUrl = new URL(report.file_url);
-                downloadUrl.searchParams.set('download', report.file_name);
+                const storagePath = getPlatformDocumentStoragePath(report.file_url);
+                const { data, error } = await supabaseClient.storage.from('platform-documents').download(storagePath);
+                if (error) throw error;
+                if (!data) throw new Error('O Storage não devolveu o ficheiro.');
+                const downloadUrl = URL.createObjectURL(data);
                 const link = document.createElement('a');
-                link.href = downloadUrl.toString();
+                link.href = downloadUrl;
                 link.download = report.file_name;
                 link.rel = 'noopener';
-                document.body.append(link);
-                link.click();
-                link.remove();
+                try {
+                    document.body.append(link);
+                    link.click();
+                } finally {
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+                }
             } catch (error) {
                 console.error('Erro ao gerar o descarregamento do documento:', error);
-                showPropertyMessage('hosting-report-message', `${i18n[currentLang].hosting_upload_error}: ${error.message}`, 'error');
+                showPropertyMessage('hosting-documents-message', `${i18n[currentLang].hosting_upload_error}: ${error.message}`, 'error');
             }
         }
 
