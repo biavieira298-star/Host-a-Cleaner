@@ -87,13 +87,13 @@ async function fetchTeamMembers() {
         input.addEventListener('change', () => updateTeamMemberPreference(input.dataset.teamPreferenceId, input.dataset.preference, input.checked));
     });
     listEl.querySelectorAll('[data-team-whatsapp-id]').forEach(button => {
-        button.addEventListener('click', () => sendTeamAccessByWhatsApp(button.dataset.teamWhatsappId));
+        button.addEventListener('click', () => void runButtonAction(button, () => sendTeamAccessByWhatsApp(button.dataset.teamWhatsappId)));
     });
     listEl.querySelectorAll('[data-team-copy-id]').forEach(button => {
-        button.addEventListener('click', () => copyTeamAccessLink(button.dataset.teamCopyId));
+        button.addEventListener('click', () => void runButtonAction(button, () => copyTeamAccessLink(button.dataset.teamCopyId)));
     });
     listEl.querySelectorAll('[data-team-remove-id]').forEach(button => {
-        button.addEventListener('click', () => removeTeamMember(button.dataset.teamRemoveId));
+        button.addEventListener('click', () => void runButtonAction(button, () => removeTeamMember(button.dataset.teamRemoveId)));
     });
     changeLanguage(currentLang);
     return true;
@@ -110,13 +110,12 @@ async function handleAddTeamMember(event) {
     };
 
     if (!name || phone.replace(/\D/g, '').length < 8) {
-        alert('Introduza o nome e o número de telemóvel do membro.');
+        showToast('Introduza o nome e o número de telemóvel do membro.', 'error');
         return;
     }
 
     const button = document.getElementById('btn-add-team');
     button.disabled = true;
-    button.innerText = 'A criar convite...';
 
     try {
         const { data, error } = await supabaseClient.rpc('create_team_member_invite', {
@@ -133,15 +132,14 @@ async function handleAddTeamMember(event) {
         }
 
         teamInviteTokens.set(String(invite.member_id), invite.invite_token);
-        alert(`Membro ${name} criado. Use WhatsApp ou Copiar Link na lista para partilhar o convite.`);
+        showToast(`Membro ${name} criado. Use WhatsApp ou Copiar Link na lista para partilhar o convite.`);
         document.getElementById('team-add-form').reset();
         await fetchTeamMembers();
     } catch (error) {
         console.error('Erro ao criar convite para membro da equipa:', error);
-        alert('Não foi possível criar o membro e o convite: ' + error.message + '\nConfirme se aplicou a migração de convites no Supabase.');
+        showToast('Não foi possível criar o membro e o convite: ' + error.message + '\nConfirme se aplicou a migração de convites no Supabase.', 'error');
     } finally {
         button.disabled = false;
-        button.innerText = i18n[currentLang].btn_send_invite;
     }
 }
 
@@ -178,7 +176,7 @@ async function saveTeamMemberField(memberId, field, value) {
     if (field === 'phone' && value) {
         updatedValue = normalizeTeamPhone(value);
         if (updatedValue.replace(/\D/g, '').length < 8) {
-            alert('Introduza um número de telemóvel válido, por exemplo +351 912 345 678.');
+            showToast('Introduza um número de telemóvel válido, por exemplo +351 912 345 678.', 'error');
             await fetchTeamMembers();
             return;
         }
@@ -189,7 +187,7 @@ async function saveTeamMemberField(memberId, field, value) {
         .eq('id', memberId);
     if (error) {
         console.error(`Erro ao guardar ${field} do membro:`, error);
-        alert(`Não foi possível guardar os dados do membro: ${error.message}`);
+        showToast(`Não foi possível guardar os dados do membro: ${error.message}`, 'error');
         await fetchTeamMembers();
     }
 }
@@ -220,13 +218,13 @@ async function sendTeamAccessByWhatsApp(memberId) {
     const nameInput = [...document.querySelectorAll('[data-team-name-id]')]
         .find(input => input.dataset.teamNameId === String(memberId));
     if (!phoneInput) {
-        alert('Não foi possível encontrar o telemóvel deste membro.');
+        showToast('Não foi possível encontrar o telemóvel deste membro.', 'error');
         return;
     }
 
     const whatsappWindow = window.open('about:blank', '_blank');
     if (!whatsappWindow) {
-        alert('Permita a abertura de janelas pop-up para enviar o convite por WhatsApp.');
+        showToast('Permita a abertura de janelas pop-up para enviar o convite por WhatsApp.', 'error');
         return;
     }
     try {
@@ -238,7 +236,7 @@ async function sendTeamAccessByWhatsApp(memberId) {
     } catch (error) {
         whatsappWindow.close();
         console.error('Erro ao preparar convite WhatsApp:', error);
-        alert('Não foi possível preparar o convite: ' + error.message);
+        showToast('Não foi possível preparar o convite: ' + error.message, 'error');
     }
 }
 
@@ -248,7 +246,7 @@ async function copyTeamAccessLink(memberId) {
         link = await getTeamAccessLink(memberId);
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(link);
-            alert(i18n[currentLang].team_link_copied);
+            showToast(i18n[currentLang].team_link_copied);
             return;
         }
     } catch (error) {
@@ -256,7 +254,7 @@ async function copyTeamAccessLink(memberId) {
             console.error('Erro ao copiar link de acesso:', error);
         } else {
             console.error('Erro ao gerar link de acesso:', error);
-            alert('Não foi possível gerar o link: ' + error.message);
+            showToast('Não foi possível gerar o link: ' + error.message, 'error');
             return;
         }
     }
@@ -272,13 +270,13 @@ async function copyTeamAccessLink(memberId) {
     const copied = document.execCommand('copy');
     input.remove();
     if (copied) {
-        alert(i18n[currentLang].team_link_copied);
+        showToast(i18n[currentLang].team_link_copied);
         return;
     }
 
     const error = new Error('O browser não conseguiu copiar o link.');
     console.error('Erro ao copiar link de acesso:', error);
-    alert(`Não foi possível copiar o link: ${error.message}\n${link}`);
+    showToast(`Não foi possível copiar o link: ${error.message}\n${link}`, 'error');
 }
 
 async function updateTeamMemberPreference(memberId, preference, enabled) {
@@ -293,7 +291,7 @@ async function updateTeamMemberPreference(memberId, preference, enabled) {
         .eq('id', memberId);
     if (error) {
         console.error('Erro ao guardar preferência do membro:', error);
-        alert('Não foi possível guardar a preferência: ' + error.message);
+        showToast('Não foi possível guardar a preferência: ' + error.message, 'error');
         await fetchTeamMembers();
     }
 }
@@ -304,7 +302,7 @@ async function removeTeamMember(memberId) {
     const { error } = await supabaseClient.from('team_members').delete().eq('id', memberId);
     if (error) {
         console.error('Erro ao remover membro da equipa:', error);
-        alert('Não foi possível remover o membro: ' + error.message);
+        showToast('Não foi possível remover o membro: ' + error.message, 'error');
         return;
     }
     teamInviteTokens.delete(String(memberId));
