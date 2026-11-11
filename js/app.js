@@ -1445,14 +1445,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             try {
+                const managerId = currentUser.id;
                 const limitColumn = resource === 'properties' ? 'max_properties' : 'max_cleaners';
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select(`subscription_plan, ${limitColumn}`)
-                    .eq('id', currentUser.id)
+                    .eq('id', managerId)
                     .maybeSingle();
                 if (profileError) throw profileError;
-                if (!profile) throw new Error('Perfil de subscrição não encontrado.');
+                if (!profile) throw new Error('Perfil de subscrição do administrador não encontrado ou sem acesso. Contacte o suporte para verificar o perfil da conta ligada.');
+                if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
 
                 const plan = String(profile.subscription_plan || 'gratuito').trim().toLowerCase();
                 const planLabels = {
@@ -1484,15 +1486,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     .from(table)
                     .select('id', { count: 'exact', head: true });
                 if (resource === 'properties') {
-                    countQuery = countQuery.eq('user_id', currentUser.id);
+                    countQuery = countQuery.eq('user_id', managerId);
                 } else {
                     countQuery = countQuery
-                        .eq('manager_id', currentUser.id)
+                        .eq('manager_id', managerId)
                         .eq('role', 'cleaner');
                 }
 
                 const { count, error: countError } = await countQuery;
                 if (countError) throw countError;
+                if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
                 if (count === null) throw new Error('Não foi possível contar os recursos existentes.');
                 if (count < limit) return true;
 
@@ -6353,22 +6356,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     firstElement.focus();
                 }
             });
-
-            const teamAddForm = document.getElementById('team-add-form');
-            teamAddForm?.addEventListener('submit', event => {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                void runFormAction(event, async () => {
-                    try {
-                        if (await checkSubscriptionLimit('cleaners')) {
-                            await handleAddTeamMember(event);
-                        }
-                    } catch (error) {
-                        console.error('Erro ao validar o limite de cleaners:', error);
-                        showToast(`Não foi possível validar o limite de cleaners: ${error.message}`, 'error');
-                    }
-                });
-            }, true);
 
             document.getElementById('financial-filter-month')?.addEventListener('change', () => void carregarRelatorios());
             document.getElementById('financial-filter-property')?.addEventListener('change', () => void carregarRelatorios());
