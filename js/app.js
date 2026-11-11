@@ -8,7 +8,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let userRole = null;
         let profileRoleVerified = false;
-        let financialsAllowed = false;
         let currentTeamMemberPreferences = { track_hours: false, require_photos: false };
         let operationalPreferences = { track_hours: false, require_photos: false };
         let profileSettingsTab = 'account';
@@ -905,7 +904,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 } else {
                     userRole = null;
                     profileRoleVerified = false;
-                    financialsAllowed = false;
                     currentTeamMemberId = null;
                     currentTeamManagerId = null;
                     currentTeamMemberPreferences = { track_hours: false, require_photos: false };
@@ -920,7 +918,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             if (!userId) return;
             userRole = null;
             profileRoleVerified = false;
-            financialsAllowed = false;
             currentTeamMemberId = null;
             currentTeamManagerId = null;
             currentTeamMemberPreferences = { track_hours: false, require_photos: false };
@@ -946,7 +943,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (currentUser?.id !== userId) return;
                 userRole = null;
                 profileRoleVerified = false;
-                financialsAllowed = false;
                 console.error('Não foi possível carregar o perfil da conta:', error);
                 showLoginScreen();
                 mostrarMensagemAuth(`${i18n[currentLang].auth_profile_error}: ${error?.message || String(error)}`, 'error');
@@ -1006,7 +1002,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             userRole = resolvedRole;
             profileRoleVerified = true;
-            financialsAllowed = profile.can_view_financials !== false;
             currentTeamMemberId = member?.id || null;
             currentTeamManagerId = member?.manager_id || null;
             currentTeamMemberPreferences = {
@@ -1051,7 +1046,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         function canViewFinancials() {
-            return Boolean(currentUser) && userRole === 'admin' && financialsAllowed;
+            return Boolean(currentUser) && userRole === 'admin';
         }
 
         function denyFinancialAccess() {
@@ -1300,7 +1295,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         async function handleLogout() {
             localStorage.removeItem('host_cleaner_active_tab');
             await supabaseClient.auth.signOut();
-            currentUser = null; userRole = null; profileRoleVerified = false; financialsAllowed = false; showLoginScreen();
+            currentUser = null; userRole = null; profileRoleVerified = false; showLoginScreen();
         }
 
         function switchProfileTab(tab) {
@@ -1973,7 +1968,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 savedAt: new Date().toISOString(),
                 userRole,
                 profileRoleVerified,
-                financialsAllowed,
                 currentTeamMemberId,
                 currentTeamManagerId,
                 currentTeamMemberPreferences,
@@ -2008,7 +2002,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (!snapshot.profileRoleVerified || !['admin', 'cleaner'].includes(snapshot.userRole)) return false;
                 userRole = snapshot.userRole;
                 profileRoleVerified = true;
-                financialsAllowed = snapshot.financialsAllowed === true;
                 currentTeamMemberId = snapshot.currentTeamMemberId || null;
                 currentTeamManagerId = snapshot.currentTeamManagerId || null;
                 currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
@@ -4935,7 +4928,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 .gte('occurred_on', startDate)
                 .lte('occurred_on', endDate)
                 .order('occurred_on', { ascending: true });
-            if (error) throw error;
+            if (error) {
+                console.log('Erro do Supabase ao consultar property_financial_entries:', error);
+                throw error;
+            }
             return data || [];
         }
 
@@ -5285,7 +5281,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     document.getElementById('financial-entry-submit').disabled = properties.length === 0;
                 }
 
-                if (entriesResult.error) throw entriesResult.error;
+                if (entriesResult.error) {
+                    console.log('Erro do Supabase ao consultar property_financial_entries:', entriesResult.error);
+                    throw entriesResult.error;
+                }
                 if (tasksResult.error) throw tasksResult.error;
                 const entries = entriesResult.data || [];
                 const tasks = tasksResult.data || [];
@@ -5448,6 +5447,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     `;
                 }).join('');
             } catch (error) {
+                console.log('Erro ao consultar property_financial_entries:', error);
                 console.error('Erro ao carregar lançamentos financeiros:', error);
                 tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-rose-300">${i18n[currentLang].financial_entries_error}: ${escapePropertyHTML(error.message)}</td></tr>`;
             }
