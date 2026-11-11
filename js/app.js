@@ -318,6 +318,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_reports_eyebrow: "Documentos de plataformas",
                 hosting_reports_title: "Relatórios & Documentos de Plataformas",
                 hosting_platform: "Plataforma",
+                hosting_report_month: "Mês de recurso (se não constar no PDF ou nome do ficheiro)",
+                hosting_wrong_month: "Mês incorreto anterior a limpar (opcional)",
+                hosting_replace_confirm: "Substituir todas as receitas com descrição iniciada por {platform}: nos meses {months}, para todos os imóveis? Isto inclui lançamentos manuais com esse prefixo. Esta operação não pode ser desfeita. Confirme que o relatório contém todos os movimentos desses meses.",
+                hosting_replace_cancelled: "Substituição cancelada; os movimentos existentes não foram alterados.",
+                hosting_missing_date: "Não foi possível determinar o mês do relatório. Indique o mês de recurso e tente novamente.",
+                hosting_unmatched_properties: "O relatório contém imóveis sem correspondência. Corrija os nomes antes de substituir os movimentos existentes.",
                 hosting_choose_file: "Escolher ou largar um PDF/CSV",
                 hosting_file_limit: "PDF ou CSV · máximo 20 MB",
                 hosting_upload: "Enviar documento",
@@ -328,10 +334,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Documento enviado com sucesso.",
                 hosting_upload_error: "Não foi possível enviar o documento",
                 hosting_no_property: "Sem imóvel associado",
-                hosting_airbnb_import_success: "Documento enviado. Ganhos Airbnb importados: {count}; duplicados ignorados: {duplicates}.",
+                hosting_airbnb_import_success: "Documento enviado. Ganhos Airbnb importados: {count}; movimentos anteriores substituídos: {replaced}.",
                 hosting_airbnb_import_none: "Documento enviado, mas não foram encontrados imóveis correspondentes no relatório. Selecione o imóvel no menu dropdown antes de fazer upload.",
                 hosting_airbnb_import_error: "Documento enviado, mas não foi possível importar os ganhos Airbnb",
-                hosting_booking_import_success: "Documento enviado. Ganhos Booking.com consolidados: {count}; duplicados ignorados: {duplicates}.",
+                hosting_booking_import_success: "Documento enviado. Ganhos Booking.com consolidados: {count}; movimentos anteriores substituídos: {replaced}.",
                 hosting_booking_import_none: "Documento enviado, mas não foram encontrados imóveis correspondentes no relatório. Selecione o imóvel no menu dropdown antes de fazer upload.",
                 hosting_booking_import_error: "Documento enviado, mas não foi possível importar os ganhos Booking.com",
                 financial_entries_loading: "A carregar lançamentos...",
@@ -645,6 +651,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_reports_eyebrow: "Platform documents",
                 hosting_reports_title: "Platform Reports & Documents",
                 hosting_platform: "Platform",
+                hosting_report_month: "Fallback month (if not found in PDF or filename)",
+                hosting_wrong_month: "Previous incorrect month to clear (optional)",
+                hosting_replace_confirm: "Replace all income entries whose description begins with {platform}: for {months}, across all properties? This includes manual entries with that prefix. This cannot be undone. Confirm that the report contains all entries for these months.",
+                hosting_replace_cancelled: "Replacement cancelled; existing entries were not changed.",
+                hosting_missing_date: "The report month could not be determined. Enter a fallback month and try again.",
+                hosting_unmatched_properties: "The report contains unmatched properties. Correct the names before replacing existing entries.",
                 hosting_choose_file: "Choose or drop a PDF/CSV",
                 hosting_file_limit: "PDF or CSV · 20 MB maximum",
                 hosting_upload: "Upload document",
@@ -655,10 +667,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Document uploaded successfully.",
                 hosting_upload_error: "Could not upload the document",
                 hosting_no_property: "No property linked",
-                hosting_airbnb_import_success: "Document uploaded. Airbnb earnings imported: {count}; duplicates skipped: {duplicates}.",
+                hosting_airbnb_import_success: "Document uploaded. Airbnb earnings imported: {count}; previous entries replaced: {replaced}.",
                 hosting_airbnb_import_none: "Document uploaded, but no matching properties were found in the report. Select the property in the dropdown before uploading.",
                 hosting_airbnb_import_error: "Document uploaded, but Airbnb earnings could not be imported",
-                hosting_booking_import_success: "Document uploaded. Booking.com earnings consolidated: {count}; duplicates skipped: {duplicates}.",
+                hosting_booking_import_success: "Document uploaded. Booking.com earnings consolidated: {count}; previous entries replaced: {replaced}.",
                 hosting_booking_import_none: "Document uploaded, but no matching properties were found in the report. Select the property in the dropdown before uploading.",
                 hosting_booking_import_error: "Document uploaded, but Booking.com earnings could not be imported",
                 financial_entries_loading: "Loading entries...",
@@ -5397,7 +5409,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return `${parsedYear}-${String(parsedMonth).padStart(2, '0')}-${String(parsedDay).padStart(2, '0')}`;
         }
 
-        function resolvePlatformReportDate(lines) {
+        function resolvePlatformReportDate(lines, fileName = '', fallbackMonth = '') {
             const monthNameMap = {
                 jan: 1, january: 1, janeiro: 1,
                 feb: 2, february: 2, fevereiro: 2,
@@ -5433,10 +5445,28 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         const month = Number(match[1]);
                         if (month >= 1 && month <= 12) months.add(`${match[2]}-${String(month).padStart(2, '0')}`);
                     }
+                    for (const match of line.matchAll(/(?:^|[^\d])(\d{4})[-/.](0[1-9]|1[0-2])(?![\d/.\-])/g)) {
+                        months.add(`${match[1]}-${match[2]}`);
+                    }
                 });
                 return months.size === 1 ? `${[...months][0]}-01` : null;
             };
-            return dateFromLines(labelledLines) || dateFromLines(eligibleLines);
+            const fromDocument = dateFromLines(labelledLines) || dateFromLines(eligibleLines);
+            if (fromDocument) return fromDocument;
+            const name = fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+            const numericMonths = new Set();
+            for (const match of fileName.matchAll(/(?:^|[^\d])((?:19|20)\d{2})[-_.](0[1-9]|1[0-2])(?=[^\d]|$)/g)) {
+                numericMonths.add(`${match[1]}-${match[2]}-01`);
+            }
+            for (const match of fileName.matchAll(/(?:^|[^\d])(0[1-9]|1[0-2])[-_.]((?:19|20)\d{2})(?=[^\d]|$)/g)) {
+                numericMonths.add(`${match[2]}-${match[1]}-01`);
+            }
+            const fromFilename = dateFromLines([name]) || (numericMonths.size === 1 ? [...numericMonths][0] : null);
+            if (fromFilename) return fromFilename;
+            if (/^\d{4}-(0[1-9]|1[0-2])$/.test(fallbackMonth) && !fallbackMonth.startsWith('0000-')) {
+                return `${fallbackMonth}-01`;
+            }
+            return null;
         }
 
         function extractEuroAmounts(text) {
@@ -5456,50 +5486,35 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }).filter(value => Number.isFinite(value) && value > 0);
         }
 
-        async function persistPlatformEarnings(platformName, earnings) {
-            if (!earnings.length) return { matched: 0, inserted: 0, duplicates: 0 };
-            const dates = earnings.map(earning => earning.occurred_on).sort();
-            const { data: existingEntries, error: existingError } = await supabaseClient
-                .from('property_financial_entries')
-                .select('property_id, amount, description, occurred_on')
-                .eq('user_id', currentUser.id)
-                .eq('entry_type', 'income')
-                .like('description', `${platformName}:%`)
-                .gte('occurred_on', dates[0])
-                .lte('occurred_on', dates[dates.length - 1]);
-            if (existingError) throw existingError;
-
-            const existingKeys = new Set((existingEntries || []).map(entry =>
-                `${entry.property_id}|${entry.occurred_on}|${entry.description}|${Number(entry.amount).toFixed(2)}`
-            ));
+        async function persistPlatformEarnings(platformName, earnings, wrongMonth = '') {
+            if (!earnings.length) return { matched: 0, inserted: 0, replaced: 0 };
+            const existingKeys = new Set();
             const newEntries = [];
-            let duplicates = 0;
             earnings.forEach(earning => {
                 const key = `${earning.property_id}|${earning.occurred_on}|${earning.description}|${Number(earning.amount).toFixed(2)}`;
-                if (existingKeys.has(key)) {
-                    duplicates += 1;
-                    return;
-                }
+                if (existingKeys.has(key)) return;
                 existingKeys.add(key);
-                newEntries.push({
-                    ...earning,
-                    user_id: currentUser.id,
-                    entry_date: earning.occurred_on,
-                    occurred_on: earning.occurred_on,
-                    status: 'paid'
-                });
+                newEntries.push(earning);
             });
 
-            if (newEntries.length) {
-                const { error: insertError } = await supabaseClient
-                    .from('property_financial_entries')
-                    .insert(newEntries);
-                if (insertError) throw insertError;
+            if (wrongMonth && (!/^\d{4}-(0[1-9]|1[0-2])$/.test(wrongMonth) || wrongMonth.startsWith('0000-'))) {
+                throw new Error(i18n[currentLang].hosting_missing_date);
             }
-            return { matched: earnings.length, inserted: newEntries.length, duplicates };
+            const months = [...new Set([...newEntries.map(entry => entry.occurred_on.slice(0, 7)), ...(wrongMonth ? [wrongMonth] : [])])].sort();
+            const message = i18n[currentLang].hosting_replace_confirm
+                .replace('{platform}', platformName)
+                .replace('{months}', months.join(', '));
+            if (!window.confirm(message)) throw new Error(i18n[currentLang].hosting_replace_cancelled);
+            const { data, error } = await supabaseClient.rpc('replace_platform_financial_entries', {
+                p_platform: platformName,
+                p_entries: newEntries,
+                p_extra_month: wrongMonth ? `${wrongMonth}-01` : null
+            });
+            if (error) throw error;
+            return { matched: earnings.length, inserted: newEntries.length, replaced: data };
         }
 
-        async function processAirbnbPDF(file, properties, forcedPropertyId = null) {
+        async function processAirbnbPDF(file, properties, forcedPropertyId = null, fallbackMonth = '', wrongMonth = '') {
             const text = await extractTextFromPDF(file);
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
             const selectedProperty = forcedPropertyId ? (properties || []).find(property => String(property?.id) === String(forcedPropertyId)) : null;
@@ -5507,8 +5522,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
             const propertyRows = collectPropertyRows(lines, validProperties, selectedProperty);
+            if (propertyRows.some(row => !row.property)) throw new Error(i18n[currentLang].hosting_unmatched_properties);
             const headerEnd = propertyRows[0]?.index || lines.findIndex(line => extractEuroAmounts(line).length);
-            const reportDate = resolvePlatformReportDate(lines.slice(0, headerEnd < 0 ? lines.length : headerEnd));
+            const reportDate = resolvePlatformReportDate(lines.slice(0, headerEnd < 0 ? lines.length : headerEnd), file.name, fallbackMonth);
 
             const earnings = [];
             for (let rowIndex = 0; rowIndex < propertyRows.length; rowIndex += 1) {
@@ -5560,28 +5576,32 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     });
                 }
                 if (!datePositions.length && reportDate) {
-                    const amounts = extractEuroAmounts(block[0]);
-                    const amount = amounts[amounts.length - 1];
-                    if (!amount) continue;
-                    earnings.push({
-                        property_id: resolvedProperty.id,
-                        entry_type: 'income',
-                        category: 'Ganhos',
-                        amount: Math.round(amount * 100) / 100,
-                        description: 'Airbnb: Rendimento',
-                        occurred_on: reportDate,
-                        status: 'paid'
+                    const transactionPattern = /\b(?:pagamento|payment|payout|ajuste|adjustment|rendimento|earnings)\b/i;
+                    block.forEach((line, lineIndex) => {
+                        if (lineIndex !== 0 && !transactionPattern.test(line)) return;
+                        const amounts = extractEuroAmounts(line);
+                        const amount = amounts[amounts.length - 1];
+                        if (!amount) return;
+                        earnings.push({
+                            property_id: resolvedProperty.id,
+                            entry_type: 'income',
+                            category: 'Ganhos',
+                            amount: Math.round(amount * 100) / 100,
+                            description: 'Airbnb: Rendimento',
+                            occurred_on: reportDate,
+                            status: 'paid'
+                        });
                     });
                 }
                 if (!datePositions.length && !reportDate && extractEuroAmounts(block.join(' ')).length) {
-                    console.warn('Movimento Airbnb ignorado: data do relatório não encontrada.', resolvedProperty.name);
+                    throw new Error(i18n[currentLang].hosting_missing_date);
                 }
             }
 
-            return persistPlatformEarnings('Airbnb', earnings);
+            return persistPlatformEarnings('Airbnb', earnings, wrongMonth);
         }
 
-        async function processBookingPDF(file, properties, forcedPropertyId = null) {
+        async function processBookingPDF(file, properties, forcedPropertyId = null, fallbackMonth = '', wrongMonth = '') {
             const text = await extractTextFromPDF(file);
             const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
             const selectedProperty = forcedPropertyId ? (properties || []).find(property => String(property?.id) === String(forcedPropertyId)) : null;
@@ -5589,8 +5609,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 .filter(property => property?.id && property?.name)
                 .filter(property => normalizeAirbnbText(property.name).length >= 3);
             const propertyRows = collectPropertyRows(lines, validProperties, selectedProperty);
+            if (propertyRows.some(row => !row.property)) throw new Error(i18n[currentLang].hosting_unmatched_properties);
             const headerEnd = propertyRows[0]?.index || lines.findIndex(line => extractEuroAmounts(line).length);
-            const reportDate = resolvePlatformReportDate(lines.slice(0, headerEnd < 0 ? lines.length : headerEnd));
+            const reportDate = resolvePlatformReportDate(lines.slice(0, headerEnd < 0 ? lines.length : headerEnd), file.name, fallbackMonth);
 
             const totalsByPropertyAndMonth = new Map();
             const transactionPattern = /\b(?:reservation|booking|confirmation|payment|payout|paid|net(?:\s+amount)?|gross|total|amount|valor|montante|reserva|pagamento|liquido|liquida)\b/i;
@@ -5622,8 +5643,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
                     const occurredOn = reportDate || currentDate;
                     if (!occurredOn) {
-                        console.warn('Movimento Booking.com ignorado: data do relatório não encontrada.', resolvedProperty.name);
-                        return;
+                        throw new Error(i18n[currentLang].hosting_missing_date);
                     }
                     const reservationId = line.match(reservationIdPattern)?.[1]?.toLowerCase();
                     const candidateKey = `${occurredOn.slice(0, 7)}:${reservationId || `${lineIndex}:${normalizeAirbnbText(line)}`}`;
@@ -5652,7 +5672,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 });
             }
 
-            return persistPlatformEarnings('Booking.com', [...totalsByPropertyAndMonth.values()]);
+            return persistPlatformEarnings('Booking.com', [...totalsByPropertyAndMonth.values()], wrongMonth);
         }
 
         function carregarPropriedadesDocumentos() {
@@ -5676,6 +5696,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
             const propertyId = document.getElementById('hosting-report-property').value || null;
             const platformName = document.getElementById('hosting-report-platform').value.trim();
+            const fallbackMonth = document.getElementById('hosting-report-month').value;
+            const wrongMonth = document.getElementById('hosting-wrong-month').value;
             const file = document.getElementById('hosting-report-file').files?.[0];
             if (!platformName || !validateHostingReportFile(file)) {
                 showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_file_required, 'error');
@@ -5727,7 +5749,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 let platformImportResult = null;
                 let platformImportError = null;
                 const normalizedPlatformName = platformName.toLowerCase();
-                if (['airbnb', 'booking.com'].includes(normalizedPlatformName) && file.type === 'application/pdf') {
+                if (['airbnb', 'booking.com'].includes(normalizedPlatformName) && extension === 'pdf') {
                     try {
                         const { data: properties, error: propertiesError } = await supabaseClient
                             .from('properties')
@@ -5735,9 +5757,9 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             .eq('user_id', user.id);
                         if (propertiesError) throw propertiesError;
                         if (normalizedPlatformName === 'airbnb') {
-                            platformImportResult = await processAirbnbPDF(file, properties || [], propertyId);
+                            platformImportResult = await processAirbnbPDF(file, properties || [], propertyId, fallbackMonth, wrongMonth);
                         } else {
-                            platformImportResult = await processBookingPDF(file, properties || [], propertyId);
+                            platformImportResult = await processBookingPDF(file, properties || [], propertyId, fallbackMonth, wrongMonth);
                         }
                     } catch (error) {
                         platformImportError = error;
@@ -5745,10 +5767,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     }
                 }
 
-                const selectedProperty = propertyId || '';
-                document.getElementById('hosting-report-form').reset();
-                document.getElementById('hosting-report-property').value = selectedProperty;
-                document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
+                if (!platformImportError) {
+                    document.getElementById('hosting-report-form').reset();
+                    document.getElementById('hosting-report-property').value = propertyId || '';
+                    document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
+                }
                 if (platformImportResult) {
                     await Promise.all([
                         carregarRelatorios(),
@@ -5771,7 +5794,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         'hosting-report-message',
                         i18n[currentLang][`${importMessagePrefix}_success`]
                             .replace('{count}', String(platformImportResult.inserted))
-                            .replace('{duplicates}', String(platformImportResult.duplicates)),
+                            .replace('{replaced}', String(platformImportResult.replaced)),
                         'success'
                     );
                 } else {
