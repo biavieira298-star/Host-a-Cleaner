@@ -229,6 +229,48 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
     }
 });
 
+test('document downloads use authenticated Storage and report failures', async () => {
+    for (const fail of [false, true]) {
+        const calls = [];
+        const link = { click: () => calls.push('click'), remove: () => calls.push('remove') };
+        const context = {
+            requireFinancialAction: () => true,
+            hostingReportsCache: [{ id: 'doc1', file_url: 'stored-url', file_name: 'report.pdf' }],
+            getPlatformDocumentStoragePath: value => { assert.equal(value, 'stored-url'); return 'user/unassigned/file.pdf'; },
+            supabaseClient: { storage: { from: bucket => {
+                assert.equal(bucket, 'platform-documents');
+                return { download: async path => {
+                    assert.equal(path, 'user/unassigned/file.pdf');
+                    return fail ? { data: null, error: new Error('access denied') } : { data: 'blob', error: null };
+                } };
+            } } },
+            URL: {
+                createObjectURL: data => { assert.equal(data, 'blob'); return 'blob:document'; },
+                revokeObjectURL: url => calls.push(`revoke:${url}`)
+            },
+            document: {
+                createElement: () => link,
+                body: { append: () => calls.push('append') }
+            },
+            setTimeout: fn => fn(),
+            currentLang: 'pt',
+            i18n: { pt: { hosting_upload_error: 'Erro' } },
+            showPropertyMessage: (...args) => calls.push(args),
+            console: { error() {} }
+        };
+        vm.createContext(context);
+        vm.runInContext(extractFunction('async function downloadHostingReport(', 'function openHostingDeleteModal('), context);
+        await context.downloadHostingReport('doc1');
+        if (fail) {
+            assert.deepEqual(calls, [['hosting-documents-message', 'Erro: access denied', 'error']]);
+        } else {
+            assert.equal(link.href, 'blob:document');
+            assert.equal(link.download, 'report.pdf');
+            assert.deepEqual(calls, ['append', 'click', 'remove', 'revoke:blob:document']);
+        }
+    }
+});
+
 test('confirmation modal cancels or deletes only the selected document', async () => {
     const calls = [];
     const hidden = new Set(['hidden']);
