@@ -137,7 +137,6 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
         const elements = {
             'hosting-report-platform': makeElement(platform),
             'hosting-report-month': makeElement('2026-10'),
-            'hosting-wrong-month': makeElement(),
             'hosting-report-file': { files: [{ name: 'report.pdf', type: 'application/pdf' }] },
             'hosting-report-submit': makeElement(),
             'hosting-report-form': { reset() {} },
@@ -193,8 +192,7 @@ test('deleting a document removes its row and refreshes financial views', async 
     const query = {
         delete() { calls.push('delete'); return this; },
         eq(column, value) { calls.push(`${column}:${value}`); return this; },
-        select() { return this; },
-        single: async () => ({ error: null })
+        select: async () => ({ data: [{ id: 'doc1' }], error: null })
     };
     const context = {
         requireAdminAction: () => true,
@@ -226,8 +224,7 @@ test('document deletion reports a database failure after storage removal', async
     const query = {
         delete() { return this; },
         eq() { return this; },
-        select() { return this; },
-        single: async () => ({ error: new Error('row failure') })
+        select: async () => ({ data: null, error: new Error('row failure') })
     };
     const context = {
         requireAdminAction: () => true,
@@ -250,4 +247,37 @@ test('document deletion reports a database failure after storage removal', async
     await context.deleteHostingReport('doc1');
     assert.equal(messages[0][0], 'hosting-documents-message');
     assert.match(messages[0][1], /file removed: row failure/);
+});
+
+test('document deletion reports an empty delete result and does not refresh', async () => {
+    const messages = [];
+    const query = {
+        delete() { return this; },
+        eq() { return this; },
+        select: async () => ({ data: [], error: null })
+    };
+    const context = {
+        requireAdminAction: () => true,
+        hostingReportsCache: [{ id: 'doc1', file_url: 'url' }],
+        window: { confirm: () => true },
+        i18n: { pt: {
+            hosting_delete_confirm: 'confirm',
+            hosting_delete_row_error: 'file removed',
+            hosting_document_not_deleted: 'not deleted'
+        } },
+        currentLang: 'pt',
+        currentUser: { id: 'user' },
+        hidePropertyMessage() {},
+        getPlatformDocumentStoragePath: () => 'file.pdf',
+        supabaseClient: {
+            storage: { from: () => ({ remove: async () => ({ error: null }) }) },
+            from: () => query
+        },
+        showPropertyMessage: (...args) => messages.push(args),
+        console: { error() {} }
+    };
+    vm.createContext(context);
+    vm.runInContext(extractFunction('async function deleteHostingReport(reportId)', 'async function togglePaymentStatus('), context);
+    await context.deleteHostingReport('doc1');
+    assert.match(messages[0][1], /file removed: not deleted/);
 });
