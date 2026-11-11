@@ -185,8 +185,45 @@ test('initialization reports profile and offline snapshot errors without opening
     }
 });
 
-test('financial navigation is hidden and an already open export modal is closed', () => {
-    const nav = { classList: makeClassList() };
+test('finance sidebar is visible for admin roles and plans without exposing restricted data', async () => {
+    for (const [profile, visible, permitted] of [
+        [{ role: 'admin', can_view_financials: false }, true, false],
+        [{ role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }, true, false],
+        [{ role: 'admin', can_view_financials: true }, true, true],
+        [{ role: 'cleaner', can_view_financials: true }, false, false]
+    ]) {
+        const context = roleContext(profile);
+        const navigation = Array.from({ length: 4 }, () => ({ classList: makeClassList(['hidden']) }));
+        const sensitiveField = { classList: makeClassList() };
+        Object.assign(context, {
+            reportsRequestId: 0, financialChartRequestId: 0, hostingReportsRequestId: 0,
+            currentLang: 'pt', i18n: { pt: { role_locked: 'blocked' } },
+            document: {
+                querySelectorAll: selector => ({
+                    '.admin-only': navigation,
+                    '[data-financial-access]': [sensitiveField]
+                })[selector] || [],
+                getElementById: id => id === 'sidebar-role-subtitle' ? {} : null
+            }
+        });
+        vm.runInContext(extract('function applyRolePermissionsUI()', 'function canViewFinancials()'), context);
+        await context.checkUserRole();
+        context.applyRolePermissionsUI();
+        assert.ok(navigation.every(element => element.classList.contains('hidden') === !visible));
+        assert.equal(sensitiveField.classList.contains('hidden'), !permitted);
+    }
+
+    const heading = html.match(/<div[^>]*data-i18n="nav_cat_finance"[^>]*>/)[0];
+    assert.match(heading, /admin-only/);
+    assert.doesNotMatch(heading, /data-financial-access/);
+    for (const id of ['btn-sub-reports', 'btn-sub-financial-entries', 'btn-sub-hosting-reports']) {
+        const button = html.match(new RegExp(`<button[^>]*id="${id}"[^>]*>`))[0];
+        assert.match(button, /admin-only/);
+        assert.doesNotMatch(button, /data-financial-access/);
+    }
+});
+
+test('financial details remain hidden and an already open export modal is closed', () => {
     const rate = { classList: makeClassList() };
     const modal = { classList: makeClassList() };
     const subtitle = {};
@@ -200,24 +237,19 @@ test('financial navigation is hidden and an already open export modal is closed'
         currentLang: 'pt',
         i18n: { pt: { role_locked: 'blocked' } },
         document: {
-            querySelectorAll: selector => selector === '[data-financial-access]' ? [nav, rate] : [],
+            querySelectorAll: selector => selector === '[data-financial-access]' ? [rate] : [],
             getElementById: id => id === 'financial-date-modal' ? modal : id === 'sidebar-role-subtitle' ? subtitle : null
         }
     };
     vm.createContext(context);
     vm.runInContext(extract('function applyRolePermissionsUI()', 'function denyFinancialAccess()'), context);
     context.applyRolePermissionsUI();
-    assert.equal(nav.classList.contains('hidden'), true);
     assert.equal(rate.classList.contains('hidden'), true);
     assert.equal(modal.classList.contains('hidden'), true);
     assert.equal(context.financialChartRequestId, 1);
     context.financialsAllowed = true;
     context.applyRolePermissionsUI();
-    assert.equal(nav.classList.contains('hidden'), false);
     assert.equal(rate.classList.contains('hidden'), false);
-    for (const id of ['btn-sub-reports', 'btn-sub-financial-entries', 'btn-sub-hosting-reports']) {
-        assert.match(html, new RegExp(`id="${id}"[^>]*data-financial-access`));
-    }
 });
 
 test('forced financial routes and aliases return to the agenda without rendering financial data', () => {
