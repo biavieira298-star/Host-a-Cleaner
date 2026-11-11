@@ -10,7 +10,7 @@ const end = source.indexOf('function carregarPropriedadesDocumentos(', start);
 assert.ok(start >= 0 && end > start);
 
 function createParser() {
-    const calls = { inserted: [], warnings: [] };
+    const calls = { inserted: [], warnings: [], logs: [] };
     const query = {
         select() { return this; },
         eq() { return this; },
@@ -22,7 +22,10 @@ function createParser() {
     const context = {
         supabaseClient: { from: () => query },
         currentUser: { id: 'user' },
-        console: { warn: (...args) => calls.warnings.push(args) },
+        console: {
+            warn: (...args) => calls.warnings.push(args),
+            log: (...args) => calls.logs.push(args)
+        },
         extractTextFromPDF: async file => file.text
     };
     vm.createContext(context);
@@ -35,6 +38,39 @@ const properties = [
     { id: 'blue', name: 'Casa Azul' },
     { id: 'sea', name: 'Sea House' }
 ];
+
+test('property matching normalizes formatting and supports partial names in both directions', () => {
+    const { context } = createParser();
+    const listings = [
+        { id: 'room-b', name: '1st Floor: Room B' },
+        { id: 'room-a', name: '1st Floor: Room A' },
+        { id: 'blue', name: 'Casa Azul' }
+    ];
+    assert.equal(context.normalizeAirbnbText('  1ST  FLÓOR: Room-B '), '1st floor room b');
+    assert.equal(context.findBestPropertyForReportText('1st Floor Room B', listings, true).id, 'room-b');
+    assert.equal(context.findBestPropertyForReportText('Casa Azul Lisboa', listings, true).id, 'blue');
+    assert.equal(context.findBestPropertyForReportText('Casa Azul vista maravilhosa para o mar', listings, true).id, 'blue');
+    assert.equal(context.findBestPropertyForReportText('Unknown House', properties, true), null);
+    assert.equal(context.findBestPropertyForReportText('1st Floor Room', listings, true), null);
+    assert.equal(context.findBestPropertyForReportText('Casa Azul', [{ id: 'long', name: 'Casa Azul Lisboa' }], true).id, 'long');
+    assert.equal(context.findBestPropertyForReportText('Casa Azul 03/11/2026 10 EUR', listings).id, 'blue');
+});
+
+test('mapping logs the extracted and normalized name and the matched property ID', () => {
+    const { context, calls } = createParser();
+    const rows = context.collectPropertyRows([
+        'Anúncio: 1st   FLÓOR - Room B | 03/11/2026 | Pagamento 30 EUR',
+        'Anúncio: Sem Correspondência | 03/11/2026 | Pagamento 20 EUR'
+    ], [{ id: 'room-b', name: '1st Floor: Room B' }], null);
+    assert.equal(rows[0].property.id, 'room-b');
+    assert.equal(rows[1].property, null);
+    assert.equal(calls.logs[0][1].reportName, '1st   FLÓOR - Room B');
+    assert.equal(calls.logs[0][1].normalizedName, '1st floor room b');
+    assert.equal(calls.logs[0][1].propertyId, 'room-b');
+    assert.equal(calls.warnings[0][1], 'Sem Correspondência');
+    assert.equal(calls.warnings[0][2].normalizedName, 'sem correspondencia');
+    assert.equal(calls.warnings[0][2].propertyId, null);
+});
 
 test('report period prefers labelled month to generation date and supports numeric periods', () => {
     const { context } = createParser();
@@ -57,6 +93,22 @@ test('standalone headings do not match a generic property inside an unrelated na
 });
 
 for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com', 'processBookingPDF']]) {
+    test(`${platform} imports formatted and partial listing names`, async () => {
+        const { context, calls } = createParser();
+        const file = { text: [
+            'Relatório de outubro de 2026',
+            'Anúncio: 1st floor room b | 03/11/2026 | Pagamento 30 EUR',
+            'Anúncio: Casa Azul Lisboa | 04/11/2026 | Pagamento 40 EUR'
+        ].join('\n') };
+        await context[parser](file, [
+            { id: 'room-b', name: '1st Floor: Room B' },
+            { id: 'blue', name: 'Casa Azul' }
+        ]);
+        assert.deepEqual(calls.inserted.map(row => row.property_id), ['room-b', 'blue']);
+        assert.equal(calls.logs[0][1].propertyId, 'room-b');
+        assert.equal(calls.logs[1][1].propertyId, 'blue');
+    });
+
     test(`${platform} maps each listing and uses the report period rather than payout date`, async () => {
         const { context, calls } = createParser();
         const file = { text: [
