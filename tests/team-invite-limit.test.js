@@ -32,6 +32,7 @@ function setup({ profile = { subscription_plan: 'free', max_cleaners: 1 }, profi
         requireAdminAction: () => true,
         document: { getElementById: id => elements[id] },
         teamInviteTokens: new Map(),
+        TEAM_INVITE_LIFETIME_MS: 7 * 24 * 60 * 60 * 1000,
         fetchTeamMembers: async () => calls.push(['refresh']),
         showToast: (...args) => toasts.push(args),
         console: { error() {} },
