@@ -555,6 +555,14 @@
                                     <option value="Booking.com">Booking.com</option>
                                 </select>
                             </div>
+                            <div>
+                                <label for="hosting-report-month" data-i18n="hosting_report_month" class="mb-1 block text-xs font-bold text-slate-300">Mês de recurso (se não constar no PDF ou nome do ficheiro)</label>
+                                <input id="hosting-report-month" type="month" class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white">
+                            </div>
+                            <div>
+                                <label for="hosting-wrong-month" data-i18n="hosting_wrong_month" class="mb-1 block text-xs font-bold text-slate-300">Mês incorreto anterior a limpar (opcional)</label>
+                                <input id="hosting-wrong-month" type="month" class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white">
+                            </div>
                             <div id="hosting-report-dropzone" class="hosting-report-dropzone sm:col-span-2">
                                 <input id="hosting-report-file" type="file" accept=".pdf,.csv,application/pdf,text/csv" class="sr-only">
                                 <label for="hosting-report-file" class="block cursor-pointer rounded-2xl border border-dashed border-slate-600 bg-slate-900/70 p-5 text-center transition hover:border-indigo-400 hover:bg-slate-900">
