@@ -4,9 +4,7 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.log('Erro ao registar PWA Service Worker:', err));
 }
 
-const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_ctbII8i3aiWcdxY2Cj_WMQ_8BuQY3Rx';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let userRole = 'admin';
         let financialsAllowed = false;
@@ -46,6 +44,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let isOfflineMode = !navigator.onLine;
         let currentAuthMode = 'login';
         let currentUser = null;
+        let subscriptionLoadRequestId = 0;
+        let stripeCheckoutSyncPromise = null;
         let currentTeamManagerId = null;
         let pendingTeamInviteToken = null;
         let registrationRole = 'cleaner';
@@ -173,6 +173,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 settings_load_error: "Não foi possível carregar as preferências",
                 settings_theme_saved: "Tema guardado.",
                 settings_subscription_heading: "Plano de Subscrição",
+                subscription_loading: "A carregar o plano...",
+                subscription_load_error: "Não foi possível carregar o plano. Volte a abrir este separador para tentar novamente.",
+                subscription_current: "Plano Atual",
+                subscription_free: "Gratuito",
+                subscription_subscribe: "Subscrever",
+                subscription_status_label: "Estado",
+                subscription_no_status: "Sem subscrição Stripe",
+                subscription_sync_success: "Pagamento confirmado e plano sincronizado.",
+                subscription_sync_error: "Não foi possível confirmar o pagamento. Verifique a sessão iniciada e recarregue a página para tentar novamente.",
                 password_min_length: "Mínimo de 6 caracteres",
                 password_confirm_placeholder: "Repita a palavra-passe",
                 password_mismatch: "As palavras-passe introduzidas não coincidem.",
@@ -509,6 +518,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 settings_load_error: "Could not load preferences",
                 settings_theme_saved: "Theme saved.",
                 settings_subscription_heading: "Subscription Plan",
+                subscription_loading: "Loading plan...",
+                subscription_load_error: "Could not load the plan. Reopen this tab to retry.",
+                subscription_current: "Current Plan",
+                subscription_free: "Free",
+                subscription_subscribe: "Subscribe to",
+                subscription_status_label: "Status",
+                subscription_no_status: "No Stripe subscription",
+                subscription_sync_success: "Payment confirmed and plan synchronized.",
+                subscription_sync_error: "Could not confirm payment. Check the signed-in account and reload the page to retry.",
                 password_min_length: "At least 6 characters",
                 password_confirm_placeholder: "Repeat the password",
                 password_mismatch: "The passwords do not match.",
@@ -838,6 +856,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (userRole === 'admin' && !document.getElementById('view-sub-hosting-reports').classList.contains('hidden')) {
                 carregarDocumentosHosting();
             }
+            if (userRole === 'admin' && currentUser
+                && !document.getElementById('view-sub-profile-settings').classList.contains('hidden')
+                && profileSettingsTab === 'subscription') {
+                void loadSubscriptionPlan();
+            }
             void updateOfflineIndicator();
             if (!document.getElementById('view-sub-time-entries').classList.contains('hidden')) {
                 carregarRegistosHoras();
@@ -911,6 +934,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             await refreshUrgentIncidentBadge();
             await activeViewRenderPromise;
             if (navigator.onLine) void syncPendingData();
+            void syncStripeCheckout();
         }
 
         function isOfflineNetworkError(error) {
@@ -1285,6 +1309,75 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         : 'font-semibold text-slate-500 hover:bg-slate-50'
                 }${key === 'subscription' ? ' admin-only' : ''}`;
             });
+            if (tab === 'subscription') void loadSubscriptionPlan();
+        }
+
+        async function loadSubscriptionPlan() {
+            const userId = currentUser?.id;
+            const requestId = ++subscriptionLoadRequestId;
+            const status = document.getElementById('subscription-status');
+            const buttons = document.querySelectorAll('[data-subscription-plan]');
+            buttons.forEach(button => { button.disabled = true; });
+            status.textContent = i18n[currentLang].subscription_loading;
+            try {
+                if (!userId) throw new Error('No authenticated user');
+                const { data: profile, error } = await supabaseClient.from('profiles')
+                    .select('subscription_plan, stripe_subscription_status')
+                    .eq('id', userId)
+                    .maybeSingle();
+                if (error) throw error;
+                if (!profile) throw new Error('Subscription profile not found');
+                if (requestId !== subscriptionLoadRequestId || currentUser?.id !== userId) return;
+                const plan = String(profile.subscription_plan || '').trim().toLowerCase();
+                const normalizedPlan = plan === 'free' ? 'gratuito' : plan;
+                if (!['gratuito', 'starter', 'pro', 'business'].includes(normalizedPlan)) {
+                    throw new Error('Unknown subscription plan');
+                }
+                const labels = { gratuito: i18n[currentLang].subscription_free, starter: 'Starter', pro: 'Pro', business: 'Business' };
+                const stripeStatus = profile.stripe_subscription_status || i18n[currentLang].subscription_no_status;
+                status.textContent = `${labels[normalizedPlan]} · ${i18n[currentLang].subscription_status_label}: ${stripeStatus}`;
+                buttons.forEach(button => {
+                    const buttonPlan = button.dataset.subscriptionPlan;
+                    const isCurrent = buttonPlan === normalizedPlan;
+                    button.disabled = isCurrent || buttonPlan === 'gratuito';
+                    button.textContent = isCurrent ? i18n[currentLang].subscription_current
+                        : buttonPlan === 'gratuito' ? labels.gratuito
+                        : `${i18n[currentLang].subscription_subscribe} ${labels[buttonPlan]}`;
+                });
+            } catch (error) {
+                if (requestId !== subscriptionLoadRequestId || currentUser?.id !== userId) return;
+                console.error('Erro ao carregar plano de subscrição:', error);
+                status.textContent = i18n[currentLang].subscription_load_error;
+            }
+        }
+
+        async function syncStripeCheckout() {
+            const url = new URL(window.location.href);
+            const sessionId = url.searchParams.get('session_id');
+            if (!sessionId || !currentUser || stripeCheckoutSyncPromise) return;
+            const userId = currentUser.id;
+            stripeCheckoutSyncPromise = (async () => {
+                try {
+                    const { error } = await supabaseClient.functions.invoke('stripe-sync-subscription', {
+                        body: { session_id: sessionId }
+                    });
+                    if (error) throw error;
+                    if (currentUser?.id !== userId) throw new Error('Session changed during synchronization');
+                    const currentUrl = new URL(window.location.href);
+                    if (currentUrl.searchParams.get('session_id') === sessionId) {
+                        currentUrl.searchParams.delete('session_id');
+                        window.history.replaceState({}, document.title, currentUrl.toString());
+                    }
+                    showToast(i18n[currentLang].subscription_sync_success);
+                    switchTab('sub-subscriptions');
+                } catch (error) {
+                    console.error('Erro ao sincronizar subscrição Stripe:', error);
+                    showToast(i18n[currentLang].subscription_sync_error, 'error');
+                } finally {
+                    stripeCheckoutSyncPromise = null;
+                }
+            })();
+            await stripeCheckoutSyncPromise;
         }
 
         function getOperationalPreferencesStorageKey() {
