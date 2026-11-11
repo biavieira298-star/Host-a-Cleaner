@@ -13,6 +13,15 @@ Indique o mês obrigatório no formulário. Esse mês é atribuído a todos os
 movimentos extraídos do PDF, independentemente das datas do documento.
 Os imóveis são identificados pelos nomes no relatório.
 
+Na interface, apenas administradores podem aceder aos relatórios financeiros e
+documentos. Se `profiles.can_view_financials` existir e for `false`, o acesso
+também fica oculto para esse administrador. Se a coluna não existir, mantém-se
+o comportamento anterior para administradores; erros na leitura do perfil
+bloqueiam o acesso financeiro na interface. No modo offline é usada a última
+permissão guardada; cópias antigas sem essa informação bloqueiam o acesso.
+Esta restrição é apenas visual: a proteção efetiva dos dados e ficheiros exige
+políticas RLS e de Storage adequadas no Supabase.
+
 A substituição afeta apenas os movimentos associados ao mesmo documento.
 Documentos diferentes, mesmo da mesma plataforma e mês, mantêm os seus
 movimentos e podem produzir valores duplicados se contiverem os mesmos dados.
