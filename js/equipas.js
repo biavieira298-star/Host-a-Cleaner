@@ -298,13 +298,28 @@ async function updateTeamMemberPreference(memberId, preference, enabled) {
 
 async function removeTeamMember(memberId) {
     if (!requireAdminAction()) return;
-    if (!confirm('Deseja mesmo remover este membro da equipa?')) return;
-    const { error } = await supabaseClient.from('team_members').delete().eq('id', memberId);
-    if (error) {
+    if (!confirm('Deseja mesmo remover este membro da equipa e a sua conta de acesso?')) return;
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('delete-team-member', {
+            body: { userId: memberId }
+        });
+        if (error) throw error;
+        if (data?.error || data?.success === false) {
+            throw new Error(typeof data.error === 'string' ? data.error : 'A função não confirmou a eliminação.');
+        }
+    } catch (error) {
         console.error('Erro ao remover membro da equipa:', error);
         showToast('Não foi possível remover o membro: ' + error.message, 'error');
         return;
     }
     teamInviteTokens.delete(String(memberId));
-    await fetchTeamMembers();
+    showToast('Membro e conta removidos com sucesso.');
+    try {
+        if (!await fetchTeamMembers()) {
+            showToast('O membro foi removido, mas não foi possível atualizar a lista.', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar a lista de membros:', error);
+        showToast('O membro foi removido, mas não foi possível atualizar a lista: ' + error.message, 'error');
+    }
 }
