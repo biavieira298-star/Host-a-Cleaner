@@ -4,7 +4,7 @@ A Edge Function `stripe-webhook` verifica a assinatura de cada evento Stripe e a
 
 ## 1. Aplicar a migração
 
-Aplicar `migrations/202611090001_stripe_subscription_webhook.sql` no projeto Supabase antes de implementar a função. A migração acrescenta os IDs e o estado da subscrição Stripe ao perfil.
+Aplicar as migrações `202611090001_stripe_subscription_webhook.sql` e `202611110005_stripe_checkout_order.sql` no projeto Supabase antes de implementar as funções. Acrescentam os IDs, o estado da subscrição e a data do checkout ao perfil.
 
 ## 2. Configurar segredos da função
 
@@ -29,6 +29,7 @@ Aplicar a migração e implementar a função com a Supabase CLI:
 ```sh
 supabase db push
 supabase functions deploy stripe-webhook
+supabase functions deploy stripe-sync-subscription
 ```
 
 No Stripe Dashboard, criar um destino de webhook para:
@@ -39,8 +40,20 @@ https://<SUPABASE_PROJECT_REF>.supabase.co/functions/v1/stripe-webhook
 
 Selecionar os eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.updated` e `customer.subscription.deleted`. Guardar o signing secret desse destino como `STRIPE_WEBHOOK_SECRET`.
 
-## 4. Testar antes de produção
+## 4. Configurar o retorno dos Payment Links
 
-Começar com a chave e os Payment Links `test_`. Fazer uma subscrição de teste Starter, Pro e Business com uma conta existente na app e o mesmo email da conta Host a Cleaner. Confirmar no Supabase que o plano, limites e IDs Stripe foram atualizados. Testar também o cancelamento e verificar que o plano passa a Gratuito após o Stripe emitir `customer.subscription.deleted`.
+Em cada Payment Link, configurar **After payment → Redirect to your website**, com o URL público da aplicação e o marcador literal do Stripe:
+
+```text
+https://<dominio-da-app>/status-success.html?session_id={CHECKOUT_SESSION_ID}
+```
+
+Usar o caminho real da aplicação se estiver numa subpasta. O ficheiro disponível é `status-success.html`; para usar `/status-success` sem extensão, configurar o alojamento para servir esse ficheiro nessa rota. O marcador é substituído pelo Stripe; não inserir manualmente um ID de sessão fixo.
+
+Ao regressar, a página confirma o pagamento e envia o ID à função `stripe-sync-subscription`, que valida o token do utilizador, o ID e o email da conta na sessão, o pagamento, a subscrição e os preços diretamente no Stripe antes de atualizar o perfil. Depois da confirmação, abre o painel no separador do plano. Se for necessário iniciar sessão, o botão de regresso preserva o ID para a aplicação concluir a sincronização. As duas funções usam os mesmos secrets e mapa de preços. A função de sincronização verifica o token explicitamente; a configuração `verify_jwt = false` desativa apenas a verificação do gateway. A sincronização não substitui o webhook para alterações e cancelamentos posteriores. Uma sessão pendente ou uma conta diferente não ativa o plano; após resolver o problema, recarregar a página mantém o ID para nova tentativa.
+
+## 5. Testar antes de produção
+
+Começar com a chave e os Payment Links `test_`. Fazer uma subscrição de teste Starter, Pro e Business com uma conta existente na app e o mesmo email da conta Host a Cleaner. Verificar o redirecionamento com `session_id`, a atualização do plano na interface e, no Supabase, os limites e IDs Stripe. Testar com o webhook temporariamente indisponível e depois restaurá-lo; testar também uma sessão de outra conta, um pagamento pendente e o cancelamento, verificando que o plano passa a Gratuito após `customer.subscription.deleted`.
 
 Os links atuais são Payment Links de teste; a passagem para produção requer substituir os links no frontend por links Live, configurar os Price IDs Live e criar um endpoint Live com um novo signing secret. Nunca reutilizar os secrets de teste em produção.
