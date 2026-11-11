@@ -137,6 +137,8 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
         const elements = {
             'hosting-report-property': makeElement('p1'),
             'hosting-report-platform': makeElement(platform),
+            'hosting-report-month': makeElement(),
+            'hosting-wrong-month': makeElement(),
             'hosting-report-file': { files: [{ name: 'report.pdf', type: 'application/pdf' }] },
             'hosting-report-submit': makeElement(),
             'hosting-report-form': { reset() {} },
@@ -160,8 +162,8 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
             userRole: 'admin',
             currentLang: 'pt',
             i18n: { pt: {
-                hosting_airbnb_import_success: '{count}/{duplicates}',
-                hosting_booking_import_success: '{count}/{duplicates}'
+                hosting_airbnb_import_success: '{count}/{replaced}',
+                hosting_booking_import_success: '{count}/{replaced}'
             } },
             crypto: { randomUUID: () => 'document' },
             validateHostingReportFile: () => true,
