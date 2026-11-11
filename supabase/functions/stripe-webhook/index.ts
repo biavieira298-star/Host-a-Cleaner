@@ -1,14 +1,8 @@
 import Stripe from 'npm:stripe@18.5.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
-
-type PaidPlan = 'starter' | 'pro' | 'business';
-type Plan = 'gratuito' | PaidPlan;
-
-const requiredEnv = (name: string): string => {
-    const value = Deno.env.get(name);
-    if (!value) throw new Error(`Missing required environment variable: ${name}`);
-    return value;
-};
+import {
+    parsePricePlanMap, planFromPriceIds, planLimits, requiredEnv, stripeObjectId, subscriptionPeriodEnd
+} from '../_shared/stripe-plans.ts';
 
 const stripe = new Stripe(requiredEnv('STRIPE_SECRET_KEY'), {
     httpClient: Stripe.createFetchHttpClient()
@@ -21,61 +15,6 @@ const supabase = createClient(
     { auth: { autoRefreshToken: false, persistSession: false } }
 );
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
-
-function parsePricePlanMap(value: string): Map<string, PaidPlan> {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(value);
-    } catch (error) {
-        throw new Error(`STRIPE_PRICE_PLAN_MAP must be valid JSON: ${String(error)}`);
-    }
-
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('STRIPE_PRICE_PLAN_MAP must be a JSON object mapping price IDs to plans.');
-    }
-
-    const mapping = new Map<string, PaidPlan>();
-    for (const [priceId, plan] of Object.entries(parsed)) {
-        if (!priceId || !['starter', 'pro', 'business'].includes(String(plan))) {
-            throw new Error(`Invalid Stripe price-to-plan mapping for price ${priceId}.`);
-        }
-        mapping.set(priceId, plan as PaidPlan);
-    }
-    if (mapping.size === 0) throw new Error('STRIPE_PRICE_PLAN_MAP must contain at least one price.');
-    return mapping;
-}
-
-function stripeObjectId(value: string | { id: string } | null): string | null {
-    if (typeof value === 'string') return value;
-    return value?.id ?? null;
-}
-
-function stripeTimestampToIso(value: unknown): string | null {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-    const date = new Date(value * 1000);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function planFromPriceIds(priceIds: string[]): PaidPlan {
-    const plans = new Set(priceIds.map(priceId => pricePlanMap.get(priceId)).filter(Boolean));
-    if (plans.size !== 1) {
-        throw new Error('The Stripe subscription price is missing from, or conflicts with, STRIPE_PRICE_PLAN_MAP.');
-    }
-    return [...plans][0]!;
-}
-
-function planLimits(plan: Plan) {
-    switch (plan) {
-        case 'starter':
-            return { subscription_plan: plan, max_properties: 4, max_cleaners: 3 };
-        case 'pro':
-            return { subscription_plan: plan, max_properties: 10, max_cleaners: null };
-        case 'business':
-            return { subscription_plan: plan, max_properties: 25, max_cleaners: null };
-        default:
-            return { subscription_plan: plan, max_properties: 1, max_cleaners: 1 };
-    }
-}
 
 async function stripeCustomerEmail(customerId: string | null, sessionEmail?: string | null): Promise<string | null> {
     if (sessionEmail) return sessionEmail.trim().toLowerCase();
@@ -112,13 +51,16 @@ async function resolveCheckoutUserId(session: Stripe.Checkout.Session, email: st
 async function updateProfile(
     userId: string,
     values: Record<string, unknown>,
-    eventCreated: number
+    eventCreated: number,
+    sessionCreated: number,
+    subscriptionId: string
 ): Promise<boolean> {
     const { data, error } = await supabase
         .from('profiles')
         .update(values)
         .eq('id', userId)
         .or(`stripe_subscription_event_created.is.null,stripe_subscription_event_created.lt.${eventCreated}`)
+        .or(`stripe_checkout_session_created.is.null,stripe_checkout_session_created.lt.${sessionCreated},and(stripe_checkout_session_created.eq.${sessionCreated},stripe_subscription_id.eq.${subscriptionId})`)
         .select('id')
         .maybeSingle();
     if (error) throw error;
@@ -166,26 +108,27 @@ async function handleCheckoutCompleted(
         return;
     }
 
-    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
-    const plan = planFromPriceIds(lineItems.data.flatMap(item => item.price?.id ? [item.price.id] : []));
+    const plan = planFromPriceIds(subscription.items.data.map(item => item.price.id), pricePlanMap);
     const updated = await updateProfile(userId, {
         ...planLimits(plan),
         stripe_customer_id: customerId,
         stripe_subscription_id: subscription.id,
         stripe_subscription_status: subscription.status,
-        stripe_current_period_end: stripeTimestampToIso(subscription.current_period_end),
+        stripe_current_period_end: subscriptionPeriodEnd(subscription),
         stripe_cancel_at_period_end: subscription.cancel_at_period_end,
+        stripe_checkout_session_created: session.created,
         stripe_subscription_event_created: eventCreated
-    }, eventCreated);
+    }, eventCreated, session.created, subscription.id);
     if (!updated) console.warn(`Stripe event ${eventId} ignored: a newer subscription event was already processed.`);
 }
 
 async function handleSubscriptionChange(
-    subscription: Stripe.Subscription,
+    eventSubscription: Stripe.Subscription,
     eventCreated: number,
     deleted = false
 ): Promise<void> {
-    const periodEnd = stripeTimestampToIso(subscription.current_period_end);
+    const subscription = await stripe.subscriptions.retrieve(eventSubscription.id);
+    const periodEnd = subscriptionPeriodEnd(subscription);
     const values: Record<string, unknown> = {
         stripe_subscription_status: deleted ? 'canceled' : subscription.status,
         stripe_current_period_end: periodEnd,
@@ -197,7 +140,7 @@ async function handleSubscriptionChange(
         Object.assign(values, planLimits('gratuito'));
         if (deleted || subscription.status === 'canceled') values.stripe_subscription_id = null;
     } else if (subscription.status === 'active' || subscription.status === 'trialing') {
-        const plan = planFromPriceIds(subscription.items.data.map(item => item.price.id));
+        const plan = planFromPriceIds(subscription.items.data.map(item => item.price.id), pricePlanMap);
         Object.assign(values, planLimits(plan));
     }
 
