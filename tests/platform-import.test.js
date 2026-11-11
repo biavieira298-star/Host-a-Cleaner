@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const start = source.indexOf('function normalizeAirbnbText(');
-const end = source.indexOf('function carregarPropriedadesDocumentos(', start);
+const end = source.indexOf('async function submitHostingReport(', start);
 assert.ok(start >= 0 && end > start);
 
 function createParser() {
@@ -76,24 +76,6 @@ test('mapping logs the extracted and normalized name and the matched property ID
     assert.equal(calls.warnings[0][2].propertyId, null);
 });
 
-test('report period prefers labelled month to generation date and supports numeric periods', () => {
-    const { context } = createParser();
-    assert.equal(context.resolvePlatformReportDate(['Gerado em 05/11/2026', 'Relatório de outubro de 2026']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05', 'Statement period: 10/2026']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Statement period: 2026-10']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Statement: October 2026 generated on November 2026']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05 | Statement: October 2026']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Period: 01/10/2026 - 31/10/2026']), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Period: 01/10/2026 - 30/11/2026']), null);
-    assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05']), null);
-    assert.equal(context.resolvePlatformReportDate([], 'airbnb_2026-10.pdf', '2026-11'), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate([], 'airbnb_10_2026.pdf', ''), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate([], 'airbnb outubro 2026.pdf', '2026-11'), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate([], 'report.pdf', '2026-10'), '2026-10-01');
-    assert.equal(context.resolvePlatformReportDate(['Relatório setembro 2026'], 'airbnb_2026-10.pdf', '2026-11'), '2026-09-01');
-    assert.equal(context.resolvePlatformReportDate([], 'report.pdf', '2026-13'), null);
-});
-
 test('standalone headings do not match a generic property inside an unrelated name', () => {
     const { context, calls } = createParser();
     const rows = context.collectPropertyRows(['Unknown House', 'Casa Azul'], properties, null);
@@ -104,11 +86,18 @@ test('standalone headings do not match a generic property inside an unrelated na
 });
 
 for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com', 'processBookingPDF']]) {
-    test(`${platform} imports undated rows using a fallback month and replaces the extra month`, async () => {
+    test(`${platform} requires a valid selected month before processing`, async () => {
         const { context, calls } = createParser();
-        await context[parser]({ name: 'relatorio.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, null, '2026-10', '2026-11');
+        await assert.rejects(context[parser]({ text: 'Anúncio: Casa Azul | Pagamento 75 EUR' }, properties, '', 'doc1'), /missing date/);
+        await assert.rejects(context[parser]({ text: 'Anúncio: Casa Azul | Pagamento 75 EUR' }, properties, '2026-13', 'doc1'), /missing date/);
+        assert.equal(calls.requests.length, 0);
+    });
+    test(`${platform} imports undated rows using the selected month and replaces the extra month`, async () => {
+        const { context, calls } = createParser();
+        await context[parser]({ name: 'relatorio.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1', '2026-11');
         assert.equal(calls.inserted[0].occurred_on, '2026-10-01');
-        assert.equal(calls.requests[0].name, 'replace_platform_financial_entries');
+        assert.equal(calls.requests[0].name, 'replace_document_financial_entries');
+        assert.equal(calls.requests[0].args.p_document_id, 'doc1');
         assert.equal(calls.requests[0].args.p_extra_month, '2026-11-01');
         assert.match(calls.confirmations[0], /2026-10, 2026-11/);
     });
@@ -116,7 +105,7 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
     test(`${platform} cancellation leaves existing entries unchanged`, async () => {
         const { context, calls } = createParser();
         context.window.confirm = () => false;
-        await assert.rejects(context[parser]({ name: 'relatorio_2026-10.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties), /cancelled/);
+        await assert.rejects(context[parser]({ name: 'relatorio_2026-10.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1'), /cancelled/);
         assert.equal(calls.requests.length, 0);
     });
 
@@ -130,13 +119,13 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
         await context[parser](file, [
             { id: 'room-b', name: '1st Floor: Room B' },
             { id: 'blue', name: 'Casa Azul' }
-        ]);
+        ], '2026-10', 'doc1');
         assert.deepEqual(calls.inserted.map(row => row.property_id), ['room-b', 'blue']);
         assert.equal(calls.logs[0][1].propertyId, 'room-b');
         assert.equal(calls.logs[1][1].propertyId, 'blue');
     });
 
-    test(`${platform} maps each listing and uses the report period rather than payout date`, async () => {
+    test(`${platform} maps each listing and always uses the selected month`, async () => {
         const { context, calls } = createParser();
         const file = { text: [
             'Gerado em 05/11/2026',
@@ -144,11 +133,11 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
             'Anúncio: Casa Azul | 03/11/2026 | Pagamento 125,50 EUR',
             'Anúncio: Sea House | 05/11/2026 | Pagamento 50,00 EUR'
         ].join('\n') };
-        const result = await context[parser](file, properties, 'generic');
+        const result = await context[parser](file, properties, '2026-09', 'doc1');
         assert.equal(result.inserted, 2);
         assert.deepEqual(calls.inserted.map(row => [row.property_id, row.amount, row.occurred_on, row.entry_date]), [
-            ['blue', 125.5, '2026-10-01', '2026-10-01'],
-            ['sea', 50, '2026-10-01', '2026-10-01']
+            ['blue', 125.5, '2026-09-01', '2026-09-01'],
+            ['sea', 50, '2026-09-01', '2026-09-01']
         ]);
         assert.equal(calls.warnings.length, 0);
     });
@@ -156,7 +145,7 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
     test(`${platform} never falls back to the first property or upload date`, async () => {
         const { context, calls } = createParser();
         const file = { text: 'Anúncio: Unknown House | 05/11/2026 | Pagamento 999,00 EUR' };
-        await assert.rejects(context[parser](file, properties), /unmatched/);
+        await assert.rejects(context[parser](file, properties, '2026-10', 'doc1'), /unmatched/);
         assert.equal(calls.inserted.length, 0);
         assert.ok(calls.warnings.length);
     });
@@ -169,31 +158,28 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
             'Unknown House 04/11/2026 Pagamento 999,00 EUR',
             'Sea House 05/11/2026 Pagamento 50,00 EUR'
         ].join('\n') };
-        await assert.rejects(context[parser](file, properties, 'generic'), /unmatched/);
+        await assert.rejects(context[parser](file, properties, '2026-10', 'doc1'), /unmatched/);
         assert.equal(calls.inserted.length, 0);
         assert.match(calls.warnings[0][1], /Unknown House/);
     });
 }
 
-test('Booking keeps transactions in separate months when no report period is specified', async () => {
+test('Booking assigns all transaction dates to the selected month', async () => {
     const { context, calls } = createParser();
     await context.processBookingPDF({ text: [
         'Anúncio: Casa Azul',
         'Reserva 12345 30/10/2026 Pagamento 100,00 EUR',
         'Reserva 67890 02/11/2026 Pagamento 50,00 EUR'
-    ].join('\n') }, properties);
+    ].join('\n') }, properties, '2026-09', 'doc1');
     assert.deepEqual(calls.inserted.map(row => [row.property_id, row.amount, row.occurred_on]), [
-        ['blue', 100, '2026-10-30'],
-        ['blue', 50, '2026-11-02']
+        ['blue', 150, '2026-09-01']
     ]);
 });
 
-test('an explicitly selected property is used only when no listing name is present', async () => {
+test('unidentified property is not assigned to a default property', async () => {
     const { context, calls } = createParser();
-    await context.processAirbnbPDF({ text: 'Relatório outubro de 2026\n03/11/2026 Pagamento 75,00 EUR' }, properties, 'blue');
-    assert.equal(calls.inserted.length, 1);
-    assert.equal(calls.inserted[0].property_id, 'blue');
-    assert.equal(calls.inserted[0].occurred_on, '2026-10-01');
+    await context.processAirbnbPDF({ text: 'Relatório outubro de 2026\n03/11/2026 Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1');
+    assert.equal(calls.inserted.length, 0);
 });
 
 test('undated movements are not assigned to the upload date', async () => {
@@ -207,7 +193,7 @@ test('Airbnb imports undated transaction lines below the property heading', asyn
     await context.processAirbnbPDF({
         name: 'relatorio.pdf',
         text: 'Anúncio: Casa Azul\nPagamento 75,00 EUR\nPagamento 35,00 EUR'
-    }, properties, null, '2026-10');
+    }, properties, '2026-10', 'doc1');
     assert.deepEqual(calls.inserted.map(row => row.amount), [75, 35]);
 });
 
@@ -220,5 +206,5 @@ test('replacement errors are surfaced and an empty report never calls the databa
     await assert.rejects(context.processAirbnbPDF({
         name: 'relatorio_2026-10.pdf',
         text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR'
-    }, properties), /transaction failed/);
+    }, properties, '2026-10', 'doc1'), /transaction failed/);
 });
