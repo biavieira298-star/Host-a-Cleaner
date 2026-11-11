@@ -1,11 +1,14 @@
-const CACHE_NAME = 'host-a-cleaner-v20';
+const CACHE_NAME = 'host-a-cleaner-v22';
 const APP_SHELL = [
     './index.html',
+    './status-success.html',
     './styles.css',
     './manifest.json',
     './images/icon-192.png',
     './images/icon-512.png',
     './js/equipas.js',
+    './js/supabase-config.js',
+    './js/status-success.js',
     './js/app.js'
 ];
 const REMOTE_APP_ASSETS = [
@@ -75,8 +78,12 @@ self.addEventListener('fetch', event => {
     const isAppAsset = /\.(?:css|js|json|png|svg|ico|webp)$/i.test(requestUrl.pathname);
     if (!isNavigation && !isAppAsset) return;
 
+    const successPageUrl = new URL('./status-success.html', self.registration.scope);
+    const successRouteUrl = new URL('./status-success', self.registration.scope);
+    const isSuccessPage = isNavigation
+        && [successPageUrl.pathname, successRouteUrl.pathname].includes(requestUrl.pathname);
     const cacheKey = isNavigation
-        ? new Request(new URL('./index.html', self.registration.scope))
+        ? new Request(isSuccessPage ? successPageUrl : new URL('./index.html', self.registration.scope))
         : request;
 
     const cachePromise = caches.open(CACHE_NAME);
@@ -92,7 +99,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(cachedResponsePromise.then(cachedResponse => {
         if (cachedResponse) return cachedResponse;
         return networkResponsePromise.catch(async error => {
-            if (isNavigation) {
+            if (isNavigation && !isSuccessPage) {
                 const cache = await cachePromise;
                 const offlinePage = await cache.match(new URL('./index.html', self.registration.scope));
                 if (offlinePage) return offlinePage;
