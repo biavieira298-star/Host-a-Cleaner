@@ -32,7 +32,7 @@ function frontend({ profile = { subscription_plan: 'pro', stripe_subscription_st
         currentLang: 'pt',
         i18n: { pt: {
             subscription_loading: 'loading', subscription_load_error: 'load error',
-            subscription_free: 'Gratuito', subscription_current: 'Plano Atual',
+            subscription_free: 'Gratuito', subscription_admin: 'Administrador', subscription_current: 'Plano Atual',
             subscription_subscribe: 'Subscrever', subscription_status_label: 'Estado',
             subscription_no_status: 'Sem subscrição Stripe',
             subscription_sync_success: 'synchronized', subscription_sync_error: 'sync error'
@@ -77,6 +77,13 @@ test('a failed profile read does not claim that a plan is active', async () => {
     await context.loadSubscriptionPlan();
     assert.equal(status.textContent, 'load error');
     assert.ok(buttons.every(button => button.disabled));
+});
+
+test('an administrator subscription is shown without a false current paid plan', async () => {
+    const { context, buttons, status } = frontend({ profile: { subscription_plan: 'admin', stripe_subscription_status: null } });
+    await context.loadSubscriptionPlan();
+    assert.equal(status.textContent, 'Administrador · Estado: Sem subscrição Stripe');
+    assert.ok(buttons.every(button => button.textContent !== 'Plano Atual'));
 });
 
 test('checkout return invokes synchronization and removes its ID only on success', async () => {
