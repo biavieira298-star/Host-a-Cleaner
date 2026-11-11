@@ -5301,21 +5301,29 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 .trim();
         }
 
-        function propertyNameMatchScore(text, propertyName) {
+        function propertyNameMatchScore(text, propertyName, nameOnly = false) {
             const normalizedText = normalizeAirbnbText(text);
             const normalizedName = normalizeAirbnbText(propertyName);
             if (!normalizedText || !normalizedName) return 0;
-            if (` ${normalizedText} `.includes(` ${normalizedName} `)) {
-                return 2 + normalizedName.length / 1000;
+            if (normalizedText === normalizedName) return 3;
+            const textContainsName = ` ${normalizedText} `.includes(` ${normalizedName} `);
+            const nameContainsText = ` ${normalizedName} `.includes(` ${normalizedText} `);
+            if (!textContainsName && !(nameOnly && nameContainsText)) return 0;
+            if (nameOnly) {
+                const shorter = Math.min(normalizedText.length, normalizedName.length);
+                const longer = Math.max(normalizedText.length, normalizedName.length);
+                const shorterName = normalizedText.length <= normalizedName.length ? normalizedText : normalizedName;
+                if (shorterName.split(' ').length < 2) return 0;
+                return shorter / longer;
             }
+            if (textContainsName) return 1 + normalizedName.length / (normalizedText.length + 1);
             return 0;
         }
 
-        function findBestPropertyForReportText(text, properties, exactName = false) {
+        function findBestPropertyForReportText(text, properties, nameOnly = false) {
             const matches = properties
-                .map(property => ({ property, score: propertyNameMatchScore(text, property.name) }))
-                .filter(match => match.score > 0 && (!exactName
-                    || normalizeAirbnbText(text) === normalizeAirbnbText(match.property.name)))
+                .map(property => ({ property, score: propertyNameMatchScore(text, property.name, nameOnly) }))
+                .filter(match => match.score > 0)
                 .sort((a, b) => b.score - a.score);
             if (!matches.length || (matches[1] && matches[1].score === matches[0].score)) return null;
             return matches[0].property;
@@ -5340,8 +5348,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 const ambiguousName = isStandaloneName && !property
                     && properties.some(candidate => propertyNameMatchScore(line, candidate.name) > 0);
                 if (!property && !explicitName && !ambiguousName) return;
+                const reportName = explicitName ? name : line;
                 if (!property) {
-                    console.warn('Alojamento do relatório não encontrado ou ambíguo:', explicitName ? name : line);
+                    console.warn('Alojamento do relatório não encontrado ou ambíguo:', reportName, {
+                        normalizedName: normalizeAirbnbText(reportName),
+                        propertyId: null
+                    });
+                } else {
+                    console.log('Alojamento do relatório associado:', {
+                        reportName,
+                        normalizedName: normalizeAirbnbText(reportName),
+                        propertyName: property.name,
+                        propertyId: property.id
+                    });
                 }
                 const previousRow = rows[rows.length - 1];
                 if (property && previousRow?.property
@@ -5350,7 +5369,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     && !extractEuroAmounts(line).length) return;
                 rows.push({ index, property });
             });
-            if (!rows.length && selectedProperty) rows.push({ index: 0, property: selectedProperty });
+            if (!rows.length && selectedProperty) {
+                console.log('Alojamento selecionado para relatório sem nome identificado:', {
+                    reportName: null,
+                    normalizedName: null,
+                    propertyName: selectedProperty.name,
+                    propertyId: selectedProperty.id
+                });
+                rows.push({ index: 0, property: selectedProperty });
+            }
             if (!rows.length) console.warn('Nenhum alojamento do relatório corresponde aos imóveis registados.');
             return rows;
         }
