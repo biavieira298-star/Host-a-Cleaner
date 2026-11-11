@@ -4997,11 +4997,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             try {
                 const month = monthInput.value || getLocalDateString().slice(0, 7);
+                if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month.startsWith('0000-')) {
+                    throw new Error(i18n[currentLang].reports_load_error);
+                }
                 const [year, monthNumber] = month.split('-').map(Number);
-                if (!year || !monthNumber || monthNumber > 12) throw new Error(i18n[currentLang].reports_load_error);
                 const monthStart = `${month}-01`;
-                const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
-                const nextMonth = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+                const nextYear = monthNumber === 12 ? year + 1 : year;
+                const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
+                const nextMonth = `${String(nextYear).padStart(4, '0')}-${String(nextMonthNumber).padStart(2, '0')}-01`;
                 const selectedProperty = filterPropertySelect.value;
                 let entriesQuery = supabaseClient
                     .from('property_financial_entries')
@@ -5022,6 +5025,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         .select('property_id, properties!inner(user_id)')
                         .eq('properties.user_id', currentUser.id)
                 ]);
+                console.log('Consulta de movimentos financeiros:', {
+                    month,
+                    startDate: monthStart,
+                    endDateExclusive: nextMonth,
+                    property: selectedProperty || 'all',
+                    count: entriesResult.data?.length ?? null,
+                    error: entriesResult.error
+                });
                 if (requestId !== reportsRequestId) return;
                 if (propertiesResult.error) throw propertiesResult.error;
                 const properties = propertiesResult.data || [];
@@ -5071,11 +5082,23 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     expenses: 0,
                     cleanings: 0
                 }]));
+                const totals = { income: 0, expenses: 0 };
                 entries.forEach(entry => {
+                    const amount = entry.amount == null || (typeof entry.amount === 'string' && !entry.amount.trim())
+                        ? NaN
+                        : Number(entry.amount);
+                    if (!Number.isFinite(amount)) {
+                        console.warn('Movimento financeiro ignorado por ter um montante inválido:', entry.id);
+                        return;
+                    }
                     const metric = metricsByProperty.get(String(entry.property_id));
-                    if (!metric) return;
-                    if (entry.entry_type === 'income') metric.income += Number(entry.amount);
-                    else if (entry.entry_type === 'expense') metric.expenses += Number(entry.amount);
+                    if (entry.entry_type === 'income') {
+                        totals.income += amount;
+                        if (metric) metric.income += amount;
+                    } else if (entry.entry_type === 'expense') {
+                        totals.expenses += amount;
+                        if (metric) metric.expenses += amount;
+                    }
                 });
                 tasks.forEach(task => {
                     const metric = metricsByProperty.get(String(task.property_id));
@@ -5086,11 +5109,6 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 );
                 const mostRequested = [...metricsByProperty.values()].reduce((top, metric) =>
                     metric.cleanings > (top?.cleanings || 0) ? metric : top, null);
-                const totals = entries.reduce((sum, entry) => {
-                    if (entry.entry_type === 'income') sum.income += Number(entry.amount);
-                    else if (entry.entry_type === 'expense') sum.expenses += Number(entry.amount);
-                    return sum;
-                }, { income: 0, expenses: 0 });
                 cardsEl.innerHTML = `
                     <article class="rounded-2xl border border-emerald-900/80 bg-emerald-950/60 p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-300">${i18n[currentLang].finance_metric_month_income}</p>
@@ -5757,14 +5775,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 document.getElementById('hosting-report-form').reset();
                 document.getElementById('hosting-report-property').value = selectedProperty;
                 document.getElementById('hosting-report-file-label').innerText = i18n[currentLang].hosting_choose_file;
-                await carregarDocumentosHosting();
                 if (platformImportResult) {
                     await Promise.all([
-                        carregarLancamentosManuais(),
                         carregarRelatorios(),
-                        renderFinancialChart()
+                        renderFinancialChart(),
+                        carregarLancamentosManuais()
                     ]);
                 }
+                await carregarDocumentosHosting();
                 const importMessagePrefix = normalizedPlatformName === 'booking.com' ? 'hosting_booking_import' : 'hosting_airbnb_import';
                 if (platformImportError) {
                     showPropertyMessage(
