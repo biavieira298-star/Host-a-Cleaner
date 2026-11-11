@@ -72,6 +72,7 @@ function createReportEnvironment(month, selectedProperty = 'p1', entriesError = 
         supabaseClient,
         currentUser: { id: 'user' },
         userRole: 'admin',
+        canViewFinancials: () => true,
         currentLang: 'pt',
         i18n: { pt: { reports_loading: 'loading', reports_load_error: 'error' } },
         reportsRequestId: 0,
@@ -131,6 +132,46 @@ test('overview reports Supabase errors and rejects invalid months', async () => 
     assert.equal(invalid.calls.messages[0][2], 'error');
 });
 
+test('document list renders localized global labels and preserves property labels', async () => {
+    for (const [language, globalLabel, noProperty] of [
+        ['pt', 'Relatório Global ({platform})', 'Sem imóvel associado'],
+        ['en', 'Global Report ({platform})', 'No property linked']
+    ]) {
+        const list = { innerHTML: '', querySelectorAll: () => [] };
+        const documents = [
+            { id: '1', property_id: null, platform: 'Airbnb', file_name: 'airbnb.pdf', created_at: '2026-10-01' },
+            { id: '2', property_id: null, platform: 'Booking.com', file_name: 'booking.pdf', created_at: '2026-10-01' },
+            { id: '3', property_id: 'p1', platform: 'Airbnb', file_name: 'property.pdf', created_at: '2026-10-01' },
+            { id: '4', property_id: null, platform: '', file_name: 'other.pdf', created_at: '2026-10-01' },
+            { id: '5', property_id: null, platform: '<script>', file_name: 'unsafe.pdf', created_at: '2026-10-01' }
+        ];
+        const context = {
+            document: { getElementById: id => id === 'hosting-reports-list'
+                ? list
+                : { options: [{ value: 'p1', textContent: 'Casa Azul' }] } },
+            supabaseClient: { from: () => ({ select: () => ({ order: async () => ({ data: documents, error: null }) }) }) },
+            currentUser: { id: 'user' },
+            userRole: 'admin',
+            canViewFinancials: () => true,
+            currentLang: language,
+            i18n: { [language]: { hosting_global_report: globalLabel, hosting_no_property: noProperty } },
+            hostingReportsRequestId: 0,
+            hostingReportsCache: [],
+            escapePropertyHTML: value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+            console
+        };
+        vm.createContext(context);
+        vm.runInContext(extractFunction('async function carregarDocumentosHosting()', 'async function downloadHostingReport('), context);
+        await context.carregarDocumentosHosting();
+        assert.ok(list.innerHTML.includes(globalLabel.replace('{platform}', 'Airbnb')));
+        assert.ok(list.innerHTML.includes(globalLabel.replace('{platform}', 'Booking.com')));
+        assert.ok(list.innerHTML.includes('Casa Azul'));
+        assert.ok(list.innerHTML.includes(noProperty));
+        assert.ok(list.innerHTML.includes(globalLabel.replace('{platform}', '&lt;script&gt;')));
+        assert.ok(!list.innerHTML.includes('<script>'));
+    }
+});
+
 test('successful Airbnb and Booking imports refresh overview before loading documents', async () => {
     for (const platform of ['Airbnb', 'Booking.com']) {
         const calls = [];
@@ -163,6 +204,7 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
             supabaseClient: client,
             currentUser: { id: 'user' },
             userRole: 'admin',
+            canViewFinancials: () => true,
             currentLang: 'pt',
             i18n: { pt: {
                 hosting_airbnb_import_success: '{count}/{replaced}',
@@ -187,6 +229,65 @@ test('successful Airbnb and Booking imports refresh overview before loading docu
     }
 });
 
+test('confirmation modal cancels or deletes only the selected document', async () => {
+    const calls = [];
+    const hidden = new Set(['hidden']);
+    const focusOrigin = { isConnected: true, focus: () => calls.push('return-focus') };
+    const modal = {
+        classList: {
+            add: value => hidden.add(value),
+            remove: value => hidden.delete(value),
+            contains: value => hidden.has(value)
+        }
+    };
+    const cancelButton = { disabled: false, focus: () => calls.push('cancel-focus') };
+    let finishDelete;
+    const context = {
+        document: {
+            activeElement: focusOrigin,
+            getElementById: id => id === 'hosting-delete-modal'
+                ? modal
+                : cancelButton
+        },
+        requireFinancialAction: () => true,
+        hostingReportsCache: [{ id: 'doc1' }, { id: 'doc2' }],
+        pendingHostingReportId: null,
+        hostingDeleteReturnFocus: null,
+        hostingDeleteConfirming: false,
+        hostingDeletesInProgress: new Set(),
+        deleteHostingReport: id => {
+            calls.push(`delete:${id}`);
+            return new Promise(resolve => { finishDelete = resolve; });
+        }
+    };
+    vm.createContext(context);
+    vm.runInContext(extractFunction('function openHostingDeleteModal(reportId)', 'async function deleteHostingReport(reportId)'), context);
+
+    context.openHostingDeleteModal('doc1');
+    assert.equal(hidden.has('hidden'), false);
+    assert.equal(context.pendingHostingReportId, 'doc1');
+    assert.deepEqual(calls, ['cancel-focus']);
+    context.closeHostingDeleteModal();
+    assert.equal(hidden.has('hidden'), true);
+    assert.equal(context.pendingHostingReportId, null);
+    await context.confirmHostingDelete();
+    assert.deepEqual(calls, ['cancel-focus', 'return-focus']);
+
+    context.openHostingDeleteModal('doc2');
+    const deletion = context.confirmHostingDelete();
+    assert.equal(cancelButton.disabled, true);
+    assert.equal(hidden.has('hidden'), false);
+    context.closeHostingDeleteModal();
+    context.openHostingDeleteModal('doc1');
+    await context.confirmHostingDelete();
+    assert.equal(context.pendingHostingReportId, 'doc2');
+    finishDelete();
+    await deletion;
+    assert.equal(hidden.has('hidden'), true);
+    assert.equal(cancelButton.disabled, false);
+    assert.deepEqual(calls, ['cancel-focus', 'return-focus', 'cancel-focus', 'delete:doc2', 'return-focus']);
+});
+
 test('deleting a document removes its row and refreshes financial views', async () => {
     const calls = [];
     const query = {
@@ -195,7 +296,8 @@ test('deleting a document removes its row and refreshes financial views', async 
         select: async () => ({ data: [{ id: 'doc1' }], error: null })
     };
     const context = {
-        requireAdminAction: () => true,
+        requireFinancialAction: () => true,
+        hostingDeletesInProgress: new Set(),
         hostingReportsCache: [{ id: 'doc1', file_url: 'url' }],
         window: { confirm: () => true },
         i18n: { pt: { hosting_delete_confirm: 'confirm' } },
@@ -227,7 +329,8 @@ test('document deletion reports a database failure after storage removal', async
         select: async () => ({ data: null, error: new Error('row failure') })
     };
     const context = {
-        requireAdminAction: () => true,
+        requireFinancialAction: () => true,
+        hostingDeletesInProgress: new Set(),
         hostingReportsCache: [{ id: 'doc1', file_url: 'url' }],
         window: { confirm: () => true },
         i18n: { pt: { hosting_delete_confirm: 'confirm', hosting_delete_row_error: 'file removed' } },
@@ -257,7 +360,8 @@ test('document deletion reports an empty delete result and does not refresh', as
         select: async () => ({ data: [], error: null })
     };
     const context = {
-        requireAdminAction: () => true,
+        requireFinancialAction: () => true,
+        hostingDeletesInProgress: new Set(),
         hostingReportsCache: [{ id: 'doc1', file_url: 'url' }],
         window: { confirm: () => true },
         i18n: { pt: {
