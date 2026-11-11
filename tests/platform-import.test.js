@@ -10,18 +10,22 @@ const end = source.indexOf('function carregarPropriedadesDocumentos(', start);
 assert.ok(start >= 0 && end > start);
 
 function createParser() {
-    const calls = { inserted: [], warnings: [], logs: [] };
-    const query = {
-        select() { return this; },
-        eq() { return this; },
-        like() { return this; },
-        gte() { return this; },
-        lte() { return Promise.resolve({ data: [], error: null }); },
-        insert(rows) { calls.inserted.push(...rows); return Promise.resolve({ error: null }); }
-    };
+    const calls = { inserted: [], warnings: [], logs: [], requests: [], confirmations: [] };
     const context = {
-        supabaseClient: { from: () => query },
+        supabaseClient: { rpc: async (name, args) => {
+            calls.requests.push({ name, args });
+            calls.inserted.push(...args.p_entries.map(entry => ({ ...entry, entry_date: entry.occurred_on })));
+            return { data: 2, error: null };
+        } },
         currentUser: { id: 'user' },
+        currentLang: 'pt',
+        i18n: { pt: {
+            hosting_unmatched_properties: 'unmatched',
+            hosting_missing_date: 'missing date',
+            hosting_replace_confirm: 'Replace {platform} {months}?',
+            hosting_replace_cancelled: 'cancelled'
+        } },
+        window: { confirm: message => { calls.confirmations.push(message); return true; } },
         console: {
             warn: (...args) => calls.warnings.push(args),
             log: (...args) => calls.logs.push(args)
@@ -76,11 +80,18 @@ test('report period prefers labelled month to generation date and supports numer
     const { context } = createParser();
     assert.equal(context.resolvePlatformReportDate(['Gerado em 05/11/2026', 'Relatório de outubro de 2026']), '2026-10-01');
     assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05', 'Statement period: 10/2026']), '2026-10-01');
+    assert.equal(context.resolvePlatformReportDate(['Statement period: 2026-10']), '2026-10-01');
     assert.equal(context.resolvePlatformReportDate(['Statement: October 2026 generated on November 2026']), '2026-10-01');
     assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05 | Statement: October 2026']), '2026-10-01');
     assert.equal(context.resolvePlatformReportDate(['Period: 01/10/2026 - 31/10/2026']), '2026-10-01');
     assert.equal(context.resolvePlatformReportDate(['Period: 01/10/2026 - 30/11/2026']), null);
     assert.equal(context.resolvePlatformReportDate(['Generated on 2026-11-05']), null);
+    assert.equal(context.resolvePlatformReportDate([], 'airbnb_2026-10.pdf', '2026-11'), '2026-10-01');
+    assert.equal(context.resolvePlatformReportDate([], 'airbnb_10_2026.pdf', ''), '2026-10-01');
+    assert.equal(context.resolvePlatformReportDate([], 'airbnb outubro 2026.pdf', '2026-11'), '2026-10-01');
+    assert.equal(context.resolvePlatformReportDate([], 'report.pdf', '2026-10'), '2026-10-01');
+    assert.equal(context.resolvePlatformReportDate(['Relatório setembro 2026'], 'airbnb_2026-10.pdf', '2026-11'), '2026-09-01');
+    assert.equal(context.resolvePlatformReportDate([], 'report.pdf', '2026-13'), null);
 });
 
 test('standalone headings do not match a generic property inside an unrelated name', () => {
@@ -93,6 +104,22 @@ test('standalone headings do not match a generic property inside an unrelated na
 });
 
 for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com', 'processBookingPDF']]) {
+    test(`${platform} imports undated rows using a fallback month and replaces the extra month`, async () => {
+        const { context, calls } = createParser();
+        await context[parser]({ name: 'relatorio.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, null, '2026-10', '2026-11');
+        assert.equal(calls.inserted[0].occurred_on, '2026-10-01');
+        assert.equal(calls.requests[0].name, 'replace_platform_financial_entries');
+        assert.equal(calls.requests[0].args.p_extra_month, '2026-11-01');
+        assert.match(calls.confirmations[0], /2026-10, 2026-11/);
+    });
+
+    test(`${platform} cancellation leaves existing entries unchanged`, async () => {
+        const { context, calls } = createParser();
+        context.window.confirm = () => false;
+        await assert.rejects(context[parser]({ name: 'relatorio_2026-10.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties), /cancelled/);
+        assert.equal(calls.requests.length, 0);
+    });
+
     test(`${platform} imports formatted and partial listing names`, async () => {
         const { context, calls } = createParser();
         const file = { text: [
@@ -115,7 +142,6 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
             'Gerado em 05/11/2026',
             'Relatório de outubro de 2026',
             'Anúncio: Casa Azul | 03/11/2026 | Pagamento 125,50 EUR',
-            'Anúncio: Unknown House | 04/11/2026 | Pagamento 999,00 EUR',
             'Anúncio: Sea House | 05/11/2026 | Pagamento 50,00 EUR'
         ].join('\n') };
         const result = await context[parser](file, properties, 'generic');
@@ -124,15 +150,13 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
             ['blue', 125.5, '2026-10-01', '2026-10-01'],
             ['sea', 50, '2026-10-01', '2026-10-01']
         ]);
-        assert.equal(calls.warnings.length, 1);
-        assert.match(calls.warnings[0][1], /Unknown House/);
+        assert.equal(calls.warnings.length, 0);
     });
 
     test(`${platform} never falls back to the first property or upload date`, async () => {
         const { context, calls } = createParser();
         const file = { text: 'Anúncio: Unknown House | 05/11/2026 | Pagamento 999,00 EUR' };
-        const result = await context[parser](file, properties);
-        assert.equal(result.inserted, 0);
+        await assert.rejects(context[parser](file, properties), /unmatched/);
         assert.equal(calls.inserted.length, 0);
         assert.ok(calls.warnings.length);
     });
@@ -145,8 +169,8 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
             'Unknown House 04/11/2026 Pagamento 999,00 EUR',
             'Sea House 05/11/2026 Pagamento 50,00 EUR'
         ].join('\n') };
-        await context[parser](file, properties, 'generic');
-        assert.deepEqual(calls.inserted.map(row => row.property_id), ['blue', 'sea']);
+        await assert.rejects(context[parser](file, properties, 'generic'), /unmatched/);
+        assert.equal(calls.inserted.length, 0);
         assert.match(calls.warnings[0][1], /Unknown House/);
     });
 }
@@ -174,7 +198,27 @@ test('an explicitly selected property is used only when no listing name is prese
 
 test('undated movements are not assigned to the upload date', async () => {
     const { context, calls } = createParser();
-    await context.processBookingPDF({ text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties);
+    await assert.rejects(context.processBookingPDF({ text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties), /missing date/);
     assert.equal(calls.inserted.length, 0);
-    assert.ok(calls.warnings.length);
+});
+
+test('Airbnb imports undated transaction lines below the property heading', async () => {
+    const { context, calls } = createParser();
+    await context.processAirbnbPDF({
+        name: 'relatorio.pdf',
+        text: 'Anúncio: Casa Azul\nPagamento 75,00 EUR\nPagamento 35,00 EUR'
+    }, properties, null, '2026-10');
+    assert.deepEqual(calls.inserted.map(row => row.amount), [75, 35]);
+});
+
+test('replacement errors are surfaced and an empty report never calls the database', async () => {
+    const { context, calls } = createParser();
+    const empty = await context.persistPlatformEarnings('Airbnb', [], '2026-11');
+    assert.equal(empty.inserted, 0);
+    assert.equal(calls.confirmations.length, 0);
+    context.supabaseClient.rpc = async () => ({ error: new Error('transaction failed') });
+    await assert.rejects(context.processAirbnbPDF({
+        name: 'relatorio_2026-10.pdf',
+        text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR'
+    }, properties), /transaction failed/);
 });
