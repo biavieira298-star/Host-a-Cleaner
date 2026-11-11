@@ -118,6 +118,7 @@ async function handleAddTeamMember(event) {
     button.disabled = true;
 
     try {
+        if (!await checkSubscriptionLimit('cleaners')) return;
         const { data, error } = await supabaseClient.rpc('create_team_member_invite', {
             p_name: name,
             p_phone: phone,
