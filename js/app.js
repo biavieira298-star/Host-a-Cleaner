@@ -9,6 +9,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let userRole = 'admin';
+        let financialsAllowed = false;
         let currentTeamMemberPreferences = { track_hours: false, require_photos: false };
         let operationalPreferences = { track_hours: false, require_photos: false };
         let profileSettingsTab = 'account';
@@ -31,6 +32,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         let financialChartEndDate = null;
         let hostingReportsRequestId = 0;
         let hostingReportsCache = [];
+        let pendingHostingReportId = null;
+        let hostingDeleteReturnFocus = null;
+        let hostingDeleteConfirming = false;
+        const hostingDeletesInProgress = new Set();
         let globalIncidentHistoryRequestId = 0;
         let globalHistoryPreviewUrls = [];
         let globalIncidentPriorityFilter = 'all';
@@ -331,6 +336,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Documento enviado com sucesso.",
                 hosting_upload_error: "Não foi possível enviar o documento",
                 hosting_no_property: "Sem imóvel associado",
+                hosting_global_report: "Relatório Global ({platform})",
                 hosting_airbnb_import_success: "Documento enviado. Ganhos Airbnb importados: {count}; movimentos anteriores substituídos: {replaced}.",
                 hosting_airbnb_import_none: "Documento enviado, mas não foram encontrados imóveis correspondentes no relatório.",
                 hosting_airbnb_import_error: "Documento enviado, mas não foi possível importar os ganhos Airbnb",
@@ -349,7 +355,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 task_photos_verification: "Fotos de verificação",
                 hosting_download: "Descarregar",
                 hosting_delete: "Eliminar",
-                hosting_delete_confirm: "Eliminar este documento e os lançamentos associados a esta importação?",
+                hosting_delete_title: "Confirmar Eliminação",
+                hosting_delete_confirm: "Ao eliminar este relatório, todos os lançamentos financeiros associados serão também eliminados em cascata.",
+                hosting_delete_action: "Confirmar",
+                action_error: "Não foi possível concluir a ação",
                 hosting_delete_error: "Não foi possível eliminar o documento",
                 hosting_delete_row_error: "O ficheiro foi removido, mas não foi possível eliminar o documento e os lançamentos. Tente novamente",
                 hosting_document_not_deleted: "O documento não foi eliminado. Verifique as permissões e tente novamente.",
@@ -663,6 +672,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 hosting_upload_success: "Document uploaded successfully.",
                 hosting_upload_error: "Could not upload the document",
                 hosting_no_property: "No property linked",
+                hosting_global_report: "Global Report ({platform})",
                 hosting_airbnb_import_success: "Document uploaded. Airbnb earnings imported: {count}; previous entries replaced: {replaced}.",
                 hosting_airbnb_import_none: "Document uploaded, but no matching properties were found in the report.",
                 hosting_airbnb_import_error: "Document uploaded, but Airbnb earnings could not be imported",
@@ -681,7 +691,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 task_photos_verification: "Verification photos",
                 hosting_download: "Download",
                 hosting_delete: "Delete",
-                hosting_delete_confirm: "Delete this document and the entries associated with this import?",
+                hosting_delete_title: "Confirm Deletion",
+                hosting_delete_confirm: "Deleting this report will also delete all associated financial entries.",
+                hosting_delete_action: "Confirm",
+                action_error: "Could not complete the action",
                 hosting_delete_error: "Could not delete the document",
                 hosting_delete_row_error: "The file was removed, but the document and its entries could not be deleted. Try again",
                 hosting_document_not_deleted: "The document was not deleted. Check permissions and try again.",
@@ -860,6 +873,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 if (currentUser) {
                     await initializeAuthenticatedApp();
                 } else {
+                    financialsAllowed = false;
                     showLoginScreen();
                     void updateOfflineIndicator();
                 }
@@ -867,6 +881,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function initializeAuthenticatedApp() {
+            financialsAllowed = false;
             if (navigator.onLine) {
                 try {
                     await checkUserRole();
@@ -914,7 +929,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     .maybeSingle(),
                 supabaseClient
                     .from('profiles')
-                    .select('role')
+                    .select('*')
                     .eq('id', currentUser.id)
                     .maybeSingle()
             ]);
@@ -923,12 +938,13 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 throw memberError;
             }
             if (profileError) {
-                console.warn('Não foi possível ler o papel em profiles; será usado o papel dos metadados.', profileError);
+                console.warn('Não foi possível ler o perfil; o acesso financeiro ficará bloqueado.', profileError);
             }
+            financialsAllowed = !profileError && profile?.can_view_financials !== false;
 
             currentTeamManagerId = null;
             currentTeamMemberId = null;
-            if (member?.role === 'cleaner') {
+            if (['cleaner', 'assistant', 'assistente'].includes(member?.role)) {
                 userRole = 'cleaner';
                 currentTeamMemberId = member.id;
                 currentTeamManagerId = member.manager_id;
@@ -940,9 +956,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             const validRoles = ['admin', 'cleaner'];
-            const profileRole = validRoles.includes(profile?.role) ? profile.role : null;
-            const appMetadataRole = currentUser.app_metadata?.role;
-            const userMetadataRole = currentUser.user_metadata?.role === 'cleaner' ? 'cleaner' : null;
+            const normalizeRole = role => ['assistant', 'assistente'].includes(role) ? 'cleaner' : role;
+            const profileRole = validRoles.includes(normalizeRole(profile?.role)) ? normalizeRole(profile.role) : null;
+            const appMetadataRole = normalizeRole(currentUser.app_metadata?.role);
+            const userMetadataRole = normalizeRole(currentUser.user_metadata?.role) === 'cleaner' ? 'cleaner' : null;
             const metadataRole = validRoles.includes(appMetadataRole) ? appMetadataRole : userMetadataRole;
             const resolvedRole = profileRole || metadataRole;
             if (resolvedRole) {
@@ -967,6 +984,15 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const isCleaner = userRole === 'cleaner';
             adminElements.forEach(el => el.classList.toggle('hidden', isCleaner));
             cleanerElements.forEach(el => el.classList.toggle('hidden', !isCleaner));
+            document.querySelectorAll('[data-financial-access]').forEach(el => {
+                el.classList.toggle('hidden', !canViewFinancials());
+            });
+            if (!canViewFinancials()) {
+                reportsRequestId++;
+                financialChartRequestId++;
+                hostingReportsRequestId++;
+                document.getElementById('financial-date-modal')?.classList.add('hidden');
+            }
             lockedRoutes.forEach(button => {
                 button.disabled = isCleaner;
                 button.setAttribute('aria-disabled', String(isCleaner));
@@ -985,9 +1011,24 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
+        function canViewFinancials() {
+            return Boolean(currentUser) && userRole === 'admin' && financialsAllowed;
+        }
+
+        function denyFinancialAccess() {
+            showToast(i18n[currentLang].role_locked, 'info');
+            switchTab('sub-agenda');
+        }
+
         function requireAdminAction() {
             if (userRole === 'admin' && currentUser) return true;
-            alert(i18n[currentLang].role_locked);
+            showToast(i18n[currentLang].role_locked, 'error');
+            return false;
+        }
+
+        function requireFinancialAction() {
+            if (canViewFinancials()) return true;
+            denyFinancialAccess();
             return false;
         }
 
@@ -1178,8 +1219,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                 redirectTo: window.location.href
             });
-            if (error) alert('Erro ao enviar email: ' + error.message);
-            else alert('Email de recuperação enviado! Verifique a sua caixa de entrada.');
+            if (error) showToast('Erro ao enviar email: ' + error.message, 'error');
+            else showToast('Email de recuperação enviado! Verifique a sua caixa de entrada.');
         }
 
         function showLoginScreen() {
@@ -1207,7 +1248,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (savedTab === 'sub-subscriptions') profileSettingsTab = 'subscription';
             if (userRole !== 'admin' && profileSettingsTab === 'subscription') profileSettingsTab = 'account';
             const restrictedTabs = ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries'];
-            if (userRole === 'cleaner' && restrictedTabs.includes(resolvedTab)) {
+            if ((userRole === 'cleaner' && restrictedTabs.includes(resolvedTab))
+                || (!canViewFinancials() && ['sub-reports', 'sub-hosting-reports', 'sub-financial-entries'].includes(resolvedTab))) {
                 switchTab('sub-agenda');
             } else if (userRole === 'admin' && resolvedTab === 'sub-time-entries') {
                 switchTab('sub-agenda');
@@ -1219,7 +1261,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         async function handleLogout() {
             localStorage.removeItem('host_cleaner_active_tab');
             await supabaseClient.auth.signOut();
-            currentUser = null; userRole = 'admin'; showLoginScreen();
+            currentUser = null; userRole = 'admin'; financialsAllowed = false; showLoginScreen();
         }
 
         function switchProfileTab(tab) {
@@ -1398,7 +1440,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function checkSubscriptionLimit(resource) {
             if (!currentUser) {
-                alert('Inicie sessão para verificar os limites do seu plano.');
+                showToast('Inicie sessão para verificar os limites do seu plano.', 'info');
                 return false;
             }
 
@@ -1470,7 +1512,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return false;
             } catch (error) {
                 console.error('Erro ao verificar o limite do plano:', error);
-                alert(`Não foi possível verificar o limite do plano: ${error.message}`);
+                showToast(`Não foi possível verificar o limite do plano: ${error.message}`, 'error');
                 return false;
             }
         }
@@ -1506,22 +1548,26 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             closeMenuAfterAction();
 
             if (subtabId === 'sub-history' || subtabId === 'sub-financial-movements') subtabId = 'sub-financial-entries';
+            if (['sub-reports', 'sub-hosting-reports', 'sub-financial-entries'].includes(subtabId) && !canViewFinancials()) {
+                denyFinancialAccess();
+                return;
+            }
             if (subtabId === 'sub-subscriptions') {
                 subtabId = 'sub-profile-settings';
                 profileSettingsTab = 'subscription';
             }
             if (userRole !== 'admin' && profileSettingsTab === 'subscription') profileSettingsTab = 'account';
             if (subtabId === 'sub-time-entries' && userRole !== 'cleaner') {
-                alert(i18n[currentLang].role_locked);
+                showToast(i18n[currentLang].role_locked, 'error');
                 return;
             }
             if (subtabId === 'sub-employee-hours' && userRole !== 'admin') {
-                alert(i18n[currentLang].role_locked);
+                showToast(i18n[currentLang].role_locked, 'error');
                 return;
             }
 
             if (userRole === 'cleaner' && ['sub-properties-add', 'sub-reports', 'sub-hosting-reports', 'sub-financial-entries', 'sub-employee-hours'].includes(subtabId)) {
-                alert(i18n[currentLang].role_locked);
+                showToast(i18n[currentLang].role_locked, 'error');
                 return;
             }
 
@@ -1629,7 +1675,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function loadData() {
             if (isOfflineMode || !navigator.onLine) {
-                await restoreOfflineSnapshot();
+                await restoreOfflineSnapshot(false);
                 await fetchAgendaTasks();
                 return;
             }
@@ -1639,7 +1685,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const tasksLoaded = await fetchAllTasksCache();
             if (!propertiesLoaded || !tasksLoaded || teamLoaded === false) {
                 isOfflineMode = true;
-                await restoreOfflineSnapshot();
+                await restoreOfflineSnapshot(false);
                 await updateOfflineIndicator();
                 return;
             }
@@ -1717,6 +1763,56 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             return true;
         }
 
+        async function runButtonAction(button, action, shouldRemainDisabled = () => false) {
+            if (!button) {
+                console.error('Botão de ação não encontrado.');
+                showToast(i18n[currentLang].action_error, 'error');
+                return;
+            }
+            if (button.disabled || button.dataset.actionLoading === 'true') return;
+            const previousBusy = button.getAttribute('aria-busy');
+            button.dataset.actionLoading = 'true';
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            try {
+                return await action();
+            } catch (error) {
+                console.error('Erro ao executar ação:', error);
+                showToast(`${i18n[currentLang].action_error}: ${error.message}`, 'error');
+            } finally {
+                delete button.dataset.actionLoading;
+                if (previousBusy === null) button.removeAttribute('aria-busy');
+                else button.setAttribute('aria-busy', previousBusy);
+                button.disabled = shouldRemainDisabled();
+            }
+        }
+
+        function runFormAction(event, action, shouldRemainDisabled) {
+            event.preventDefault();
+            const button = event.submitter || event.currentTarget.querySelector('button[type="submit"], button:not([type])');
+            return runButtonAction(button, action, shouldRemainDisabled);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) {
+                console.error('Contentor de notificações não encontrado:', message);
+                return;
+            }
+            if (!['success', 'error', 'info'].includes(type)) {
+                console.error('Tipo de notificação inválido:', type);
+                type = 'info';
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = String(message);
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-leaving');
+                setTimeout(() => toast.remove(), 200);
+            }, 3800);
+        }
+
         function escapePropertyHTML(value) {
             return String(value ?? '').replace(/[&<>"']/g, character => ({
                 '&': '&amp;',
@@ -1765,6 +1861,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 userId: currentUser.id,
                 savedAt: new Date().toISOString(),
                 userRole,
+                financialsAllowed,
                 currentTeamMemberId,
                 currentTeamManagerId,
                 currentTeamMemberPreferences,
@@ -1782,7 +1879,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
         }
 
-        async function restoreOfflineSnapshot() {
+        async function restoreOfflineSnapshot(restorePermissions = true) {
             if (!currentUser) return false;
             const database = await openOfflineDatabase();
             const snapshot = await new Promise((resolve, reject) => {
@@ -1793,7 +1890,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             });
             if (!snapshot) return false;
 
-            userRole = snapshot.userRole === 'admin' ? 'admin' : 'cleaner';
+            if (restorePermissions) {
+                userRole = snapshot.userRole === 'admin' ? 'admin' : 'cleaner';
+                financialsAllowed = snapshot.financialsAllowed === true;
+            }
             currentTeamMemberId = snapshot.currentTeamMemberId || null;
             currentTeamManagerId = snapshot.currentTeamManagerId || null;
             currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
@@ -2304,7 +2404,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     <div class="space-y-2 text-[11px] text-slate-600">
                         <p><span class="font-bold text-slate-700">Morada:</span> ${escapePropertyHTML(property.address || 'Sem morada')}</p>
                         <p><span class="font-bold text-slate-700">Keybox:</span> ${escapePropertyHTML(property.access_code || 'N/A')}</p>
-                        <p><span class="font-bold text-slate-700">Taxa:</span> ${escapePropertyHTML(property.hourly_rate || 10.00)}€/h</p>
+                        ${canViewFinancials() ? `<p><span class="font-bold text-slate-700">Taxa:</span> ${escapePropertyHTML(property.hourly_rate || 10.00)}€/h</p>` : ''}
                         ${property.instructions ? `<p><span class="font-bold text-slate-700">Instruções:</span> ${escapePropertyHTML(property.instructions)}</p>` : ''}
                     </div>
 
@@ -2355,7 +2455,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 gridEl.innerHTML = `
                     <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
                         <p class="text-rose-700 text-xs">${i18n[currentLang].error_properties}: ${escapePropertyHTML(error.message)}</p>
-                        <button type="button" onclick="carregarPropriedades()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].retry}</button>
+                        <button type="button" onclick="runButtonAction(this, () => carregarPropriedades())" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].retry}</button>
                     </div>
                 `;
                 return;
@@ -2365,7 +2465,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 gridEl.innerHTML = `
                     <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
                         <p class="text-slate-500 text-xs">${i18n[currentLang].empty_properties}</p>
-                        ${userRole === 'admin' ? `<button type="button" onclick="abrirFormularioPropriedade()" class="mt-3 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
+                        ${userRole === 'admin' ? `<button type="button" onclick="runButtonAction(this, () => abrirFormularioPropriedade())" class="mt-3 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
                     </div>
                 `;
                 return;
@@ -2574,10 +2674,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <button type="button" class="property-incident-history-retry mt-2 text-[10px] font-bold text-rose-700 underline">${i18n[currentLang].property_history_retry}</button>
                     </div>
                 `;
-                list.querySelector('.property-incident-history-retry').addEventListener('click', () => {
+                list.querySelector('.property-incident-history-retry').addEventListener('click', event => void runButtonAction(event.currentTarget, async () => {
                     delete details.dataset.loaded;
-                    void loadPropertyIncidentHistory(details);
-                });
+                    await loadPropertyIncidentHistory(details);
+                }));
             }
         }
 
@@ -2630,7 +2730,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (!confirm('Deseja mesmo apagar este alojamento?')) return;
             const { error } = await supabaseClient.from('properties').delete().eq('id', propId);
             if (error) {
-                alert('Erro ao apagar alojamento: ' + error.message);
+                showToast('Erro ao apagar alojamento: ' + error.message, 'error');
                 return;
             }
             await loadData();
@@ -2952,7 +3052,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 list.innerHTML = `
                     <div class="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
                         <p class="text-xs font-semibold text-rose-700">${i18n[currentLang].history_error}: ${escapePropertyHTML(error.message)}</p>
-                        <button type="button" onclick="refreshGlobalIncidentHistory()" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].history_refresh}</button>
+                        <button type="button" onclick="runButtonAction(this, () => refreshGlobalIncidentHistory())" class="mt-2 text-xs font-bold text-rose-700 underline">${i18n[currentLang].history_refresh}</button>
                     </div>
                 `;
             }
@@ -3027,7 +3127,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}: ${escapePropertyHTML(incident.description)}
                         </p>
                         ${incident.photo_urls.length ? `<a href="${escapePropertyHTML(incident.photo_urls[0])}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">📷 ${incident.photo_urls.length > 1 ? incident.photo_urls.length : ''}</a>` : ''}
-                        ${incident.queued ? `<span title="${escapePropertyHTML(i18n[currentLang].offline_photo_pending)}" class="max-w-24 shrink-0 truncate text-right text-[10px] font-semibold text-slate-500">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="min-h-10 shrink-0 rounded-lg bg-rose-600 px-2.5 text-[11px] font-bold text-white hover:bg-rose-700">${currentLang === 'pt' ? 'Resolver' : 'Resolve'}</button>`}
+                        ${incident.queued ? `<span title="${escapePropertyHTML(i18n[currentLang].offline_photo_pending)}" class="max-w-24 shrink-0 truncate text-right text-[10px] font-semibold text-slate-500">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="runButtonAction(this, () => resolvePropertyIncident('${escapePropertyHTML(incident.id)}'))" class="min-h-10 shrink-0 rounded-lg bg-rose-600 px-2.5 text-[11px] font-bold text-white hover:bg-rose-700">${currentLang === 'pt' ? 'Resolver' : 'Resolve'}</button>`}
                     </div>
                     <div class="incident-alert-desktop flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0 flex-1">
@@ -3039,7 +3139,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         </div>
                         ${incident.photo_urls.length ? `<div class="flex shrink-0 flex-wrap gap-2">${incident.photo_urls.map(photoUrl => `<a href="${escapePropertyHTML(photoUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}"><img src="${escapePropertyHTML(photoUrl)}" alt="" class="h-20 w-20 rounded-lg border border-slate-200 object-cover"></a>`).join('')}</div>` : ''}
                     </div>
-                    ${incident.queued ? '' : `<button type="button" onclick="resolvePropertyIncident('${escapePropertyHTML(incident.id)}')" class="incident-alert-desktop-action mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
+                    ${incident.queued ? '' : `<button type="button" onclick="runButtonAction(this, () => resolvePropertyIncident('${escapePropertyHTML(incident.id)}'))" class="incident-alert-desktop-action mt-3 min-h-11 w-full rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-rose-700 sm:w-auto">${i18n[currentLang].incident_resolve}</button>`}
                 </article>
             `).join('');
         }
@@ -3053,7 +3153,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 .eq('status', 'pending');
             if (error) {
                 console.error('Erro ao resolver incidente:', error);
-                alert(`${i18n[currentLang].incident_resolve_error}: ${error.message}`);
+                showToast(`${i18n[currentLang].incident_resolve_error}: ${error.message}`, 'error');
                 return;
             }
             await refreshTaskAndIncidentViews();
@@ -3094,7 +3194,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (error) {
                 if (isOfflineNetworkError(error)) {
                     isOfflineMode = true;
-                    if (await restoreOfflineSnapshot()) {
+                    if (await restoreOfflineSnapshot(false)) {
                         await updateOfflineIndicator();
                         return;
                     }
@@ -3175,34 +3275,34 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const cleaner_notes = document.getElementById('modal-cleaning-notes').value;
 
             if (!property_id) {
-                alert('Por favor, selecione um alojamento.');
+                showToast('Por favor, selecione um alojamento.', 'error');
                 return;
             }
 
             const btn = document.getElementById('btn-submit-add-cleaning');
             btn.disabled = true;
-            btn.innerText = 'A agendar...';
 
-            const { error } = await supabaseClient.from('cleaning_tasks').insert([{
-                property_id,
-                scheduled_date,
-                status: 'pending',
-                cleaner_notes: cleaner_notes ? `[Manual] ${cleaner_notes}` : '[Manual]'
-            }]);
+            try {
+                const { error } = await supabaseClient.from('cleaning_tasks').insert([{
+                    property_id,
+                    scheduled_date,
+                    status: 'pending',
+                    cleaner_notes: cleaner_notes ? `[Manual] ${cleaner_notes}` : '[Manual]'
+                }]);
 
-            if (error) {
-                alert('Erro ao agendar limpeza: ' + error.message);
-            } else {
-                alert('Limpeza adicionada com sucesso!');
-                closeAddCleaningModal();
-                selectedDate = scheduled_date;
-                currentCalendarDate = parseLocalDate(scheduled_date);
-                document.getElementById('calendar-date-picker').value = scheduled_date;
-                await refreshTaskAndIncidentViews();
+                if (error) {
+                    showToast('Erro ao agendar limpeza: ' + error.message, 'error');
+                } else {
+                    showToast('Limpeza adicionada com sucesso!');
+                    closeAddCleaningModal();
+                    selectedDate = scheduled_date;
+                    currentCalendarDate = parseLocalDate(scheduled_date);
+                    document.getElementById('calendar-date-picker').value = scheduled_date;
+                    await refreshTaskAndIncidentViews();
+                }
+            } finally {
+                btn.disabled = false;
             }
-
-            btn.disabled = false;
-            btn.innerText = i18n[currentLang].btn_schedule_cleaning;
         }
 
         function openDayTasksModal(dateStr) {
@@ -3284,7 +3384,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const deleteBtn = document.getElementById('btn-delete-task-modal');
             if (userRole === 'admin') {
                 deleteBtn.classList.remove('hidden');
-                deleteBtn.onclick = () => deleteTask(task.id);
+                deleteBtn.onclick = () => void runButtonAction(deleteBtn, () => deleteTask(task.id));
             } else {
                 deleteBtn.classList.add('hidden');
             }
@@ -3307,7 +3407,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         .eq('role', 'cleaner')
                         .order('name');
                     if (result.error) {
-                        alert('Erro ao carregar membros para atribuir a limpeza: ' + result.error.message);
+                        showToast('Erro ao carregar membros para atribuir a limpeza: ' + result.error.message, 'error');
                         return;
                     }
                     data = result.data || [];
@@ -3333,7 +3433,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     if (queuedNotes) taskNotes.value = queuedNotes.cleanerNotes;
                 } catch (error) {
                     console.error('Erro ao carregar notas locais pendentes:', error);
-                    alert(`${i18n[currentLang].offline_storage_error}: ${error.message}`);
+                    showToast(`${i18n[currentLang].offline_storage_error}: ${error.message}`, 'error');
                     return;
                 }
             }
@@ -3396,7 +3496,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         <p><strong>📅 Data:</strong> ${task.scheduled_date}</p>
                         <p><strong>📍 Morada:</strong> ${task.properties?.address || '---'}</p>
                         <p class="text-emerald-700"><strong>🔑 Keybox:</strong> ${task.properties?.access_code || 'N/A'}</p>
-                        <p class="text-indigo-700"><strong>💶 Taxa Base:</strong> ${task.properties?.hourly_rate || 10.00}€/h</p>
+                        ${canViewFinancials() ? `<p class="text-indigo-700"><strong>💶 Taxa Base:</strong> ${task.properties?.hourly_rate || 10.00}€/h</p>` : ''}
                     </div>
 
                     <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-amber-900">
@@ -3421,7 +3521,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     </div>
 
                     <div id="task-permission-modules"></div>
-                    ${userRole === 'admin' ? `<button onclick="saveTaskModalDetails('${task.id}')" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md mt-3">Guardar Alterações</button>` : ''}
+                    ${userRole === 'admin' ? `<button onclick="runButtonAction(this, () => saveTaskModalDetails('${task.id}'))" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-md mt-3">Guardar Alterações</button>` : ''}
                 </div>
             `;
 
@@ -3460,12 +3560,12 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 return `
                     <div class="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
                         <p class="text-[11px] font-semibold text-indigo-800">${i18n[currentLang].time_started_at}: ${new Date(task.started_at).toLocaleTimeString(currentLang === 'pt' ? 'pt-PT' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-                        <button type="button" onclick="requestCleaningCompletion('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-emerald-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-emerald-700">${i18n[currentLang].btn_complete_cleaning}</button>
+                        <button type="button" onclick="runButtonAction(this, () => requestCleaningCompletion('${escapePropertyHTML(task.id)}'))" class="min-h-14 w-full rounded-xl bg-emerald-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-emerald-700">${i18n[currentLang].btn_complete_cleaning}</button>
                     </div>
                 `;
             }
 
-            return `<button type="button" onclick="startCleaningTask('${escapePropertyHTML(task.id)}')" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
+            return `<button type="button" onclick="runButtonAction(this, () => startCleaningTask('${escapePropertyHTML(task.id)}'))" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
         }
 
         function formatTaskDuration(totalMinutes) {
@@ -3539,7 +3639,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
             } catch (error) {
                 console.error('Erro ao iniciar a limpeza:', error);
-                alert(`${i18n[currentLang].time_tracking_start_error}: ${error.message}`);
+                showToast(`${i18n[currentLang].time_tracking_start_error}: ${error.message}`, 'error');
             } finally {
                 activeOfflineTaskOperations.delete(operationKey);
             }
@@ -3607,7 +3707,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
             if (trackingEnabled) {
                 if (!task.started_at) {
-                    alert(i18n[currentLang].time_task_not_started);
+                    showToast(i18n[currentLang].time_task_not_started, 'error');
                     return;
                 }
                 openTimeConfirmation(task);
@@ -3620,14 +3720,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 if (synced) await refreshTaskAndIncidentViews();
             } catch (error) {
                 console.error('Erro ao concluir a limpeza:', error);
-                alert(`${i18n[currentLang].time_confirmation_error}: ${error.message}`);
+                showToast(`${i18n[currentLang].time_confirmation_error}: ${error.message}`, 'error');
             }
         }
 
         function openTimeConfirmation(task) {
             const startTimestamp = new Date(task.started_at).getTime();
             if (!Number.isFinite(startTimestamp)) {
-                alert(i18n[currentLang].time_task_not_started);
+                showToast(i18n[currentLang].time_task_not_started, 'error');
                 return;
             }
             const elapsedMinutes = Math.max(1, Math.round((Date.now() - startTimestamp) / 60000));
@@ -3790,7 +3890,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         function openIncidentReportModal(propertyId) {
             if (!currentUser || !propertyId) {
-                alert(i18n[currentLang].incident_error);
+                showToast(i18n[currentLang].incident_error, 'error');
                 return;
             }
             incidentTaskContext = { propertyId };
@@ -3975,7 +4075,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     message.innerText = `${i18n[currentLang].photo_upload_error}: ${error.message}`;
                     message.className = 'text-[11px] font-semibold text-rose-600';
                 } else {
-                    alert(`${i18n[currentLang].photo_upload_error}: ${error.message}`);
+                    showToast(`${i18n[currentLang].photo_upload_error}: ${error.message}`, 'error');
                 }
             } finally {
                 input.disabled = false;
@@ -4002,7 +4102,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
             } catch (error) {
                 console.error('Erro ao guardar fotografia da tarefa:', error);
-                alert(`${i18n[currentLang].photo_upload_error}: ${error.message}`);
+                showToast(`${i18n[currentLang].photo_upload_error}: ${error.message}`, 'error');
             } finally {
                 event.target.value = '';
             }
@@ -4042,7 +4142,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
 
             if (!currentUser?.id || !currentUser.email) {
-                alert('Inicie sessão com a sua conta Host a Cleaner antes de subscrever um plano.');
+                showToast('Inicie sessão com a sua conta Host a Cleaner antes de subscrever um plano.', 'info');
                 return;
             }
 
@@ -4056,7 +4156,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const stripePaymentLink = 'https://buy.stripe.com/'; 
             
             if (stripePaymentLink === 'https://buy.stripe.com/') {
-                alert('Ambiente de Demonstração SaaS: Aqui o utilizador será redirecionado para a página de pagamento seguro do Stripe para ativar a subscrição.');
+                showToast('Ambiente de Demonstração SaaS: Aqui o utilizador será redirecionado para a página de pagamento seguro do Stripe para ativar a subscrição.', 'info');
             } else {
                 window.open(stripePaymentLink, '_blank');
             }
@@ -4066,7 +4166,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             if (!requireAdminAction()) return;
             if (!confirm('Tem a certeza que deseja apagar esta limpeza?')) return;
             await supabaseClient.from('cleaning_tasks').delete().eq('id', taskId);
-            alert('Limpeza apagada!');
+            showToast('Limpeza apagada!');
             closeTaskModal();
             closeDayTasksModal();
             await refreshTaskAndIncidentViews();
@@ -4147,11 +4247,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const hoursValue = hoursInput?.value.trim() || '';
             const hours_spent = hoursValue === '' ? null : Number(hoursValue);
             if (hours_spent !== null && (!Number.isFinite(hours_spent) || hours_spent < 0.25 || hours_spent > 168)) {
-                alert(i18n[currentLang].task_hours_invalid);
+                showToast(i18n[currentLang].task_hours_invalid, 'error');
                 return;
             }
             if (normalizeTaskStatus(status) === 'completed' && !isTaskCompleted(task) && assignedMember?.track_hours && hours_spent === null) {
-                alert(i18n[currentLang].task_hours_invalid);
+                showToast(i18n[currentLang].task_hours_invalid, 'error');
                 return;
             }
 
@@ -4194,11 +4294,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 }
             } catch (error) {
                 console.error('Erro ao guardar os detalhes da limpeza:', error);
-                alert('Erro ao guardar as alterações: ' + error.message);
+                showToast('Erro ao guardar as alterações: ' + error.message, 'error');
                 return;
             }
 
-            alert('Atualizado com sucesso!');
+            showToast('Atualizado com sucesso!');
             closeTaskModal();
             closeDayTasksModal();
             await refreshTaskAndIncidentViews();
@@ -4245,7 +4345,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                             <span class="font-bold text-slate-200">${hours}h × ${rate.toFixed(2)}€ = ${taskTotal.toFixed(2)}€</span>
                             
                             ${userRole === 'admin' ? `
-                                <button onclick="togglePaymentStatus('${task.id}', '${task.payment_status || 'pending'}')" class="px-3 py-1.5 rounded-xl font-bold transition ${isPaid ? 'bg-emerald-800 text-emerald-100 shadow-sm' : 'bg-amber-800 text-amber-100 shadow-sm hover:bg-amber-700'}">
+                                <button onclick="runButtonAction(this, () => togglePaymentStatus('${task.id}', '${task.payment_status || 'pending'}'))" class="px-3 py-1.5 rounded-xl font-bold transition ${isPaid ? 'bg-emerald-800 text-emerald-100 shadow-sm' : 'bg-amber-800 text-amber-100 shadow-sm hover:bg-amber-700'}">
                                     ${isPaid ? `🟢 ${i18n[currentLang].finance_paid}` : `⏳ ${i18n[currentLang].finance_pending}`}
                                 </button>
                             ` : `
@@ -4711,7 +4811,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function fetchFinancialEntriesForDateRange(startDate, endDate) {
             validateFinancialDateRange(startDate, endDate);
-            if (!currentUser) throw new Error('É necessário iniciar sessão para consultar os movimentos.');
+            if (!canViewFinancials()) throw new Error(i18n[currentLang].role_locked);
             const { data, error } = await supabaseClient
                 .from('property_financial_entries')
                 .select('property_id, entry_type, amount, description, occurred_on, status')
@@ -4726,7 +4826,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         async function renderFinancialChart(startDate, endDate) {
             const canvas = document.getElementById('financialOverviewChart');
             const errorEl = document.getElementById('financialOverviewChart-error');
-            if (!canvas || !currentUser || userRole !== 'admin') return false;
+            if (!canvas || !canViewFinancials()) return false;
 
             const requestId = ++financialChartRequestId;
             errorEl.classList.add('hidden');
@@ -4841,6 +4941,10 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         function openFinancialDateModal() {
+            if (!canViewFinancials()) {
+                denyFinancialAccess();
+                return;
+            }
             const defaultRange = getDefaultFinancialDateRange();
             document.getElementById('financial-date-start').value = financialChartStartDate || defaultRange.startDate;
             document.getElementById('financial-date-end').value = financialChartEndDate || defaultRange.endDate;
@@ -4996,7 +5100,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             const propertySelect = document.getElementById('financial-property');
             const filterPropertySelect = document.getElementById('financial-filter-property');
             const monthInput = document.getElementById('financial-filter-month');
-            if (!cardsEl || !propertyListEl || userRole !== 'admin' || !currentUser) return;
+            if (!cardsEl || !propertyListEl || !canViewFinancials()) return;
 
             const requestId = ++reportsRequestId;
             cardsEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].reports_loading}</p>`;
@@ -5147,7 +5251,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function registarMovimentoFinanceiro(event) {
             event.preventDefault();
-            if (!currentUser || userRole !== 'admin') {
+            if (!canViewFinancials()) {
                 showPropertyMessage('financial-entry-message', i18n[currentLang].property_form_access_error, 'error');
                 return;
             }
@@ -5198,7 +5302,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function carregarLancamentosManuais() {
             const tbody = document.getElementById('financial-entries-table-body');
-            if (!tbody || !currentUser || userRole !== 'admin') return;
+            if (!tbody || !canViewFinancials()) return;
             tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-slate-400">${i18n[currentLang].financial_entries_loading}</td></tr>`;
             try {
                 const { data, error } = await supabaseClient
@@ -5572,7 +5676,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function submitHostingReport(event) {
             event.preventDefault();
-            if (!currentUser || userRole !== 'admin') {
+            if (!canViewFinancials()) {
                 showPropertyMessage('hosting-report-message', i18n[currentLang].role_locked, 'error');
                 return;
             }
@@ -5707,7 +5811,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         async function carregarDocumentosHosting() {
             const listEl = document.getElementById('hosting-reports-list');
-            if (!listEl || !currentUser || userRole !== 'admin') return;
+            if (!listEl || !canViewFinancials()) return;
             const requestId = ++hostingReportsRequestId;
             listEl.innerHTML = `<p class="text-xs text-slate-400">${i18n[currentLang].reports_loading}</p>`;
             try {
@@ -5729,13 +5833,19 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                         currentLang === 'pt' ? 'pt-PT' : 'en-US',
                         { day: '2-digit', month: 'short', year: 'numeric' }
                     );
+                    const platformName = String(report.platform || '').trim();
+                    const propertyLabel = report.property_id
+                        ? propertyNames.get(String(report.property_id)) || ''
+                        : platformName
+                            ? i18n[currentLang].hosting_global_report.replace('{platform}', platformName)
+                            : i18n[currentLang].hosting_no_property;
                     return `
                         <article class="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex min-w-0 items-center gap-3">
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[10px] font-extrabold uppercase text-indigo-300">${report.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'CSV'}</span>
                                 <div class="min-w-0">
                                     <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(report.file_name)}</p>
-                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform)} · ${escapePropertyHTML(report.property_id ? propertyNames.get(String(report.property_id)) || '' : i18n[currentLang].hosting_no_property)} · ${uploadedAt}</p>
+                                    <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform)} · ${escapePropertyHTML(propertyLabel)} · ${uploadedAt}</p>
                                 </div>
                             </div>
                             <div class="flex shrink-0 gap-2">
@@ -5749,7 +5859,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     button.addEventListener('click', () => void downloadHostingReport(button.dataset.hostingDownload));
                 });
                 listEl.querySelectorAll('[data-hosting-delete]').forEach(button => {
-                    button.addEventListener('click', () => void deleteHostingReport(button.dataset.hostingDelete));
+                    button.addEventListener('click', () => openHostingDeleteModal(button.dataset.hostingDelete));
                 });
             } catch (error) {
                 if (requestId !== hostingReportsRequestId) return;
@@ -5759,7 +5869,7 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
         }
 
         async function downloadHostingReport(reportId) {
-            if (!requireAdminAction()) return;
+            if (!requireFinancialAction()) return;
             const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
             if (!report) {
                 showPropertyMessage('hosting-report-message', i18n[currentLang].hosting_upload_error, 'error');
@@ -5782,10 +5892,54 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             }
         }
 
-        async function deleteHostingReport(reportId) {
-            if (!requireAdminAction()) return;
+        function openHostingDeleteModal(reportId) {
+            if (!requireFinancialAction()) return;
+            if (hostingDeleteConfirming) return;
+            if (hostingDeletesInProgress.has(String(reportId))) return;
             const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
-            if (!report || !window.confirm(i18n[currentLang].hosting_delete_confirm)) return;
+            if (!report) {
+                showPropertyMessage('hosting-documents-message', i18n[currentLang].hosting_delete_error, 'error');
+                return;
+            }
+            pendingHostingReportId = report.id;
+            hostingDeleteReturnFocus = document.activeElement;
+            document.getElementById('hosting-delete-modal').classList.remove('hidden');
+            document.getElementById('hosting-delete-cancel').focus();
+        }
+
+        function closeHostingDeleteModal() {
+            if (hostingDeleteConfirming) return;
+            pendingHostingReportId = null;
+            document.getElementById('hosting-delete-modal').classList.add('hidden');
+            if (hostingDeleteReturnFocus?.isConnected) hostingDeleteReturnFocus.focus();
+            hostingDeleteReturnFocus = null;
+        }
+
+        async function confirmHostingDelete() {
+            const reportId = pendingHostingReportId;
+            if (!reportId || hostingDeleteConfirming) return;
+            hostingDeleteConfirming = true;
+            const cancelButton = document.getElementById('hosting-delete-cancel');
+            cancelButton.disabled = true;
+            try {
+                await deleteHostingReport(reportId);
+            } finally {
+                cancelButton.disabled = false;
+                hostingDeleteConfirming = false;
+                closeHostingDeleteModal();
+            }
+        }
+
+        async function deleteHostingReport(reportId) {
+            if (!requireFinancialAction()) return;
+            const report = hostingReportsCache.find(item => String(item.id) === String(reportId));
+            if (!report) {
+                showPropertyMessage('hosting-documents-message', i18n[currentLang].hosting_delete_error, 'error');
+                return;
+            }
+            const deleteKey = String(report.id);
+            if (hostingDeletesInProgress.has(deleteKey)) return;
+            hostingDeletesInProgress.add(deleteKey);
             hidePropertyMessage('hosting-documents-message');
             let fileRemoved = false;
             try {
@@ -5815,6 +5969,8 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 console.error('Erro ao eliminar documento da plataforma:', error);
                 const message = fileRemoved ? i18n[currentLang].hosting_delete_row_error : i18n[currentLang].hosting_delete_error;
                 showPropertyMessage('hosting-documents-message', `${message}: ${error.message}`, 'error');
+            } finally {
+                hostingDeletesInProgress.delete(deleteKey);
             }
         }
 
@@ -6005,11 +6161,11 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                 if (!response.ok) throw new Error(`Erro no servidor: ${response.status}`);
 
                 const data = await response.json();
-                alert(`Sincronização concluída com sucesso! ${data?.totalCreated || 0} nova(s) limpeza(s) adicionada(s).`);
+                showToast(`Sincronização concluída com sucesso! ${data?.totalCreated || 0} nova(s) limpeza(s) adicionada(s).`);
                 await loadData();
 
             } catch (err) {
-                alert('Erro na sincronização: ' + err.message);
+                showToast('Erro na sincronização: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
                 syncIcon.classList.remove('animate-spin');
@@ -6107,10 +6263,37 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
 
         document.addEventListener('DOMContentLoaded', () => {
             applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'default');
+            const hostingDeleteModal = document.getElementById('hosting-delete-modal');
+            const hostingDeleteCancel = document.getElementById('hosting-delete-cancel');
+            const hostingDeleteConfirm = document.getElementById('hosting-delete-confirm');
+            hostingDeleteCancel?.addEventListener('click', closeHostingDeleteModal);
+            hostingDeleteConfirm?.addEventListener('click', () => void runButtonAction(hostingDeleteConfirm, () => confirmHostingDelete()));
+            hostingDeleteModal?.addEventListener('click', event => {
+                if (event.target === hostingDeleteModal) closeHostingDeleteModal();
+            });
+            document.addEventListener('keydown', event => {
+                if (!hostingDeleteModal || hostingDeleteModal.classList.contains('hidden')) return;
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeHostingDeleteModal();
+                } else if (event.key === 'Tab') {
+                    if (hostingDeleteConfirming) {
+                        event.preventDefault();
+                        return;
+                    }
+                    if (event.shiftKey && document.activeElement === hostingDeleteCancel) {
+                        event.preventDefault();
+                        hostingDeleteConfirm.focus();
+                    } else if (!event.shiftKey && document.activeElement === hostingDeleteConfirm) {
+                        event.preventDefault();
+                        hostingDeleteCancel.focus();
+                    }
+                }
+            });
             document.querySelectorAll('[data-financial-date-preset]').forEach(button => {
                 button.addEventListener('click', () => applyFinancialDatePreset(button.dataset.financialDatePreset));
             });
-            document.getElementById('financial-date-apply')?.addEventListener('click', async () => {
+            document.getElementById('financial-date-apply')?.addEventListener('click', event => void runButtonAction(event.currentTarget, async () => {
                 const message = document.getElementById('financial-date-modal-message');
                 const { startDate, endDate } = getFinancialDateModalRange();
                 try {
@@ -6128,12 +6311,14 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
                     message.className = 'text-xs font-semibold text-rose-600';
                     message.classList.remove('hidden');
                 }
-            });
+            }));
             document.getElementById('financial-export-csv')?.addEventListener('click', event => {
-                void runFinancialExport(exportToCSV, event.currentTarget);
+                const button = event.currentTarget;
+                void runButtonAction(button, () => runFinancialExport(exportToCSV, button));
             });
             document.getElementById('financial-export-pdf')?.addEventListener('click', event => {
-                void runFinancialExport(exportToPDF, event.currentTarget);
+                const button = event.currentTarget;
+                void runButtonAction(button, () => runFinancialExport(exportToPDF, button));
             });
             document.getElementById('financial-date-modal')?.addEventListener('click', event => {
                 if (event.target.id === 'financial-date-modal') closeFinancialDateModal();
@@ -6167,16 +6352,16 @@ const SUPABASE_URL = 'https://prooebfvvwulpkfagnbg.supabase.co';
             teamAddForm?.addEventListener('submit', event => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                void (async () => {
+                void runFormAction(event, async () => {
                     try {
                         if (await checkSubscriptionLimit('cleaners')) {
                             await handleAddTeamMember(event);
                         }
                     } catch (error) {
                         console.error('Erro ao validar o limite de cleaners:', error);
-                        alert(`Não foi possível validar o limite de cleaners: ${error.message}`);
+                        showToast(`Não foi possível validar o limite de cleaners: ${error.message}`, 'error');
                     }
-                })();
+                });
             }, true);
 
             document.getElementById('financial-filter-month')?.addEventListener('change', () => void carregarRelatorios());
@@ -6284,7 +6469,7 @@ const passwordSetupContainer = document.getElementById('set-password-container')
             showPasswordSetup();
         }
 
-        document.getElementById('btn-save-password').addEventListener('click', async () => {
+        document.getElementById('btn-save-password').addEventListener('click', event => void runButtonAction(event.currentTarget, async () => {
             const passwordInput = document.getElementById('input-new-password');
             const saveButton = document.getElementById('btn-save-password');
             const newPassword = passwordInput.value;
@@ -6301,7 +6486,8 @@ const passwordSetupContainer = document.getElementById('set-password-container')
                 window.history.replaceState({}, document.title, cleanUrl.toString());
                 window.location.reload();
             } catch (error) {
-                alert('Erro ao guardar a palavra-passe: ' + error.message);
+                showToast('Erro ao guardar a palavra-passe: ' + error.message, 'error');
+            } finally {
                 saveButton.disabled = false;
             }
-        });
+        }));
