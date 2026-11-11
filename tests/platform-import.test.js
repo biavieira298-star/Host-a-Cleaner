@@ -10,7 +10,7 @@ const end = source.indexOf('async function submitHostingReport(', start);
 assert.ok(start >= 0 && end > start);
 
 function createParser() {
-    const calls = { inserted: [], warnings: [], logs: [], requests: [], confirmations: [] };
+    const calls = { inserted: [], warnings: [], logs: [], requests: [] };
     const context = {
         supabaseClient: { rpc: async (name, args) => {
             calls.requests.push({ name, args });
@@ -21,11 +21,8 @@ function createParser() {
         currentLang: 'pt',
         i18n: { pt: {
             hosting_unmatched_properties: 'unmatched',
-            hosting_missing_date: 'missing date',
-            hosting_replace_confirm: 'Replace {platform} {months}?',
-            hosting_replace_cancelled: 'cancelled'
+            hosting_missing_date: 'missing date'
         } },
-        window: { confirm: message => { calls.confirmations.push(message); return true; } },
         console: {
             warn: (...args) => calls.warnings.push(args),
             log: (...args) => calls.logs.push(args)
@@ -92,21 +89,14 @@ for (const [platform, parser] of [['Airbnb', 'processAirbnbPDF'], ['Booking.com'
         await assert.rejects(context[parser]({ text: 'Anúncio: Casa Azul | Pagamento 75 EUR' }, properties, '2026-13', 'doc1'), /missing date/);
         assert.equal(calls.requests.length, 0);
     });
-    test(`${platform} imports undated rows using the selected month and replaces the extra month`, async () => {
+    test(`${platform} imports undated rows for the selected document and month`, async () => {
         const { context, calls } = createParser();
-        await context[parser]({ name: 'relatorio.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1', '2026-11');
+        await context[parser]({ name: 'relatorio.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1');
         assert.equal(calls.inserted[0].occurred_on, '2026-10-01');
         assert.equal(calls.requests[0].name, 'replace_document_financial_entries');
         assert.equal(calls.requests[0].args.p_document_id, 'doc1');
-        assert.equal(calls.requests[0].args.p_extra_month, '2026-11-01');
-        assert.match(calls.confirmations[0], /2026-10, 2026-11/);
-    });
-
-    test(`${platform} cancellation leaves existing entries unchanged`, async () => {
-        const { context, calls } = createParser();
-        context.window.confirm = () => false;
-        await assert.rejects(context[parser]({ name: 'relatorio_2026-10.pdf', text: 'Anúncio: Casa Azul | Pagamento 75,00 EUR' }, properties, '2026-10', 'doc1'), /cancelled/);
-        assert.equal(calls.requests.length, 0);
+        assert.equal(calls.requests[0].args.p_extra_month, null);
+        assert.equal(calls.requests[0].args.p_platform, platform);
     });
 
     test(`${platform} imports formatted and partial listing names`, async () => {
@@ -201,7 +191,7 @@ test('replacement errors are surfaced and an empty report never calls the databa
     const { context, calls } = createParser();
     const empty = await context.persistPlatformEarnings('Airbnb', [], '2026-11');
     assert.equal(empty.inserted, 0);
-    assert.equal(calls.confirmations.length, 0);
+    assert.equal(calls.requests.length, 0);
     context.supabaseClient.rpc = async () => ({ error: new Error('transaction failed') });
     await assert.rejects(context.processAirbnbPDF({
         name: 'relatorio_2026-10.pdf',
