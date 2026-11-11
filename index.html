@@ -545,10 +545,6 @@
                         </div>
                         <form id="hosting-report-form" onsubmit="submitHostingReport(event)" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="hosting-report-property" data-i18n="reports_property" class="mb-1 block text-xs font-bold text-slate-300">Imóvel</label>
-                                <select id="hosting-report-property" class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-                            </div>
-                            <div>
                                 <label for="hosting-report-platform" data-i18n="hosting_platform" class="mb-1 block text-xs font-bold text-slate-300">Plataforma</label>
                                 <select id="hosting-report-platform" required class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="Airbnb">Airbnb</option>
@@ -556,8 +552,8 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="hosting-report-month" data-i18n="hosting_report_month" class="mb-1 block text-xs font-bold text-slate-300">Mês de recurso (se não constar no PDF ou nome do ficheiro)</label>
-                                <input id="hosting-report-month" type="month" class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white">
+                                <label for="hosting-report-month" data-i18n="hosting_report_month" class="mb-1 block text-xs font-bold text-slate-300">Mês do relatório</label>
+                                <input id="hosting-report-month" type="month" required class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white">
                             </div>
                             <div>
                                 <label for="hosting-wrong-month" data-i18n="hosting_wrong_month" class="mb-1 block text-xs font-bold text-slate-300">Mês incorreto anterior a limpar (opcional)</label>
@@ -599,6 +595,7 @@
                     <div>
                         <h4 data-i18n="hosting_documents" class="text-sm font-bold text-white">Documentos enviados</h4>
                     </div>
+                    <p id="hosting-documents-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
                     <div id="hosting-reports-list" class="space-y-2">
                         <p class="text-xs text-slate-400">A carregar documentos...</p>
                     </div>
