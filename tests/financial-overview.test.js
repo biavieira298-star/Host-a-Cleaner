@@ -125,6 +125,7 @@ test('overview reports Supabase errors and rejects invalid months', async () => 
     const failed = createReportEnvironment('2024-02', 'all', queryError);
     await failed.context.carregarRelatorios();
     assert.equal(failed.calls.logs[0][1].error, queryError);
+    assert.equal(failed.calls.logs[1][1], queryError);
     assert.equal(failed.calls.messages[0][2], 'error');
     const invalid = createReportEnvironment('2024-13');
     await invalid.context.carregarRelatorios();
