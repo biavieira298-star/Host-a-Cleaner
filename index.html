@@ -675,7 +675,7 @@
                         <p data-i18n="subtitle_invite_member" class="text-xs text-slate-500">Crie um convite para o membro definir o email e a palavra-passe no primeiro acesso.</p>
                       </div>
 
-                      <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <form id="team-add-form" onsubmit="runFormAction(event, () => handleAddTeamMember(event))" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label data-i18n="team_name" for="team-name" class="block text-xs font-bold text-slate-700 mb-1">Nome</label>
                             <input type="text" id="team-name" required autocomplete="name" placeholder="Nome do membro" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
