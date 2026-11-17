@@ -21,6 +21,44 @@ function makeElement(value = '') {
     };
 }
 
+test('financial chart uses readable light-theme labels and updates them when the theme changes', async () => {
+    const root = { dataset: { theme: 'light' } };
+    const chartError = { classList: { add() {}, remove() {} } };
+    const context = {
+        document: { documentElement: root, getElementById: id => id === 'financialOverviewChart' ? {} : chartError },
+        window: { Chart: true },
+        Chart: function (canvas, config) {
+            this.options = config.options;
+            this.update = () => { this.updated = true; };
+            this.destroy = () => {};
+        },
+        canViewFinancials: () => true,
+        financialChartRequestId: 0,
+        financialChartStartDate: null,
+        financialChartEndDate: null,
+        financialOverviewChart: null,
+        getDefaultFinancialDateRange: () => ({ startDate: '2026-01-01', endDate: '2026-01-31' }),
+        validateFinancialDateRange() {},
+        fetchFinancialEntriesForDateRange: async () => [],
+        formatFinancialAmount: String,
+        currentLang: 'pt',
+        i18n: { pt: { settings_theme_saved: 'saved' } },
+        applyThemePreference: theme => { root.dataset.theme = theme; return theme; },
+        setProfileSettingsMessage() {},
+        console
+    };
+    vm.createContext(context);
+    vm.runInContext(extractFunction('async function renderFinancialChart(', 'async function carregarRelatorios('), context);
+    vm.runInContext(extractFunction('function saveThemePreference(', 'function applyOperationalPreferencesToInviteForm('), context);
+    assert.equal(await context.renderFinancialChart(), true);
+    assert.equal(context.financialOverviewChart.options.plugins.legend.labels.color, '#334155');
+    assert.equal(context.financialOverviewChart.options.scales.x.ticks.color, '#475569');
+    context.saveThemePreference('dark');
+    assert.equal(context.financialOverviewChart.options.plugins.legend.labels.color, '#cbd5e1');
+    assert.equal(context.financialOverviewChart.options.scales.y.ticks.color, '#94a3b8');
+    assert.equal(context.financialOverviewChart.updated, true);
+});
+
 function createReportEnvironment(month, selectedProperty = 'p1', entriesError = null) {
     const elements = Object.fromEntries([
         'reports-summary-cards', 'reports-property-list', 'financial-property',
