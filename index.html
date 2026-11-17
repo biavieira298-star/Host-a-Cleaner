@@ -728,6 +728,18 @@
                                 <h4 data-i18n="settings_account_heading" class="text-sm font-bold text-slate-900">Conta / Palavra-passe</h4>
                                 <p id="profile-email-val" class="mt-1 truncate text-xs text-slate-500">---</p>
                             </header>
+                            <form onsubmit="runFormAction(event, () => saveProfileContact(event))" class="max-w-xl space-y-3 border-b border-slate-100 pb-4">
+                                <label for="profile-contact-email" class="block text-xs font-bold text-slate-700">
+                                    <span data-i18n="profile_contact_email">Email</span>
+                                    <input type="email" id="profile-contact-email" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <label for="profile-contact-phone" class="block text-xs font-bold text-slate-700">
+                                    <span data-i18n="profile_contact_phone">Telemóvel / Telefone</span>
+                                    <input type="tel" id="profile-contact-phone" autocomplete="tel" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <p id="profile-contact-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
+                                <button type="submit" data-i18n="profile_contact_save" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Guardar contactos</button>
+                            </form>
                             <form onsubmit="runFormAction(event, () => handleChangePassword(event))" class="max-w-xl space-y-3">
                                 <label for="new-password-input" class="block text-xs font-bold text-slate-700">
                                     <span data-i18n="label_new_pwd">Nova Palavra-passe</span>
