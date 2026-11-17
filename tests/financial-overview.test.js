@@ -188,7 +188,11 @@ test('document list renders localized global labels and preserves property label
             document: { getElementById: id => id === 'hosting-reports-list'
                 ? list
                 : { options: [{ value: 'p1', textContent: 'Casa Azul' }] } },
-            supabaseClient: { from: () => ({ select: () => ({ order: async () => ({ data: documents, error: null }) }) }) },
+            supabaseClient: { from: () => ({ select: () => ({ eq: (column, value) => {
+                assert.equal(column, 'user_id');
+                assert.equal(value, 'user');
+                return { order: async () => ({ data: documents, error: null }) };
+            } }) }) },
             currentUser: { id: 'user' },
             userRole: 'admin',
             canViewFinancials: () => true,
