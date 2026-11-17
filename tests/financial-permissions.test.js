@@ -36,7 +36,7 @@ function roleContext(profile, member = null, profileError = null, metadata = {})
         userRole: null,
         profileRoleVerified: false,
         currentTeamMemberId: null,
-        currentTeamManagerId: null,
+        currentTeamOwnerId: null,
         currentTeamMemberPreferences: {},
         console: { log: (...args) => logs.push(args), warn() {}, error() {} },
         calls,
@@ -66,10 +66,9 @@ test('administrator role or subscription grants frontend financial access', asyn
     for (const [profile, member, role, allowed] of [
         [{ role: 'admin', can_view_financials: false }, null, 'admin', true],
         [{ role: 'admin', can_view_financials: true }, null, 'admin', true],
-        [{ role: 'admin' }, { role: 'assistant', id: 'm', manager_id: 'owner' }, 'admin', true],
+        [{ role: 'admin' }, { role: 'assistant', id: 'm', owner_id: 'owner' }, 'admin', true],
         [{ role: 'cleaner', subscription_plan: 'admin', can_view_financials: false }, { role: 'cleaner', id: 'm' }, 'admin', true],
-        [{ role: 'cleaner', can_view_financials: true }, null, 'cleaner', false],
-        [{ role: 'assistant', can_view_financials: true }, null, 'cleaner', false]
+        [{ role: 'cleaner', can_view_financials: true }, { id: 'm', owner_id: 'owner' }, 'cleaner', false]
     ]) {
         const context = roleContext(profile, member);
         await context.checkUserRole();
@@ -86,7 +85,8 @@ test('missing, inaccessible or unrecognised profiles never fall back to metadata
     for (const [profile, error] of [
         [null, null],
         [null, { message: 'denied' }],
-        [{ role: null, subscription_plan: 'pro' }, null]
+        [{ role: null, subscription_plan: 'pro' }, null],
+        [{ role: 'assistant', subscription_plan: 'free' }, null]
     ]) {
         const context = roleContext(profile, null, error, { role: 'admin' });
         await assert.rejects(context.checkUserRole());
@@ -98,19 +98,27 @@ test('missing, inaccessible or unrecognised profiles never fall back to metadata
 
 test('a cleaner profile still loads its team assignment and preferences', async () => {
     const context = roleContext({ role: 'cleaner' }, {
-        id: 'member', manager_id: 'owner', track_hours: true, require_photos: true
+        id: 'member', owner_id: 'owner', track_hours: true, require_photos: true
     });
     await context.checkUserRole();
     assert.equal(context.userRole, 'cleaner');
     assert.equal(context.currentTeamMemberId, 'member');
-    assert.equal(context.currentTeamManagerId, 'owner');
+    assert.equal(context.currentTeamOwnerId, 'owner');
     assert.equal(context.currentTeamMemberPreferences.track_hours, true);
     assert.equal(context.currentTeamMemberPreferences.require_photos, true);
 });
 
+test('a cleaner profile without a valid team assignment cannot load account data', async () => {
+    for (const member of [null, { id: 'member', owner_id: null }]) {
+        const context = roleContext({ role: 'cleaner' }, member);
+        await assert.rejects(context.checkUserRole(), /equipa válida/);
+        assert.equal(context.profileRoleVerified, false);
+    }
+});
+
 test('administrator profiles immediately unlock the admin sidebar even when a team membership exists', async () => {
     for (const profile of [{ role: 'admin' }, { role: 'cleaner', subscription_plan: 'admin' }]) {
-        const context = roleContext(profile, { role: 'cleaner', id: 'm', manager_id: 'owner' });
+        const context = roleContext(profile, { role: 'cleaner', id: 'm', owner_id: 'owner' });
         const adminElement = { classList: makeClassList(['hidden']) };
         const cleanerElement = { classList: makeClassList() };
         const button = {
@@ -161,7 +169,7 @@ test('initialization reports profile and offline snapshot errors without opening
         const context = {
             currentUser: { id: 'user' },
             userRole: 'admin', profileRoleVerified: true,
-            currentTeamMemberId: null, currentTeamManagerId: null, currentTeamMemberPreferences: {},
+            currentTeamMemberId: null, currentTeamOwnerId: null, currentTeamMemberPreferences: {},
             navigator: { onLine: online },
             isOfflineNetworkError: () => false,
             checkUserRole: async () => { throw new Error('profile denied'); },
@@ -190,7 +198,7 @@ test('finance sidebar and financial fields are available to admin roles and plan
         [{ role: 'admin', can_view_financials: true }, true, true],
         [{ role: 'cleaner', can_view_financials: true }, false, false]
     ]) {
-        const context = roleContext(profile);
+        const context = roleContext(profile, { id: 'member', owner_id: 'owner' });
         const navigation = Array.from({ length: 4 }, () => ({ classList: makeClassList(['hidden']) }));
         const sensitiveField = { classList: makeClassList() };
         Object.assign(context, {
@@ -330,7 +338,7 @@ test('admin roles and subscriptions can open finance routes despite the legacy f
 });
 
 test('offline snapshots restore verified roles without overriding a freshly loaded role', async () => {
-    let snapshot = { userRole: 'admin', profileRoleVerified: true };
+    let snapshot = { tenantIsolationVersion: 2, userRole: 'admin', profileRoleVerified: true };
     const context = {
         currentUser: { id: 'user' },
         userRole: 'admin',
@@ -357,7 +365,7 @@ test('offline snapshots restore verified roles without overriding a freshly load
         propertyCleaners: [],
         agendaTasksCache: [],
         currentTeamMemberId: null,
-        currentTeamManagerId: null,
+        currentTeamOwnerId: null,
         currentTeamMemberPreferences: {},
         queueMicrotask
     };
@@ -365,19 +373,25 @@ test('offline snapshots restore verified roles without overriding a freshly load
     vm.runInContext(extract('async function restoreOfflineSnapshot(', 'async function listPendingOfflineItems('), context);
     await context.restoreOfflineSnapshot();
     assert.equal(context.userRole, 'admin');
-    snapshot = { userRole: 'admin', profileRoleVerified: true };
+    snapshot = { tenantIsolationVersion: 2, userRole: 'admin', profileRoleVerified: true };
     context.userRole = 'cleaner';
-    context.currentTeamManagerId = 'fresh-manager';
+    context.currentTeamOwnerId = 'fresh-owner';
     await context.restoreOfflineSnapshot(false);
     assert.equal(context.userRole, 'cleaner');
-    assert.equal(context.currentTeamManagerId, 'fresh-manager');
-    snapshot = { userRole: 'admin', profileRoleVerified: true };
+    assert.equal(context.currentTeamOwnerId, 'fresh-owner');
+    snapshot = { tenantIsolationVersion: 2, userRole: 'admin', profileRoleVerified: true };
     await context.restoreOfflineSnapshot();
     assert.equal(context.userRole, 'admin');
     snapshot = { userRole: 'cleaner' };
     context.userRole = null;
     assert.equal(await context.restoreOfflineSnapshot(), false);
     assert.equal(context.userRole, null);
+    snapshot = { userRole: 'admin', profileRoleVerified: true };
+    assert.equal(await context.restoreOfflineSnapshot(), false);
+    snapshot = { tenantIsolationVersion: 1, userRole: 'admin', profileRoleVerified: true };
+    assert.equal(await context.restoreOfflineSnapshot(), false);
+    snapshot = { tenantIsolationVersion: 2, userRole: 'cleaner', profileRoleVerified: true, currentTeamMemberId: 'member' };
+    assert.equal(await context.restoreOfflineSnapshot(), false);
 });
 
 test('financial date queries are blocked without permission', async () => {
