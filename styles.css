@@ -227,6 +227,28 @@ html[data-theme="light"] #app-layout .hosting-report-dropzone.dragover label {
     background: #eef2ff !important;
 }
 
+#app-layout #profile-subtab-subscription article.is-current-plan {
+    border: 2px solid #4f46e5 !important;
+    background-color: #eef2ff !important;
+    box-shadow: 0 0 0 3px rgb(79 70 229 / 15%);
+}
+html[data-theme="dark"] #app-layout #profile-subtab-subscription article.is-current-plan {
+    border-color: #a5b4fc !important;
+    background-color: #312e81 !important;
+}
+.subscription-current-badge {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    border-radius: 9999px;
+    background: #4338ca;
+    padding: 0.3rem 0.65rem;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
 .offline-sync-indicator {
     position: sticky;
     top: 0.5rem;
