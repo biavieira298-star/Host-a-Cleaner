@@ -46,9 +46,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let currentUser = null;
         let subscriptionLoadRequestId = 0;
         let stripeCheckoutSyncPromise = null;
-        let currentTeamManagerId = null;
+        let currentTeamOwnerId = null;
         let pendingTeamInviteToken = null;
-        let registrationRole = 'cleaner';
         let registrationRequested = false;
         let propertyCleaners = [];
         let allTeamMembersCache = [];
@@ -779,7 +778,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 property_cleaner_label: "Cleaner:",
                 property_access_label: "🔑 Access:",
                 property_team_load_error: "Could not load the team",
-                property_form_access_error: "Sign in as a manager to save properties.",
+                property_form_access_error: "Sign in as an admin to save properties.",
                 property_form_validation_error: "Enter a name, address, and valid hourly rate.",
                 property_update_success: "Property updated successfully.",
                 property_add_success: "Property added successfully.",
@@ -892,6 +891,74 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
         }
 
+        function setCurrentUser(user) {
+            if (currentUser?.id !== user?.id) {
+                allPropertiesCache = [];
+                allTasksCache = [];
+                agendaTasksCache = [];
+                allTeamMembersCache = [];
+                propertyCleaners = [];
+                taskTeamMembers = [];
+                hostingReportsCache = [];
+                employeeHoursMonthlyData = [];
+                operationalPreferences = { track_hours: false, require_photos: false };
+                financialChartStartDate = null;
+                financialChartEndDate = null;
+                selectedPropertyFilter = 'all';
+                editingPropertyId = null;
+                taskAwaitingTimeConfirmation = null;
+                incidentTaskContext = null;
+                pendingHostingReportId = null;
+                agendaRequestId++;
+                incidentRequestId++;
+                globalIncidentHistoryRequestId++;
+                reportsRequestId++;
+                financialChartRequestId++;
+                hostingReportsRequestId++;
+                subscriptionLoadRequestId++;
+                viewRenderRequestId++;
+                document.querySelectorAll('[data-subscription-plan]').forEach(button => {
+                    button.disabled = true;
+                    const plan = button.dataset.subscriptionPlan;
+                    button.textContent = plan === 'gratuito' ? i18n[currentLang].subscription_free
+                        : `${i18n[currentLang].subscription_subscribe} ${plan.charAt(0).toUpperCase()}${plan.slice(1)}`;
+                    const card = button.closest('article');
+                    card.classList.remove('is-current-plan');
+                    card.querySelector('.subscription-current-badge').classList.add('hidden');
+                });
+                const subscriptionStatus = document.getElementById('subscription-status');
+                if (subscriptionStatus) subscriptionStatus.textContent = '';
+                if (financialOverviewChart) {
+                    financialOverviewChart.destroy();
+                    financialOverviewChart = null;
+                }
+                [
+                    'property-quick-modal', 'employee-hours-detail-modal', 'add-cleaning-modal',
+                    'day-tasks-modal', 'task-modal', 'time-confirmation-modal',
+                    'incident-report-modal', 'hosting-delete-modal', 'financial-date-modal'
+                ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+                [
+                    'property-quick-modal-body', 'employee-hours-detail-modal-body', 'day-modal-tasks-container',
+                    'modal-content', 'properties-grid', 'team-members-list', 'tasks-list-container',
+                    'calendar-grid', 'reports-summary-cards', 'reports-property-list',
+                    'financial-entries-table-body', 'hosting-reports-list', 'history-records-list',
+                    'urgent-incidents-list', 'time-entries-list'
+                ].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = '';
+                });
+                document.body?.classList.remove('overflow-hidden');
+            }
+            currentUser = user;
+        }
+
+        function getTenantOwnerId() {
+            if (!currentUser || !profileRoleVerified) throw new Error('A conta ainda não foi verificada.');
+            if (userRole === 'admin') return currentUser.id;
+            if (userRole === 'cleaner' && currentTeamMemberId && currentTeamOwnerId) return currentTeamOwnerId;
+            throw new Error('A conta não está associada a uma equipa válida.');
+        }
+
         async function initApp() {
             changeLanguage(currentLang);
             document.getElementById('calendar-date-picker').value = selectedDate;
@@ -899,7 +966,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             document.getElementById('financial-filter-month').value = getLocalDateString().slice(0, 7);
             document.getElementById('time-entry-date').value = getLocalDateString();
             const { data: { session } } = await supabaseClient.auth.getSession();
-            currentUser = session ? session.user : null;
+            setCurrentUser(session ? session.user : null);
 
             if (pendingTeamInviteToken) {
                 showTeamInviteSignup();
@@ -913,7 +980,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
 
             supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                currentUser = session ? session.user : null;
+                setCurrentUser(session ? session.user : null);
                 if (registrationRequested && event === 'INITIAL_SESSION') return;
                 if (currentUser) {
                     await initializeAuthenticatedApp();
@@ -921,7 +988,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     userRole = null;
                     profileRoleVerified = false;
                     currentTeamMemberId = null;
-                    currentTeamManagerId = null;
+                    currentTeamOwnerId = null;
                     currentTeamMemberPreferences = { track_hours: false, require_photos: false };
                     showLoginScreen();
                     void updateOfflineIndicator();
@@ -935,7 +1002,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             userRole = null;
             profileRoleVerified = false;
             currentTeamMemberId = null;
-            currentTeamManagerId = null;
+            currentTeamOwnerId = null;
             currentTeamMemberPreferences = { track_hours: false, require_photos: false };
             try {
                 if (navigator.onLine) {
@@ -998,14 +1065,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const plan = String(profile.subscription_plan || '').trim().toLowerCase();
             const resolvedRole = role === 'admin' || plan === 'admin'
                 ? 'admin'
-                : ['cleaner', 'assistant', 'assistente'].includes(role) ? 'cleaner' : null;
+                : role === 'cleaner' ? 'cleaner' : null;
             if (!resolvedRole) throw new Error('O perfil não tem um papel de acesso válido.');
 
             let member = null;
             if (resolvedRole === 'cleaner') {
                 const { data, error } = await supabaseClient
                     .from('team_members')
-                    .select('id, role, track_hours, require_photos, manager_id')
+                    .select('id, role, track_hours, require_photos, owner_id')
                     .eq('auth_user_id', userId)
                     .maybeSingle();
                 if (currentUser?.id !== userId) return false;
@@ -1014,12 +1081,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     throw error;
                 }
                 member = data;
+                if (!member?.id || !member.owner_id) throw new Error('A conta não está associada a uma equipa válida.');
             }
 
             userRole = resolvedRole;
             profileRoleVerified = true;
             currentTeamMemberId = member?.id || null;
-            currentTeamManagerId = member?.manager_id || null;
+            currentTeamOwnerId = member?.owner_id || null;
             currentTeamMemberPreferences = {
                 track_hours: member?.track_hours === true,
                 require_photos: member?.require_photos === true
@@ -1153,7 +1221,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             element.setAttribute('role', type === 'error' ? 'alert' : 'status');
         }
 
-        async function registarUtilizador(email, password, nome, role) {
+        async function registarUtilizador(email, password, nome) {
             const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
@@ -1161,7 +1229,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     emailRedirectTo: 'https://host-a-cleaner.pages.dev/#login',
                     data: {
                         full_name: nome,
-                        role: role === 'co-host' ? 'co-host' : 'cleaner'
+                        role: 'admin',
+                        subscription_plan: 'free'
                     }
                 }
             });
@@ -1182,7 +1251,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     if (error) throw error;
                 } else {
                     const nome = document.getElementById('auth-name').value.trim();
-                    const data = await registarUtilizador(email, password, nome, registrationRole);
+                    const data = await registarUtilizador(email, password, nome);
                     mostrarMensagemAuth(
                         data.session
                             ? 'Conta criada com sucesso!'
@@ -1249,9 +1318,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 pendingTeamInviteToken = null;
                 window.history.replaceState({}, document.title, redirectUrl.toString());
                 if (data.session) {
-                    message.innerText = 'Conta criada. A carregar o seu acesso...';
+                    message.innerText = 'Conta criada. Se o convite já não for válido, a conta será independente.';
                 } else {
-                    message.innerText = 'Conta criada. Confirme o email para ativar o acesso à equipa.';
+                    message.innerText = 'Conta criada. Confirme o email. Se o convite já não for válido, a conta será independente.';
                 }
                 message.classList.remove('hidden');
             } catch (error) {
@@ -1311,7 +1380,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         async function handleLogout() {
             localStorage.removeItem('host_cleaner_active_tab');
             await supabaseClient.auth.signOut();
-            currentUser = null; userRole = null; profileRoleVerified = false; showLoginScreen();
+            setCurrentUser(null); userRole = null; profileRoleVerified = false; showLoginScreen();
         }
 
         function switchProfileTab(tab) {
@@ -1343,7 +1412,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const requestId = ++subscriptionLoadRequestId;
             const status = document.getElementById('subscription-status');
             const buttons = document.querySelectorAll('[data-subscription-plan]');
-            buttons.forEach(button => { button.disabled = true; });
+            const labels = { gratuito: i18n[currentLang].subscription_free, starter: 'Starter', pro: 'Pro', business: 'Business', admin: i18n[currentLang].subscription_admin };
+            buttons.forEach(button => {
+                button.disabled = true;
+                const buttonPlan = button.dataset.subscriptionPlan;
+                button.textContent = buttonPlan === 'gratuito' ? labels.gratuito
+                    : `${i18n[currentLang].subscription_subscribe} ${labels[buttonPlan]}`;
+                const card = button.closest('article');
+                card.classList.remove('is-current-plan');
+                card.querySelector('.subscription-current-badge').classList.add('hidden');
+            });
             status.textContent = i18n[currentLang].subscription_loading;
             try {
                 if (!userId) throw new Error('No authenticated user');
@@ -1359,12 +1437,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (!['gratuito', 'starter', 'pro', 'business', 'admin'].includes(normalizedPlan)) {
                     throw new Error('Unknown subscription plan');
                 }
-                const labels = { gratuito: i18n[currentLang].subscription_free, starter: 'Starter', pro: 'Pro', business: 'Business', admin: i18n[currentLang].subscription_admin };
                 const stripeStatus = profile.stripe_subscription_status || i18n[currentLang].subscription_no_status;
                 status.textContent = `${labels[normalizedPlan]} · ${i18n[currentLang].subscription_status_label}: ${stripeStatus}`;
                 buttons.forEach(button => {
                     const buttonPlan = button.dataset.subscriptionPlan;
                     const isCurrent = buttonPlan === normalizedPlan;
+                    const card = button.closest('article');
+                    card.classList.toggle('is-current-plan', isCurrent);
+                    card.querySelector('.subscription-current-badge').classList.toggle('hidden', !isCurrent);
                     button.disabled = isCurrent || buttonPlan === 'gratuito';
                     button.textContent = isCurrent ? i18n[currentLang].subscription_current
                         : buttonPlan === 'gratuito' ? labels.gratuito
@@ -1483,6 +1563,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function loadProfileSettings() {
+            const userId = currentUser?.id;
             document.getElementById('profile-email-val').textContent = currentUser?.email || '---';
             document.getElementById('profile-contact-email').value = currentUser?.email || '';
             document.getElementById('profile-contact-phone').value = currentUser?.user_metadata?.phone || '';
@@ -1507,8 +1588,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const { data: members, error } = await supabaseClient
                         .from('team_members')
                         .select('track_hours, require_photos')
-                        .eq('manager_id', currentUser.id)
+                        .eq('owner_id', currentUser.id)
                         .eq('role', 'cleaner');
+                    if (currentUser?.id !== userId) return;
                     if (error) throw error;
                     if (members?.length) {
                         operationalPreferences = {
@@ -1581,7 +1663,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const { error } = await supabaseClient
                     .from('team_members')
                     .update(preferences)
-                    .eq('manager_id', currentUser.id)
+                    .eq('owner_id', currentUser.id)
                     .eq('role', 'cleaner');
                 if (error) throw error;
 
@@ -1610,16 +1692,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
 
             try {
-                const managerId = currentUser.id;
+                const ownerId = currentUser.id;
                 const limitColumn = resource === 'properties' ? 'max_properties' : 'max_cleaners';
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select(`subscription_plan, ${limitColumn}`)
-                    .eq('id', managerId)
+                    .eq('id', ownerId)
                     .maybeSingle();
                 if (profileError) throw profileError;
                 if (!profile) throw new Error('Perfil de subscrição do administrador não encontrado ou sem acesso. Contacte o suporte para verificar o perfil da conta ligada.');
-                if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
+                if (currentUser?.id !== ownerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
 
                 const plan = String(profile.subscription_plan || 'gratuito').trim().toLowerCase();
                 const planLabels = {
@@ -1651,16 +1733,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     .from(table)
                     .select('id', { count: 'exact', head: true });
                 if (resource === 'properties') {
-                    countQuery = countQuery.eq('user_id', managerId);
+                    countQuery = countQuery.eq('user_id', ownerId);
                 } else {
                     countQuery = countQuery
-                        .eq('manager_id', managerId)
+                        .eq('owner_id', ownerId)
                         .eq('role', 'cleaner');
                 }
 
                 const { count, error: countError } = await countQuery;
                 if (countError) throw countError;
-                if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
+                if (currentUser?.id !== ownerId) throw new Error('A sessão mudou durante a verificação do plano. Tente novamente.');
                 if (count === null) throw new Error('Não foi possível contar os recursos existentes.');
                 if (count < limit) return true;
 
@@ -1842,15 +1924,21 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function loadData() {
+            const userId = currentUser?.id;
             if (isOfflineMode || !navigator.onLine) {
                 await restoreOfflineSnapshot(false);
+                if (currentUser?.id !== userId) return;
                 await fetchAgendaTasks();
                 return;
             }
             const propertiesLoaded = await fetchPropertiesForSelect();
+            if (currentUser?.id !== userId) return;
             const teamLoaded = await fetchTeamMembers();
+            if (currentUser?.id !== userId) return;
             if (userRole === 'admin') await carregarCleaners();
+            if (currentUser?.id !== userId) return;
             const tasksLoaded = await fetchAllTasksCache();
+            if (currentUser?.id !== userId) return;
             if (!propertiesLoaded || !tasksLoaded || teamLoaded === false) {
                 isOfflineMode = true;
                 await restoreOfflineSnapshot(false);
@@ -1885,9 +1973,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function fetchAllTasksCache() {
             if (!navigator.onLine) return allTasksCache.length > 0;
+            const userId = currentUser.id;
             const { data, error } = await supabaseClient
                 .from('cleaning_tasks')
-                .select('*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)');
+                .select('*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)')
+                .eq('properties.user_id', getTenantOwnerId());
+            if (currentUser?.id !== userId) return false;
             if (error) {
                 console.error('Erro ao guardar tarefas para uso offline:', error);
                 return false;
@@ -1908,7 +1999,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
                 return allPropertiesCache.length > 0;
             }
-            const { data, error } = await supabaseClient.from('properties').select('*');
+            const userId = currentUser.id;
+            const { data, error } = await supabaseClient.from('properties').select('*').eq('user_id', getTenantOwnerId());
+            if (currentUser?.id !== userId) return false;
             if (error) {
                 console.error('Erro ao carregar alojamentos para o filtro:', error);
                 if (filterSelect && allPropertiesCache.length === 0) {
@@ -2024,14 +2117,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function saveOfflineSnapshot() {
             if (!currentUser) return;
+            const userId = currentUser.id;
             const database = await openOfflineDatabase();
+            if (currentUser?.id !== userId) return;
             const snapshot = {
-                userId: currentUser.id,
+                userId,
+                tenantIsolationVersion: 2,
                 savedAt: new Date().toISOString(),
                 userRole,
                 profileRoleVerified,
                 currentTeamMemberId,
-                currentTeamManagerId,
+                currentTeamOwnerId,
                 currentTeamMemberPreferences,
                 allProperties: allPropertiesCache,
                 allTasks: allTasksCache,
@@ -2058,21 +2154,23 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 request.onsuccess = () => resolve(request.result || null);
                 request.onerror = () => reject(request.error || new Error('Não foi possível ler a cópia offline.'));
             });
-            if (!snapshot || currentUser?.id !== userId) return false;
+            if (!snapshot || snapshot.tenantIsolationVersion !== 2 || currentUser?.id !== userId) return false;
 
             if (restorePermissions) {
                 if (!snapshot.profileRoleVerified || !['admin', 'cleaner'].includes(snapshot.userRole)) return false;
+                if (snapshot.userRole === 'cleaner' && (!snapshot.currentTeamMemberId || !snapshot.currentTeamOwnerId)) return false;
                 userRole = snapshot.userRole;
                 profileRoleVerified = true;
                 currentTeamMemberId = snapshot.currentTeamMemberId || null;
-                currentTeamManagerId = snapshot.currentTeamManagerId || null;
+                currentTeamOwnerId = snapshot.currentTeamOwnerId || null;
                 currentTeamMemberPreferences = snapshot.currentTeamMemberPreferences || { track_hours: false, require_photos: false };
             }
             allPropertiesCache = snapshot.allProperties || [];
             allTasksCache = snapshot.allTasks || [];
             allTeamMembersCache = snapshot.teamMembers || [];
             propertyCleaners = snapshot.propertyCleaners || [];
-            const pending = (await listPendingOfflineItems()).filter(item => item.userId === currentUser.id);
+            const pending = (await listPendingOfflineItems()).filter(item => item.userId === userId);
+            if (currentUser?.id !== userId) return false;
             pending.forEach(item => {
                 if (item.type === 'task_start') {
                     updateTaskLocalState(item.taskId, {
@@ -2493,11 +2591,15 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 return;
             }
 
+            const userId = currentUser.id;
             const { data, error } = await supabaseClient
                 .from('team_members')
                 .select('id, name, email')
+                .eq('owner_id', getTenantOwnerId())
                 .eq('role', 'cleaner')
                 .order('name');
+
+            if (currentUser?.id !== userId) return;
 
             if (error) {
                 console.error('Erro ao carregar cleaners para as propriedades:', error);
@@ -2615,7 +2717,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             let error = null;
             if (navigator.onLine) {
                 gridEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].loading_properties}</p>`;
-                const result = await supabaseClient.from('properties').select('*').order('created_at', { ascending: false });
+                const userId = currentUser.id;
+                const result = await supabaseClient.from('properties').select('*').eq('user_id', getTenantOwnerId()).order('created_at', { ascending: false });
+                if (currentUser?.id !== userId) return;
                 data = result.data;
                 error = result.error;
                 if (!error) allPropertiesCache = data || [];
@@ -2715,7 +2819,34 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
         }
 
+        async function resolvePrivatePhotoUrl(value, bucket) {
+            if (!value) return value;
+            const url = new URL(value, window.location.href);
+            const photoBucket = [bucket, bucket === 'cleaning-photos' ? 'property-incidents' : 'cleaning-photos']
+                .find(name => url.pathname.startsWith(`/storage/v1/object/public/${name}/`));
+            if (url.origin !== new URL(SUPABASE_URL).origin || !photoBucket) {
+                return safeIncidentPhotoUrl(value);
+            }
+            const prefix = `/storage/v1/object/public/${photoBucket}/`;
+            const path = decodeURIComponent(url.pathname.slice(prefix.length));
+            const { data, error } = await supabaseClient.storage.from(photoBucket).createSignedUrl(path, 3600);
+            if (error) throw error;
+            if (!data?.signedUrl) throw new Error('Não foi possível obter o acesso à fotografia.');
+            return data.signedUrl;
+        }
+
+        async function resolveIncidentPhotoRecords(incidents) {
+            return Promise.all(incidents.map(async incident => ({
+                ...incident,
+                photos: await Promise.all((incident.photos?.length
+                    ? incident.photos
+                    : incident.photo_url ? [incident.photo_url] : []
+                ).map(url => resolvePrivatePhotoUrl(url, 'property-incidents')))
+            })));
+        }
+
         async function loadPropertyIncidentHistory(details) {
+            const userId = currentUser?.id;
             const propertyId = details.dataset.propertyId;
             const list = details.querySelector('.property-incident-history-list');
             if (!propertyId || !list) return;
@@ -2730,11 +2861,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (navigator.onLine) {
                     const { data, error } = await supabaseClient
                         .from('property_incidents')
-                        .select('id, property_id, type, priority, description, photos, created_by, created_at, status')
+                        .select('id, property_id, type, priority, description, photos, created_by, created_at, status, properties!inner(user_id)')
+                        .eq('properties.user_id', getTenantOwnerId())
                         .eq('property_id', propertyId)
                         .order('created_at', { ascending: false });
                     if (error) throw error;
-                    incidents = data || [];
+                    incidents = await resolveIncidentPhotoRecords(data || []);
                 }
 
                 const pending = (await listPendingOfflineItems()).filter(item =>
@@ -2780,6 +2912,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const { data: members, error } = await supabaseClient
                         .from('team_members')
                         .select('auth_user_id, name, email')
+                        .eq('owner_id', getTenantOwnerId())
                         .in('auth_user_id', authorIds);
                     if (error) {
                         console.error('Erro ao carregar autores do histórico da propriedade:', error);
@@ -2791,6 +2924,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         });
                     }
                 }
+                if (currentUser?.id !== userId) return;
 
                 if (!incidents.length) {
                     list.innerHTML = `<p class="rounded-xl border border-dashed border-slate-200 px-3 py-5 text-center text-[10px] text-slate-500">${navigator.onLine ? i18n[currentLang].property_history_empty : i18n[currentLang].property_history_offline}</p>`;
@@ -2978,14 +3112,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function getUrgentIncidentCount() {
+            if (!currentUser) return 0;
             let total = 0;
 
             try {
                 const { count, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id', { count: 'exact', head: true })
+                    .select('id, properties!inner(user_id)', { count: 'exact', head: true })
+                    .eq('properties.user_id', getTenantOwnerId())
                     .eq('priority', 'urgent');
-                if (!error) total += Number(count || 0);
+                if (error) throw error;
+                total += Number(count || 0);
             } catch (error) {
                 console.warn('Não foi possível verificar incidentes urgentes na base de dados:', error);
             }
@@ -3083,7 +3220,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const { data: properties, error: propertyError } = await supabaseClient
                         .from('properties')
                         .select('id, name')
+                        .eq('user_id', getTenantOwnerId())
                         .order('name');
+                    if (requestId !== globalIncidentHistoryRequestId) return;
                     if (propertyError) throw propertyError;
                     allPropertiesCache = properties || [];
                 }
@@ -3105,7 +3244,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     for (let offset = 0; ; offset += pageSize) {
                         let query = supabaseClient
                             .from('property_incidents')
-                            .select('id, property_id, type, priority, description, photos, photo_url, created_at, status, properties!property_incidents_property_id_fkey!inner(name)')
+                            .select('id, property_id, type, priority, description, photos, photo_url, created_at, status, properties!property_incidents_property_id_fkey!inner(name, user_id)')
+                            .eq('properties.user_id', getTenantOwnerId())
                             .order('created_at', { ascending: sortFilter.value !== 'asc' })
                             .range(offset, offset + pageSize - 1);
                         if (globalIncidentPriorityFilter === 'urgent') query = query.eq('priority', 'urgent');
@@ -3125,6 +3265,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         incidents.push(...page);
                         if (page.length < pageSize) break;
                     }
+                    incidents = await resolveIncidentPhotoRecords(incidents);
+                    if (requestId !== globalIncidentHistoryRequestId) return;
                 }
 
                 const existingIds = new Set(incidents.map(item => String(item.id)));
@@ -3241,7 +3383,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             if (navigator.onLine) {
                 const { data: incidents, error } = await supabaseClient
                     .from('property_incidents')
-                    .select('id, property_id, type, description, photos, photo_url, priority, created_at, properties!property_incidents_property_id_fkey!inner(name)')
+                    .select('id, property_id, type, description, photos, photo_url, priority, created_at, properties!property_incidents_property_id_fkey!inner(name, user_id)')
+                    .eq('properties.user_id', getTenantOwnerId())
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
                 if (requestId !== incidentRequestId) return;
@@ -3250,10 +3393,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(error.message)}</p>`;
                     return;
                 }
-                data = (incidents || []).map(incident => ({
-                    ...incident,
-                    photo_urls: incident.photos?.length ? incident.photos : incident.photo_url ? [incident.photo_url] : []
-                }));
+                try {
+                    data = (await resolveIncidentPhotoRecords(incidents || [])).map(incident => ({
+                        ...incident,
+                        photo_urls: incident.photos
+                    }));
+                    if (requestId !== incidentRequestId) return;
+                } catch (photoError) {
+                    console.error('Erro ao carregar fotografias de incidentes:', photoError);
+                    list.innerHTML = `<p role="alert" class="text-xs font-semibold text-rose-700">${i18n[currentLang].incident_alerts_error}: ${escapePropertyHTML(photoError.message)}</p>`;
+                    return;
+                }
             } else {
                 try {
                     const queued = (await listPendingOfflineItems()).filter(item =>
@@ -3355,6 +3505,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             let query = supabaseClient
                 .from('cleaning_tasks')
                 .select('*, properties!inner(name, address, access_code, instructions, hourly_rate, user_id)')
+                .eq('properties.user_id', getTenantOwnerId())
                 .gte('scheduled_date', start)
                 .lte('scheduled_date', end)
                 .order('scheduled_date', { ascending: true });
@@ -3548,6 +3699,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function openTaskModal(task) {
+            const userId = currentUser?.id;
             offlinePendingPhotoUrls.forEach(url => URL.revokeObjectURL(url));
             offlinePendingPhotoUrls = [];
             document.getElementById('modal-prop-name').innerText = task.properties?.name || 'Detalhes da Limpeza';
@@ -3575,6 +3727,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const result = await supabaseClient
                         .from('team_members')
                         .select('id, name, email, role, track_hours, require_photos')
+                        .eq('owner_id', getTenantOwnerId())
                         .eq('role', 'cleaner')
                         .order('name');
                     if (result.error) {
@@ -3629,17 +3782,34 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             let taskPhotos = [];
             let photoLoadError = null;
+            let displayTask = task;
             if (navigator.onLine) {
                 const { data: photoData, error: photoError } = await supabaseClient
                     .from('cleaning_task_photos')
-                    .select('id, photo_url, created_at')
+                    .select('id, photo_url, created_at, properties!inner(user_id)')
+                    .eq('properties.user_id', getTenantOwnerId())
                     .eq('task_id', task.id)
                     .order('created_at', { ascending: false });
                 if (photoError) {
                     console.error('Erro ao carregar fotografias da tarefa:', photoError);
                     photoLoadError = photoError.message;
+                    displayTask = { ...task, photo_before_url: null, photo_after_url: null };
                 } else {
-                    taskPhotos = photoData || [];
+                    try {
+                        taskPhotos = await Promise.all((photoData || []).map(async photo => ({
+                            ...photo,
+                            photo_url: await resolvePrivatePhotoUrl(photo.photo_url, 'cleaning-photos')
+                        })));
+                        displayTask = {
+                            ...task,
+                            photo_before_url: await resolvePrivatePhotoUrl(task.photo_before_url, 'cleaning-photos'),
+                            photo_after_url: await resolvePrivatePhotoUrl(task.photo_after_url, 'cleaning-photos')
+                        };
+                    } catch (error) {
+                        console.error('Erro ao obter acesso às fotografias da tarefa:', error);
+                        photoLoadError = error.message;
+                        displayTask = { ...task, photo_before_url: null, photo_after_url: null };
+                    }
                 }
             } else {
                 try {
@@ -3661,6 +3831,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 }
             }
 
+            if (currentUser?.id !== userId) return;
             document.getElementById('modal-content').innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
@@ -3698,7 +3869,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             const renderPermissionModules = () => {
                 document.getElementById('task-permission-modules').innerHTML =
-                    renderTaskPermissionModules(task, getAssignedPreferences(), taskPhotos, photoLoadError);
+                    renderTaskPermissionModules(displayTask, getAssignedPreferences(), taskPhotos, photoLoadError);
             };
             renderPermissionModules();
             document.getElementById('task-time-actions').innerHTML =
@@ -4878,6 +5049,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const listEl = document.getElementById('time-entries-list');
             const propertySelect = document.getElementById('time-entry-property');
             if (!listEl || !currentUser) return;
+            const userId = currentUser.id;
+            const isAdmin = userRole === 'admin';
 
             listEl.innerHTML = `<p class="text-slate-400 text-xs">${i18n[currentLang].time_entries_loading}</p>`;
             if (propertySelect) {
@@ -4889,14 +5062,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             let query = supabaseClient
                 .from('work_time_entries')
-                .select('id, work_date, hours, description, team_members!work_time_entries_team_member_id_fkey(name), properties!work_time_entries_property_id_fkey(name)')
+                .select('id, user_id, property_id, work_date, hours, description')
                 .order('work_date', { ascending: false })
                 .order('created_at', { ascending: false });
-            query = userRole === 'admin'
-                ? query.eq('manager_id', currentUser.id)
-                : query.eq('user_id', currentUser.id);
+            query = isAdmin ? query.eq('owner_id', userId) : query.eq('user_id', userId);
 
             const { data, error } = await query;
+            if (currentUser?.id !== userId || (userRole === 'admin') !== isAdmin) return;
             if (error) {
                 console.error('Erro ao carregar registos de horas:', error);
                 listEl.innerHTML = `<p class="text-rose-600 text-xs" role="alert">${i18n[currentLang].time_entry_error}: ${escapePropertyHTML(error.message)}</p>`;
@@ -4907,13 +5079,30 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 return;
             }
 
+            const memberNames = new Map();
+            const memberUserIds = [...new Set(data.map(entry => entry.user_id).filter(Boolean))];
+            if (isAdmin && memberUserIds.length) {
+                const { data: members, error: memberError } = await supabaseClient
+                    .from('team_members')
+                    .select('auth_user_id, name')
+                    .eq('owner_id', userId)
+                    .in('auth_user_id', memberUserIds);
+                if (currentUser?.id !== userId || (userRole === 'admin') !== isAdmin) return;
+                if (memberError) {
+                    console.error('Erro ao carregar membros para os registos de horas:', memberError);
+                    listEl.innerHTML = `<p class="text-rose-600 text-xs" role="alert">${i18n[currentLang].time_entry_error}: ${escapePropertyHTML(memberError.message)}</p>`;
+                    return;
+                }
+                members.forEach(member => memberNames.set(String(member.auth_user_id), member.name));
+            }
+            const propertyNames = new Map(allPropertiesCache.map(property => [String(property.id), property.name]));
             listEl.innerHTML = data.map(entry => `
                 <article class="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <strong class="text-slate-900">${escapePropertyHTML(entry.properties?.name || i18n[currentLang].time_entry_property)}</strong>
+                        <strong class="text-slate-900">${escapePropertyHTML(propertyNames.get(String(entry.property_id)) || i18n[currentLang].time_entry_property)}</strong>
                         <span class="rounded-full bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">${escapePropertyHTML(entry.hours)}h</span>
                     </div>
-                    <p class="mt-1 text-[11px] text-slate-500">${escapePropertyHTML(entry.work_date)}${userRole === 'admin' && entry.team_members?.name ? ` · ${escapePropertyHTML(entry.team_members.name)}` : ''}</p>
+                    <p class="mt-1 text-[11px] text-slate-500">${escapePropertyHTML(entry.work_date)}${isAdmin && memberNames.get(String(entry.user_id)) ? ` · ${escapePropertyHTML(memberNames.get(String(entry.user_id)))}` : ''}</p>
                     <p class="mt-2 whitespace-pre-wrap text-slate-700">${escapePropertyHTML(entry.description)}</p>
                 </article>
             `).join('');
@@ -4921,7 +5110,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function registarHorasTrabalhadas(event) {
             event.preventDefault();
-            if (!currentUser || userRole !== 'cleaner' || !currentTeamMemberId || !currentTeamManagerId) {
+            if (!currentUser || userRole !== 'cleaner' || !currentTeamMemberId || !currentTeamOwnerId) {
                 showPropertyMessage('time-entry-message', i18n[currentLang].time_entry_member_error, 'error');
                 return;
             }
@@ -4940,9 +5129,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             hidePropertyMessage('time-entry-message');
             try {
                 const { error } = await supabaseClient.from('work_time_entries').insert([{
-                    team_member_id: currentTeamMemberId,
                     user_id: currentUser.id,
-                    manager_id: currentTeamManagerId,
+                    owner_id: currentTeamOwnerId,
                     property_id: propertyId,
                     work_date: workDate,
                     hours,
@@ -5997,6 +6185,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const { data, error } = await supabaseClient
                     .from('platform_documents')
                     .select('id, property_id, platform, file_name, file_url, created_at')
+                    .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false });
                 if (error) throw error;
                 if (requestId !== hostingReportsRequestId) return;
@@ -6610,7 +6799,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const hash = window.location.hash.toLowerCase();
             const inviteParam = searchParams.get('invite');
             pendingTeamInviteToken = inviteParam && inviteParam.toLowerCase() !== 'true' ? inviteParam : null;
-            registrationRole = searchParams.get('role') || 'cleaner';
             registrationRequested = inviteParam?.toLowerCase() === 'true' || hash === '#register';
 
             initApp().finally(() => {
