@@ -1,4 +1,4 @@
-const CACHE_NAME = 'host-a-cleaner-v26';
+const CACHE_NAME = 'host-a-cleaner-v30';
 const APP_SHELL = [
     './index.html',
     './status-success.html',
