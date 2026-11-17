@@ -16,9 +16,19 @@ function extract(source, start, end) {
 }
 
 function frontend({ profile = { subscription_plan: 'pro', stripe_subscription_status: 'active' }, queryError = null, syncError = null } = {}) {
-    const buttons = ['gratuito', 'starter', 'pro', 'business'].map(plan => ({
-        dataset: { subscriptionPlan: plan }, disabled: false, textContent: ''
-    }));
+    const buttons = ['gratuito', 'starter', 'pro', 'business'].map(plan => {
+        const cardClasses = new Set();
+        const badgeClasses = new Set(['hidden']);
+        const makeClassList = classes => ({
+            add: value => classes.add(value),
+            remove: value => classes.delete(value),
+            toggle: (value, enabled) => enabled ? classes.add(value) : classes.delete(value),
+            contains: value => classes.has(value)
+        });
+        const badge = { classList: makeClassList(badgeClasses) };
+        const card = { classList: makeClassList(cardClasses), querySelector: () => badge };
+        return { dataset: { subscriptionPlan: plan }, disabled: false, textContent: '', closest: () => card, card, badge };
+    });
     const status = { textContent: '' };
     const toasts = [];
     const tabs = [];
@@ -62,12 +72,33 @@ function frontend({ profile = { subscription_plan: 'pro', stripe_subscription_st
     return { context, buttons, status, toasts, tabs, invoked, getReplacedUrl: () => replacedUrl };
 }
 
+test('changing plans or a failed reload clears the previous highlight', async () => {
+    const profile = { subscription_plan: 'pro' };
+    const { context, buttons } = frontend({ profile });
+    await context.loadSubscriptionPlan();
+    profile.subscription_plan = 'starter';
+    await context.loadSubscriptionPlan();
+    assert.equal(buttons[2].card.classList.contains('is-current-plan'), false);
+    assert.equal(buttons[2].badge.classList.contains('hidden'), true);
+    assert.equal(buttons[1].card.classList.contains('is-current-plan'), true);
+    context.supabaseClient.from = () => ({
+        select() { return this; }, eq() { return this; },
+        async maybeSingle() { return { data: null, error: new Error('denied') }; }
+    });
+    await context.loadSubscriptionPlan();
+    assert.ok(buttons.every(button => !button.card.classList.contains('is-current-plan') && button.badge.classList.contains('hidden')));
+});
+
 test('subscription view reads the profile and marks only its actual plan', async () => {
     const { context, buttons, status } = frontend();
     await context.loadSubscriptionPlan();
     assert.equal(status.textContent, 'Pro · Estado: active');
     assert.equal(buttons[2].textContent, 'Plano Atual');
     assert.equal(buttons[2].disabled, true);
+    assert.equal(buttons[2].card.classList.contains('is-current-plan'), true);
+    assert.equal(buttons[2].badge.classList.contains('hidden'), false);
+    assert.ok(buttons.filter(button => button !== buttons[2]).every(button =>
+        !button.card.classList.contains('is-current-plan') && button.badge.classList.contains('hidden')));
     assert.equal(buttons[0].textContent, 'Gratuito');
     assert.equal(buttons[1].disabled, false);
 });
@@ -77,6 +108,7 @@ test('a failed profile read does not claim that a plan is active', async () => {
     await context.loadSubscriptionPlan();
     assert.equal(status.textContent, 'load error');
     assert.ok(buttons.every(button => button.disabled));
+    assert.ok(buttons.every(button => !button.card.classList.contains('is-current-plan')));
 });
 
 test('an administrator subscription is shown without a false current paid plan', async () => {
