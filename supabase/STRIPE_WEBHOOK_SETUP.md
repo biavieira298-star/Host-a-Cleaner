@@ -42,18 +42,18 @@ Selecionar os eventos `checkout.session.completed`, `checkout.session.async_paym
 
 ## 4. Configurar o retorno dos Payment Links
 
-Em cada Payment Link, configurar **After payment → Redirect to your website**, com o URL público da aplicação e o marcador literal do Stripe:
+Em cada Payment Link de teste (Starter, Pro e Business), configurar **After payment → Redirect to your website** com:
 
 ```text
-https://<dominio-da-app>/status-success.html?session_id={CHECKOUT_SESSION_ID}
+https://hostacleaner.com/?status=success
 ```
 
-Usar o caminho real da aplicação se estiver numa subpasta. O ficheiro disponível é `status-success.html`; para usar `/status-success` sem extensão, configurar o alojamento para servir esse ficheiro nessa rota. O marcador é substituído pelo Stripe; não inserir manualmente um ID de sessão fixo.
+Esta configuração é feita no Stripe Dashboard e não pode ser imposta pelos links no frontend. O URL exato acima não inclui `session_id`, pelo que a atualização do plano depende do webhook `stripe-webhook`; confirme a entrega dos eventos no Dashboard do Stripe.
 
-Ao regressar, a página confirma o pagamento e envia o ID à função `stripe-sync-subscription`, que valida o token do utilizador, o ID e o email da conta na sessão, o pagamento, a subscrição e os preços diretamente no Stripe antes de atualizar o perfil. Depois da confirmação, abre o painel no separador do plano. Se for necessário iniciar sessão, o botão de regresso preserva o ID para a aplicação concluir a sincronização. As duas funções usam os mesmos secrets e mapa de preços. A função de sincronização verifica o token explicitamente; a configuração `verify_jwt = false` desativa apenas a verificação do gateway. A sincronização não substitui o webhook para alterações e cancelamentos posteriores. Uma sessão pendente ou uma conta diferente não ativa o plano; após resolver o problema, recarregar a página mantém o ID para nova tentativa.
+Se for necessário confirmar o pagamento imediatamente no regresso e permitir nova tentativa caso o webhook falhe, use antes `https://hostacleaner.com/status-success.html?session_id={CHECKOUT_SESSION_ID}` no Stripe. Esse URL alternativo não é o URL exato acima: o Stripe substitui o marcador pela sessão, que a página envia à função `stripe-sync-subscription`. Esta valida o token, a conta, o pagamento, a subscrição e os preços antes de atualizar o perfil. Ambas as funções usam os mesmos secrets e mapa de preços. A função de sincronização verifica o token explicitamente; `verify_jwt = false` desativa apenas a verificação do gateway. A sincronização não substitui o webhook para alterações e cancelamentos posteriores.
 
 ## 5. Testar antes de produção
 
-Começar com a chave e os Payment Links `test_`. Fazer uma subscrição de teste Starter, Pro e Business com uma conta existente na app e o mesmo email da conta Host a Cleaner. Verificar o redirecionamento com `session_id`, a atualização do plano na interface e, no Supabase, os limites e IDs Stripe. Testar com o webhook temporariamente indisponível e depois restaurá-lo; testar também uma sessão de outra conta, um pagamento pendente e o cancelamento, verificando que o plano passa a Gratuito após `customer.subscription.deleted`.
+Começar com a chave e os Payment Links `test_`. Fazer uma subscrição de teste Starter, Pro e Business com uma conta existente na app e o mesmo email da conta Host a Cleaner. Verificar o redirecionamento configurado, a entrega do webhook, a atualização do plano na interface e, no Supabase, os limites e IDs Stripe. Testar também um pagamento pendente e o cancelamento, verificando que o plano passa a Gratuito após `customer.subscription.deleted`. Se usar o URL alternativo com `session_id`, testar ainda uma sessão de outra conta e a recuperação de um webhook temporariamente indisponível.
 
 Os links atuais são Payment Links de teste; a passagem para produção requer substituir os links no frontend por links Live, configurar os Price IDs Live e criar um endpoint Live com um novo signing secret. Nunca reutilizar os secrets de teste em produção.
