@@ -158,6 +158,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 settings_preferences_tab: "Preferências Operacionais",
                 settings_subscription_tab: "Plano de Subscrição",
                 settings_account_heading: "Conta / Palavra-passe",
+                profile_contact_email: "Email",
+                profile_contact_phone: "Telemóvel / Telefone",
+                profile_contact_save: "Guardar contactos",
+                profile_contact_saved: "Contactos guardados.",
+                profile_contact_unchanged: "Não existem alterações para guardar.",
+                profile_contact_confirm: "Confirme a alteração através do link enviado para o novo endereço de email. Poderá também ser necessária confirmação no endereço atual.",
+                profile_contact_error: "Não foi possível guardar os contactos",
+                profile_contact_session_changed: "A sessão mudou. Inicie sessão e tente novamente.",
                 settings_preferences_heading: "Preferências Operacionais",
                 settings_require_photos: "Pedir fotos de verificação",
                 settings_require_photos_help: "Solicitar fotos antes e depois da limpeza.",
@@ -506,6 +514,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 settings_preferences_tab: "Operational Preferences",
                 settings_subscription_tab: "Subscription Plan",
                 settings_account_heading: "Account / Password",
+                profile_contact_email: "Email",
+                profile_contact_phone: "Mobile / Phone",
+                profile_contact_save: "Save contact details",
+                profile_contact_saved: "Contact details saved.",
+                profile_contact_unchanged: "There are no changes to save.",
+                profile_contact_confirm: "Confirm the change using the link sent to your new email address. Confirmation at your current address may also be required.",
+                profile_contact_error: "Could not save contact details",
+                profile_contact_session_changed: "Your session changed. Sign in and try again.",
                 settings_preferences_heading: "Operational Preferences",
                 settings_require_photos: "Request verification photos",
                 settings_require_photos_help: "Request before and after cleaning photos.",
@@ -1448,6 +1464,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         function saveThemePreference(theme) {
             const selectedTheme = applyThemePreference(theme, true);
+            if (financialOverviewChart) {
+                const light = selectedTheme === 'light';
+                financialOverviewChart.options.plugins.legend.labels.color = light ? '#334155' : '#cbd5e1';
+                financialOverviewChart.options.scales.x.ticks.color = light ? '#475569' : '#94a3b8';
+                financialOverviewChart.options.scales.y.ticks.color = light ? '#475569' : '#94a3b8';
+                financialOverviewChart.update();
+            }
             setProfileSettingsMessage(i18n[currentLang].settings_theme_saved);
             return selectedTheme;
         }
@@ -1461,6 +1484,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function loadProfileSettings() {
             document.getElementById('profile-email-val').textContent = currentUser?.email || '---';
+            document.getElementById('profile-contact-email').value = currentUser?.email || '';
+            document.getElementById('profile-contact-phone').value = currentUser?.user_metadata?.phone || '';
             applyThemePreference(localStorage.getItem('host_cleaner_theme') || 'default');
             const savedPreferences = localStorage.getItem(getOperationalPreferencesStorageKey());
             let storedPreferences = null;
@@ -1505,6 +1530,43 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             document.getElementById('settings-track-hours').checked = operationalPreferences.track_hours;
             document.getElementById('settings-require-photos').checked = operationalPreferences.require_photos;
             applyOperationalPreferencesToInviteForm();
+        }
+
+        async function saveProfileContact(event) {
+            event.preventDefault();
+            const user = currentUser;
+            const message = document.getElementById('profile-contact-message');
+            const email = document.getElementById('profile-contact-email').value.trim();
+            const phone = document.getElementById('profile-contact-phone').value.trim();
+            const setMessage = (text, type = 'success') => {
+                message.textContent = text;
+                message.className = `text-xs font-semibold ${type === 'error' ? 'text-rose-600' : 'text-emerald-700'}`;
+            };
+            if (!user) {
+                setMessage(i18n[currentLang].profile_contact_session_changed, 'error');
+                return;
+            }
+            const emailChanged = email !== (user.email || '');
+            const phoneChanged = phone !== (user.user_metadata?.phone || '');
+            if (!emailChanged && !phoneChanged) {
+                setMessage(i18n[currentLang].profile_contact_unchanged);
+                return;
+            }
+            const updates = {};
+            if (emailChanged) updates.email = email;
+            if (phoneChanged) updates.data = { phone };
+            try {
+                const { data, error } = await supabaseClient.auth.updateUser(updates);
+                if (error) throw error;
+                if (currentUser?.id !== user.id) return;
+                if (!data?.user || data.user.id !== user.id) throw new Error(i18n[currentLang].profile_contact_session_changed);
+                currentUser = data.user;
+                document.getElementById('profile-email-val').textContent = currentUser.email || '---';
+                setMessage(emailChanged ? i18n[currentLang].profile_contact_confirm : i18n[currentLang].profile_contact_saved);
+            } catch (error) {
+                console.error('Erro ao guardar os contactos:', error);
+                if (currentUser?.id === user.id) setMessage(`${i18n[currentLang].profile_contact_error}: ${error.message}`, 'error');
+            }
         }
 
         async function saveOperationalPreferences() {
@@ -4987,6 +5049,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 });
 
                 if (financialOverviewChart) financialOverviewChart.destroy();
+                const lightTheme = document.documentElement.dataset.theme === 'light';
                 financialOverviewChart = new Chart(canvas, {
                     type: 'bar',
                     data: {
@@ -5009,7 +5072,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { position: 'bottom', labels: { color: '#cbd5e1' } },
+                            legend: { position: 'bottom', labels: { color: lightTheme ? '#334155' : '#cbd5e1' } },
                             tooltip: {
                                 callbacks: {
                                     label: context => `${context.dataset.label}: ${formatFinancialAmount(Math.abs(context.parsed.y))}`
@@ -5017,12 +5080,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             }
                         },
                         scales: {
-                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.12)' } },
+                            x: { stacked: true, ticks: { color: lightTheme ? '#475569' : '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.12)' } },
                             y: {
                                 stacked: true,
                                 beginAtZero: true,
                                 ticks: {
-                                    color: '#94a3b8',
+                                    color: lightTheme ? '#475569' : '#94a3b8',
                                     callback: value => formatFinancialAmount(Math.abs(Number(value)))
                                 },
                                 grid: { color: 'rgba(148, 163, 184, 0.18)' }
