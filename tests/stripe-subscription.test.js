@@ -118,6 +118,28 @@ test('an administrator subscription is shown without a false current paid plan',
     assert.ok(buttons.every(button => button.textContent !== 'Plano Atual'));
 });
 
+test('checkout uses the correct test link and preserves the authenticated account', () => {
+    const context = {
+        URL, Object, console,
+        currentUser: { id: 'user-1', email: 'user@example.test' },
+        window: { location: { href: '' } },
+        showToast() { throw new Error('Unexpected sign-in prompt'); }
+    };
+    vm.createContext(context);
+    vm.runInContext(extract(app, 'function subscribePlan(plan)', 'function handleStripeCheckout()'), context);
+    for (const [plan, link] of Object.entries({
+        starter: 'https://buy.stripe.com/test_dRm6ozaBX7hd8RN724dwc07',
+        pro: 'https://buy.stripe.com/test_9B6fZ9bG1cBx5FBdqsdwc08',
+        business: 'https://buy.stripe.com/test_bJe00b7pL4514Bxcmodwc09'
+    })) {
+        context.subscribePlan(plan);
+        const url = new URL(context.window.location.href);
+        assert.equal(`${url.origin}${url.pathname}`, link);
+        assert.equal(url.searchParams.get('client_reference_id'), 'user-1');
+        assert.equal(url.searchParams.get('prefilled_email'), 'user@example.test');
+    }
+});
+
 test('checkout return invokes synchronization and removes its ID only on success', async () => {
     const successful = frontend();
     await successful.context.syncStripeCheckout();
