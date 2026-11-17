@@ -4470,9 +4470,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         function subscribePlan(plan) {
             const paymentLinks = {
-                starter: 'https://buy.stripe.com/test_3cIdR1h0leJFaZVcmodwc03',
-                pro: 'https://buy.stripe.com/test_14AfZ9eSd0SPec79acdwc02',
-                business: 'https://buy.stripe.com/test_7sY4gr39v'
+                starter: 'https://buy.stripe.com/test_dRm6ozaBX7hd8RN724dwc07',
+                pro: 'https://buy.stripe.com/test_9B6fZ9bG1cBx5FBdqsdwc08',
+                business: 'https://buy.stripe.com/test_bJe00b7pL4514Bxcmodwc09'
             };
             const paymentLink = Object.prototype.hasOwnProperty.call(paymentLinks, plan)
                 ? paymentLinks[plan]
