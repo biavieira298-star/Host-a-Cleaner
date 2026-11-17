@@ -28,7 +28,7 @@ function setup({ profile = { subscription_plan: 'free', max_cleaners: 1 }, profi
         'team-add-form': { reset: () => calls.push(['reset']) }
     };
     const context = {
-        currentUser: { id: 'manager-id' },
+        currentUser: { id: 'owner-id' },
         requireAdminAction: () => true,
         document: { getElementById: id => elements[id] },
         teamInviteTokens: new Map(),
@@ -59,11 +59,11 @@ function setup({ profile = { subscription_plan: 'free', max_cleaners: 1 }, profi
     return { context, calls, toasts, elements };
 }
 
-test('invitation checks only the authenticated manager profile and cleaner count before creating a member', async () => {
+test('invitation checks only the authenticated owner profile and cleaner count before creating a member', async () => {
     const { context, calls, elements } = setup();
     await context.handleAddTeamMember({ preventDefault() {} });
-    assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'profiles' && call[2] === 'id' && call[3] === 'manager-id'));
-    assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'team_members' && call[2] === 'manager_id' && call[3] === 'manager-id'));
+    assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'profiles' && call[2] === 'id' && call[3] === 'owner-id'));
+    assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'team_members' && call[2] === 'owner_id' && call[3] === 'owner-id'));
     assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'team_members' && call[2] === 'role' && call[3] === 'cleaner'));
     assert.equal(calls.filter(call => call[0] === 'from' && call[1] === 'profiles').length, 1);
     assert.ok(calls.some(call => call[0] === 'rpc' && call[1] === 'create_team_member_invite'));
@@ -72,7 +72,7 @@ test('invitation checks only the authenticated manager profile and cleaner count
     assert.match(html, /id="team-add-form" onsubmit="runFormAction\(event, \(\) => handleAddTeamMember\(event\)\)"/);
 });
 
-test('missing manager profile and query failures block the invitation and report errors', async () => {
+test('missing owner profile and query failures block the invitation and report errors', async () => {
     for (const options of [{ profile: null }, { profileError: new Error('RLS denied') }, { countError: new Error('count failed') }]) {
         const { context, calls, toasts, elements } = setup(options);
         await context.handleAddTeamMember({ preventDefault() {} });
