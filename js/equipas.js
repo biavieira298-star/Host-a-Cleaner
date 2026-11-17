@@ -9,10 +9,13 @@ async function fetchTeamMembers() {
     let data = allTeamMembersCache;
     let error = null;
     if (navigator.onLine) {
+        const userId = currentUser.id;
         const result = await supabaseClient
             .from('team_members')
             .select('id, name, email, phone, role, auth_user_id, track_hours, require_photos, created_at')
+            .eq('owner_id', getTenantOwnerId())
             .order('created_at', { ascending: false });
+        if (currentUser?.id !== userId) return false;
         data = result.data;
         error = result.error;
     }
@@ -121,7 +124,7 @@ async function handleAddTeamMember(event) {
 
     try {
         if (!await checkSubscriptionLimit('cleaners')) return;
-        const managerId = currentUser.id;
+        const ownerId = currentUser.id;
         const requestedAt = Date.now();
         const { data, error } = await supabaseClient.rpc('create_team_member_invite', {
             p_name: name,
@@ -136,10 +139,10 @@ async function handleAddTeamMember(event) {
             throw new Error('A base de dados não devolveu os dados do convite.');
         }
 
-        if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a criação do convite. Atualize a lista antes de continuar.');
+        if (currentUser?.id !== ownerId) throw new Error('A sessão mudou durante a criação do convite. Atualize a lista antes de continuar.');
         teamInviteTokens.set(String(invite.member_id), {
             token: invite.invite_token,
-            managerId,
+            ownerId,
             expiresAt: requestedAt + TEAM_INVITE_LIFETIME_MS
         });
         showToast(`Membro ${name} criado. Use WhatsApp ou Copiar Link na lista para partilhar o convite.`);
@@ -208,11 +211,11 @@ async function getTeamAccessLink(memberId) {
     if (!['http:', 'https:'].includes(url.protocol)) {
         throw new Error('Abra a aplicação através do seu endereço web antes de gerar o convite.');
     }
-    const managerId = currentUser.id;
+    const ownerId = currentUser.id;
     const key = String(memberId);
     let cached = teamInviteTokens.get(key);
-    if (!cached || cached.managerId !== managerId || cached.expiresAt <= Date.now()) {
-        const requestKey = `${managerId}:${key}`;
+    if (!cached || cached.ownerId !== ownerId || cached.expiresAt <= Date.now()) {
+        const requestKey = `${ownerId}:${key}`;
         let request = teamInviteRequests.get(requestKey);
         if (!request) {
             const requestedAt = Date.now();
@@ -223,7 +226,7 @@ async function getTeamAccessLink(memberId) {
                 if (error) throw error;
                 const invite = Array.isArray(data) ? data[0] : data;
                 if (!invite?.invite_token) throw new Error('A base de dados não devolveu um token de convite.');
-                return { token: invite.invite_token, managerId, expiresAt: requestedAt + TEAM_INVITE_LIFETIME_MS };
+                return { token: invite.invite_token, ownerId, expiresAt: requestedAt + TEAM_INVITE_LIFETIME_MS };
             })();
             teamInviteRequests.set(requestKey, request);
         }
@@ -232,7 +235,7 @@ async function getTeamAccessLink(memberId) {
         } finally {
             if (teamInviteRequests.get(requestKey) === request) teamInviteRequests.delete(requestKey);
         }
-        if (currentUser?.id !== managerId) throw new Error('A sessão mudou durante a geração do convite.');
+        if (currentUser?.id !== ownerId) throw new Error('A sessão mudou durante a geração do convite.');
         teamInviteTokens.set(key, cached);
     }
 
