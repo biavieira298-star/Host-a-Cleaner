@@ -16,7 +16,7 @@ function setup({ phone = '+351 912 345 678', popup = true, rpcError = null } = {
         URL,
         Date,
         encodeURIComponent,
-        currentUser: { id: 'manager' },
+        currentUser: { id: 'owner' },
         currentLang: 'pt',
         i18n: { pt: { role_locked: 'Sem acesso', team_link_copied: 'Copiado' } },
         requireAdminAction: () => true,
@@ -68,7 +68,7 @@ test('cached token is reused until expiry, including concurrent link requests', 
     context.teamInviteTokens.get('member').expiresAt = Date.now() - 1;
     await context.getTeamAccessLink('member');
     assert.equal(calls.filter(call => Array.isArray(call) && call[0] === 'rpc').length, 2);
-    context.currentUser.id = 'other-manager';
+    context.currentUser.id = 'other-owner';
     await context.getTeamAccessLink('member');
     assert.equal(calls.filter(call => Array.isArray(call) && call[0] === 'rpc').length, 3);
 });
