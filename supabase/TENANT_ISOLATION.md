@@ -5,6 +5,18 @@ versão correspondente do frontend de forma coordenada. A migração torna
 privados os buckets `cleaning-photos` e `property-incidents`; o frontend passa
 a obter URLs assinados, válidos durante uma hora, para as fotografias.
 Clientes antigos que usem os URLs públicos deixam de conseguir abri-las.
+Para corrigir a sincronização das fotografias, execute também todo o conteúdo de
+`migrations/202611180001_private_photo_storage_policies.sql` no SQL Editor,
+depois da migração de isolamento, e publique o frontend atualizado. Os novos
+caminhos são `owner_id/property_id/task_id/ficheiro` para limpezas e
+`owner_id/property_id/incident_id/ficheiro` para incidentes. A fila antiga é
+convertida no momento do envio; referências antigas permanecem acessíveis
+quando estão associadas a registos autorizados. Os cleaners têm acesso às
+limpezas que lhes estão atribuídas e aos incidentes dos seus alojamentos.
+As políticas de tabelas continuam a aplicar-se separadamente das do Storage.
+Outras políticas restritivas criadas fora destas migrações podem ainda bloquear
+operações e devem ser auditadas. Teste os quatro tipos de operação com o dono,
+o cleaner atribuído e uma conta sem acesso antes de aplicar em produção.
 O bucket `platform-documents` também fica privado: os documentos e respetivos
 ficheiros são limitados ao `user_id` e à pasta do utilizador autenticado.
 Documentos antigos sem `user_id` ou fora dessa pasta deixam de estar acessíveis;
