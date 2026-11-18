@@ -144,7 +144,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 history_urgent: "Urgente",
                 history_normal: "Normal",
                 history_low: "Baixa",
-                nav_settings: "Definições",
+                nav_settings: "Gestão",
                 nav_add_property: "Adicionar Alojamento",
                 nav_manage_properties: "Gestão de Alojamento",
                 nav_team_directory: "Equipa (consulta)",
@@ -501,7 +501,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 history_urgent: "Urgent",
                 history_normal: "Normal",
                 history_low: "Low",
-                nav_settings: "Settings",
+                nav_settings: "Management",
                 nav_add_property: "Add Property",
                 nav_manage_properties: "Property Management",
                 nav_team_directory: "Team (read-only)",
@@ -3387,6 +3387,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             <div class="space-y-3 p-4">
                                 <p class="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">${escapePropertyHTML(incident.description)}</p>
                                 ${incident.queued || incident.status === 'resolved' ? `<p class="text-[10px] text-slate-500">${incident.queued ? `<span class="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800">${i18n[currentLang].history_pending_sync}</span>` : `<span class="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">${i18n[currentLang].history_resolved}</span>`}</p>` : ''}
+                                ${userRole === 'admin' && !incident.queued && incident.status === 'pending' ? `<button type="button" onclick="runButtonAction(this, () => resolvePropertyIncident('${escapePropertyHTML(incident.id)}'))" class="min-h-10 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700">${i18n[currentLang].incident_resolve}</button>` : ''}
                                 ${photos.length ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-4">${photos.map(photoUrl => `<a href="${escapePropertyHTML(photoUrl)}" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src="${escapePropertyHTML(photoUrl)}" alt="" loading="lazy" class="h-full w-full object-cover transition hover:scale-105"></a>`).join('')}</div>` : ''}
                             </div>
                         </article>
