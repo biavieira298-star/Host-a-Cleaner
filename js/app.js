@@ -2321,32 +2321,57 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
         }
 
+        function queuedPhotoPath(path, item, ownerId, entityId) {
+            const parts = typeof path === 'string' ? path.split('/') : [];
+            if (item.ownerId && item.ownerId !== ownerId) {
+                throw new Error('A fotografia pendente pertence a outra conta.');
+            }
+            if (parts.length !== 4 || !parts[3] ||
+                ![item.userId, ownerId].includes(parts[0]) ||
+                parts[1] !== String(item.propertyId) || parts[2] !== String(entityId)) {
+                throw new Error('O caminho da fotografia pendente é inválido.');
+            }
+            parts[0] = ownerId;
+            return parts.join('/');
+        }
+
         async function uploadQueuedTaskPhoto(item) {
             const uploadFile = typeof item.file === 'string' ? dataURLtoBlob(item.file) : item.file;
             const storage = supabaseClient.storage.from('cleaning-photos');
-            const { error: uploadError } = await storage.upload(item.storagePath, uploadFile, {
-                contentType: uploadFile?.type || 'application/octet-stream',
-                upsert: true
-            });
-            if (uploadError) throw uploadError;
+            const storagePath = queuedPhotoPath(item.storagePath, item, getTenantOwnerId(), item.taskId);
+            try {
+                const { error: uploadError } = await storage.upload(storagePath, uploadFile, {
+                    contentType: uploadFile?.type || 'application/octet-stream',
+                    upsert: true
+                });
+                if (uploadError) throw uploadError;
+            } catch (error) {
+                console.error('Falha ao enviar fotografia de limpeza para o Storage:', { path: storagePath, error });
+                throw error;
+            }
 
-            const photoUrl = storage.getPublicUrl(item.storagePath).data.publicUrl;
             const { error: photoError } = await supabaseClient
                 .from('cleaning_task_photos')
                 .insert([{
                     property_id: item.propertyId,
                     task_id: item.taskId,
                     uploaded_by: item.userId,
-                    photo_url: photoUrl,
-                    storage_path: item.storagePath
+                    photo_url: storagePath,
+                    storage_path: storagePath
                 }]);
-            if (photoError && !/duplicate|already exists|already.*processed|23505|42P10/i.test(String(photoError.message || photoError.details || photoError.code || ''))) {
-                throw photoError;
+            if (photoError) {
+                if (photoError.code !== '23505') throw photoError;
+                const { data: existing, error: lookupError } = await supabaseClient.from('cleaning_task_photos')
+                    .select('task_id, property_id, uploaded_by')
+                    .eq('storage_path', storagePath).maybeSingle();
+                if (lookupError) throw lookupError;
+                if (!existing || String(existing.task_id) !== String(item.taskId) ||
+                    String(existing.property_id) !== String(item.propertyId) || String(existing.uploaded_by) !== String(item.userId)) throw photoError;
             }
             if (item.photoField) {
                 const { error: taskError } = await supabaseClient
                     .from('cleaning_tasks')
-                    .update({ [item.photoField]: photoUrl })
+                    .update({ [item.photoField]: storagePath })
                     .eq('id', item.taskId);
                 if (taskError) throw taskError;
             }
@@ -2396,11 +2421,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     file: typeof photo.file === 'string' ? dataURLtoBlob(photo.file) : photo.file
                 }));
                 const storage = supabaseClient.storage.from('property-incidents');
+                const ownerId = getTenantOwnerId();
+                if (item.ownerId && item.ownerId !== ownerId) throw new Error('O incidente pendente pertence a outra conta.');
                 const photoUrls = [];
                 for (const photo of files) {
-                    if (!photo.file || !photo.storagePath) continue;
+                    if (!photo.file || !photo.storagePath) throw new Error('A fotografia de incidente pendente está incompleta.');
+                    const storagePath = queuedPhotoPath(photo.storagePath, item, ownerId, item.incidentId);
                     try {
-                        const { error: uploadError } = await storage.upload(photo.storagePath, photo.file, {
+                        const { error: uploadError } = await storage.upload(storagePath, photo.file, {
                             contentType: photo.file.type || 'application/octet-stream',
                             upsert: true
                         });
@@ -2412,15 +2440,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             statusCode: error?.statusCode,
                             error: error?.error,
                             bucket: 'property-incidents',
-                            path: photo.storagePath,
+                            path: storagePath,
                             incidentId: item.incidentId,
                             sequence: item.sequence
                         });
                         throw error;
                     }
-                    photoUrls.push(storage.getPublicUrl(photo.storagePath).data.publicUrl);
+                    photoUrls.push(storagePath);
                 }
                 const insertPayload = {
+                    id: item.incidentId,
                     property_id: item.propertyId,
                     type: item.incidentType,
                     priority: item.priority || (item.isPriority ? 'urgent' : 'normal'),
@@ -2434,8 +2463,13 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const { error } = await supabaseClient
                     .from('property_incidents')
                     .insert([insertPayload]);
-                if (error && !/duplicate|already exists|already.*processed|23505|42P10/i.test(String(error.message || error.details || error.code || ''))) {
-                    throw error;
+                if (error) {
+                    if (error.code !== '23505') throw error;
+                    const { data: existing, error: lookupError } = await supabaseClient.from('property_incidents')
+                        .select('property_id, created_by').eq('id', item.incidentId).maybeSingle();
+                    if (lookupError) throw lookupError;
+                    if (!existing || String(existing.property_id) !== String(item.propertyId) ||
+                        String(existing.created_by) !== String(item.userId)) throw error;
                 }
                 return;
             }
@@ -2461,13 +2495,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             await deletePendingOfflineItem(item.sequence);
                             await updateOfflineIndicator();
                         } catch (error) {
-                            const errorText = String(error?.message || error?.details || error || '');
-                            const alreadyProcessed = /duplicate|already exists|already.*processed|23505|42P10/i.test(errorText);
-                            if (alreadyProcessed) {
-                                await deletePendingOfflineItem(item.sequence).catch(() => undefined);
-                                await updateOfflineIndicator();
-                                continue;
-                            }
                             console.error('Falha ao sincronizar item offline; o item permanece na fila:', {
                                 message: error?.message || String(error),
                                 name: error?.name,
@@ -2823,14 +2850,18 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function resolvePrivatePhotoUrl(value, bucket) {
             if (!value) return value;
-            const url = new URL(value, window.location.href);
-            const photoBucket = [bucket, bucket === 'cleaning-photos' ? 'property-incidents' : 'cleaning-photos']
-                .find(name => url.pathname.startsWith(`/storage/v1/object/public/${name}/`));
-            if (url.origin !== new URL(SUPABASE_URL).origin || !photoBucket) {
-                return safeIncidentPhotoUrl(value);
+            let photoBucket = bucket;
+            let path = value;
+            if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(value)) {
+                const url = new URL(value, window.location.href);
+                photoBucket = [bucket, bucket === 'cleaning-photos' ? 'property-incidents' : 'cleaning-photos']
+                    .find(name => url.pathname.startsWith(`/storage/v1/object/public/${name}/`));
+                if (url.origin !== new URL(SUPABASE_URL).origin || !photoBucket) {
+                    return safeIncidentPhotoUrl(value);
+                }
+                const prefix = `/storage/v1/object/public/${photoBucket}/`;
+                path = decodeURIComponent(url.pathname.slice(prefix.length));
             }
-            const prefix = `/storage/v1/object/public/${photoBucket}/`;
-            const path = decodeURIComponent(url.pathname.slice(prefix.length));
             const { data, error } = await supabaseClient.storage.from(photoBucket).createSignedUrl(path, 3600);
             if (error) throw error;
             if (!data?.signedUrl) throw new Error('Não foi possível obter o acesso à fotografia.');
@@ -2863,7 +2894,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 if (navigator.onLine) {
                     const { data, error } = await supabaseClient
                         .from('property_incidents')
-                        .select('id, property_id, type, priority, description, photos, created_by, created_at, status, properties!inner(user_id)')
+                        .select('id, property_id, type, priority, description, photos, photo_url, created_by, created_at, status, properties!inner(user_id)')
                         .eq('properties.user_id', getTenantOwnerId())
                         .eq('property_id', propertyId)
                         .order('created_at', { ascending: false });
@@ -3788,7 +3819,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             if (navigator.onLine) {
                 const { data: photoData, error: photoError } = await supabaseClient
                     .from('cleaning_task_photos')
-                    .select('id, photo_url, created_at, properties!inner(user_id)')
+                    .select('id, photo_url, storage_path, created_at, properties!inner(user_id)')
                     .eq('properties.user_id', getTenantOwnerId())
                     .eq('task_id', task.id)
                     .order('created_at', { ascending: false });
@@ -3800,7 +3831,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     try {
                         taskPhotos = await Promise.all((photoData || []).map(async photo => ({
                             ...photo,
-                            photo_url: await resolvePrivatePhotoUrl(photo.photo_url, 'cleaning-photos')
+                            photo_url: await resolvePrivatePhotoUrl(photo.storage_path || photo.photo_url, 'cleaning-photos')
                         })));
                         displayTask = {
                             ...task,
@@ -4142,28 +4173,31 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const extension = extensionByType[file.type.toLowerCase()];
             if (!extension) throw new Error(i18n[currentLang].photo_upload_type_error);
 
-            const fileName = `${currentUser.id}/${propertyId}/${taskId}/${crypto.randomUUID()}.${extension}`;
+            const fileName = `${getTenantOwnerId()}/${propertyId}/${taskId}/${crypto.randomUUID()}.${extension}`;
             const storage = supabaseClient.storage.from('cleaning-photos');
-            const { error: uploadError } = await storage.upload(fileName, file, {
-                contentType: file.type,
-                upsert: false
-            });
-            if (uploadError) throw uploadError;
+            try {
+                const { error: uploadError } = await storage.upload(fileName, file, {
+                    contentType: file.type,
+                    upsert: false
+                });
+                if (uploadError) throw uploadError;
+            } catch (error) {
+                console.error('Falha ao enviar fotografia de limpeza para o Storage:', { path: fileName, error });
+                throw error;
+            }
 
-            const { data: publicUrlData } = storage.getPublicUrl(fileName);
-            const photoUrl = publicUrlData.publicUrl;
             const { error: insertError } = await supabaseClient
                 .from('cleaning_task_photos')
                 .insert([{
                     property_id: propertyId,
                     task_id: taskId,
                     uploaded_by: currentUser.id,
-                    photo_url: photoUrl,
+                    photo_url: fileName,
                     storage_path: fileName
                 }]);
             if (insertError) throw insertError;
 
-            return photoUrl;
+            return fileName;
         }
 
         async function queueTaskPhoto(file, task, photoField = null) {
@@ -4182,13 +4216,15 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const extension = extensionByType[file.type.toLowerCase()];
             if (!extension) throw new Error(i18n[currentLang].photo_upload_type_error);
 
+            const ownerId = getTenantOwnerId();
             const queued = await savePendingOfflineItem({
                 type: 'task_photo',
+                ownerId,
                 taskId: task.id,
                 propertyId: task.property_id,
                 photoField,
                 file,
-                storagePath: `${currentUser.id}/${task.property_id}/${task.id}/${crypto.randomUUID()}.${extension}`
+                storagePath: `${ownerId}/${task.property_id}/${task.id}/${crypto.randomUUID()}.${extension}`
             });
             if (!navigator.onLine) return false;
             await syncPendingData();
@@ -4337,14 +4373,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             try {
                 const incidentId = crypto.randomUUID();
+                const ownerId = getTenantOwnerId();
                 const files = incidentSelectedFiles.map(({ file }) => ({
                     file,
-                    storagePath: `${currentUser.id}/${incidentTaskContext.propertyId}/${incidentId}/${crypto.randomUUID()}.${getIncidentPhotoExtension(file)}`
+                    storagePath: `${ownerId}/${incidentTaskContext.propertyId}/${incidentId}/${crypto.randomUUID()}.${getIncidentPhotoExtension(file)}`
                 }));
                 const priority = document.getElementById('incident-priority').value;
 
                 const queued = await savePendingOfflineItem({
                     type: 'incident',
+                    ownerId,
                     incidentId,
                     propertyId: incidentTaskContext.propertyId,
                     incidentType: document.getElementById('incident-type').value,
