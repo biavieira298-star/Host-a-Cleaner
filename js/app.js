@@ -142,6 +142,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 history_pending_sync: "Por sincronizar",
                 history_resolved: "Resolvido",
                 history_urgent: "Urgente",
+                history_pending_alert: "Existem registos pendentes",
                 history_normal: "Normal",
                 history_low: "Baixa",
                 nav_settings: "Gestão",
@@ -499,6 +500,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 history_pending_sync: "Pending sync",
                 history_resolved: "Resolved",
                 history_urgent: "Urgent",
+                history_pending_alert: "There are pending records",
                 history_normal: "Normal",
                 history_low: "Low",
                 nav_settings: "Management",
@@ -3126,21 +3128,25 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             let badge = navHistoryButton.querySelector('.urgent-badge');
             if (!badge) {
                 badge = document.createElement('span');
-                badge.className = 'urgent-badge hidden ml-auto min-w-5 h-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white';
+                badge.className = 'urgent-badge hidden ml-auto h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-black leading-none text-white';
                 navHistoryButton.appendChild(badge);
             }
 
-            const urgentCount = Number.isFinite(count) ? Math.max(0, Number(count)) : 0;
-            if (urgentCount > 0) {
-                badge.textContent = urgentCount > 99 ? '99+' : String(urgentCount);
+            const pendingCount = Number.isFinite(count) ? Math.max(0, Number(count)) : 0;
+            if (pendingCount > 0) {
+                badge.textContent = '!';
                 badge.classList.remove('hidden');
                 badge.classList.add('inline-flex');
-                badge.setAttribute('aria-label', `${urgentCount} incidentes urgentes`);
+                badge.setAttribute('role', 'img');
+                badge.setAttribute('aria-label', i18n[currentLang].history_pending_alert);
+                badge.title = i18n[currentLang].history_pending_alert;
             } else {
-                badge.textContent = '0';
+                badge.textContent = '';
                 badge.classList.add('hidden');
                 badge.classList.remove('inline-flex');
+                badge.removeAttribute('role');
                 badge.removeAttribute('aria-label');
+                badge.removeAttribute('title');
             }
         }
 
@@ -3153,22 +3159,21 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     .from('property_incidents')
                     .select('id, properties!inner(user_id)', { count: 'exact', head: true })
                     .eq('properties.user_id', getTenantOwnerId())
-                    .eq('priority', 'urgent');
+                    .eq('status', 'pending');
                 if (error) throw error;
                 total += Number(count || 0);
             } catch (error) {
-                console.warn('Não foi possível verificar incidentes urgentes na base de dados:', error);
+                console.warn('Não foi possível verificar incidentes pendentes na base de dados:', error);
             }
 
             try {
                 const pendingItems = await listPendingOfflineItems();
                 total += pendingItems.filter(item =>
                     item?.type === 'incident' &&
-                    (currentUser ? item.userId === currentUser.id : true) &&
-                    (item.priority === 'urgent' || item.isPriority === true)
+                    (currentUser ? item.userId === currentUser.id : true)
                 ).length;
             } catch (error) {
-                console.warn('Não foi possível verificar incidentes urgentes locais:', error);
+                console.warn('Não foi possível verificar incidentes pendentes locais:', error);
             }
 
             try {
@@ -3178,13 +3183,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     if (Array.isArray(queue)) {
                         total += queue.filter(item =>
                             item && item.type === 'incident' &&
-                            (currentUser ? item.userId === currentUser.id : true) &&
-                            (item.priority === 'urgent' || item.isPriority === true)
+                            (currentUser ? item.userId === currentUser.id : true)
                         ).length;
                     }
                 }
             } catch (error) {
-                console.warn('Não foi possível verificar incidentes urgentes guardados em localStorage:', error);
+                console.warn('Não foi possível verificar incidentes pendentes guardados em localStorage:', error);
             }
 
             return total;
