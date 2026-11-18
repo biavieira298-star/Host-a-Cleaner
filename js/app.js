@@ -3819,9 +3819,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             if (navigator.onLine) {
                 const { data: photoData, error: photoError } = await supabaseClient
                     .from('cleaning_task_photos')
-                    .select('id, photo_url, storage_path, created_at, properties!inner(user_id)')
-                    .eq('properties.user_id', getTenantOwnerId())
+                    .select('id, photo_url, storage_path, created_at')
                     .eq('task_id', task.id)
+                    .eq('property_id', task.property_id)
                     .order('created_at', { ascending: false });
                 if (photoError) {
                     console.error('Erro ao carregar fotografias da tarefa:', photoError);
