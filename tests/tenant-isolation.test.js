@@ -242,6 +242,10 @@ test('stored photo references use authenticated signed URLs and signing failures
     const legacy = 'https://project.example.test/storage/v1/object/public/cleaning-photos/user/incidents/photo.jpg';
     await context.resolvePrivatePhotoUrl(legacy, 'property-incidents');
     assert.deepEqual(calls[1], ['cleaning-photos', 'user/incidents/photo.jpg', 3600]);
+    await context.resolvePrivatePhotoUrl('owner/property/task/photo.jpg', 'cleaning-photos');
+    assert.deepEqual(calls[2], ['cleaning-photos', 'owner/property/task/photo.jpg', 3600]);
+    await context.resolvePrivatePhotoUrl('owner/property/incident/photo.jpg', 'property-incidents');
+    assert.deepEqual(calls[3], ['property-incidents', 'owner/property/incident/photo.jpg', 3600]);
     failure = true;
     await assert.rejects(context.resolvePrivatePhotoUrl(url, 'property-incidents'), /denied/);
 });
