@@ -46,6 +46,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let currentUser = null;
         let subscriptionLoadRequestId = 0;
         let stripeCheckoutSyncPromise = null;
+        let accountDeleteInProgress = false;
+        let accountDeletionAllowed = false;
+        let accountDeleteStatusRequestId = 0;
         let currentTeamOwnerId = null;
         let pendingTeamInviteToken = null;
         let registrationRequested = false;
@@ -219,6 +222,20 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 profile_contact_email: "Email",
                 profile_contact_phone: "Telemóvel / Telefone",
                 profile_contact_save: "Guardar contactos",
+                account_delete_title: "Apagar conta",
+                account_delete_checking: "A verificar se a conta pode ser apagada...",
+                account_delete_recheck: "Verificar novamente",
+                account_delete_blocked: "A eliminação não está disponível. Contacte suporte@hostacleaner.com.",
+                account_delete_unavailable: "Não foi possível verificar a disponibilidade da eliminação. Tente novamente.",
+                account_delete_cleaner: "A sua conta de acesso será eliminada, mas os registos de limpezas e ocorrências realizados permanecem no histórico do gestor.",
+                account_delete_admin: "Esta ação é irreversível e elimina permanentemente os alojamentos, agenda, equipa, histórico, fotografias e a conta. As subscrições Stripe associadas serão canceladas imediatamente e os dados de pagamento do cliente serão removidos.",
+                account_delete_confirm_label: "Escreva APAGAR para confirmar.",
+                account_delete_offline_warning: "Os dados ainda não sincronizados neste navegador serão apagados.",
+                account_delete_failed: "Não foi possível confirmar a eliminação. Alguns ficheiros poderão já ter sido removidos; tente novamente ou contacte o suporte.",
+                account_delete_stripe_failed: "Não foi possível concluir a eliminação no Stripe. A conta no Supabase não foi apagada, mas poderão já ter sido canceladas subscrições ou removidos clientes Stripe e ficheiros. Tente novamente ou contacte o suporte.",
+                account_delete_stripe_ambiguous: "Existem clientes ou associações Stripe ambíguos. A conta não foi apagada, mas poderão já ter sido canceladas subscrições ou removidos clientes Stripe e ficheiros. Contacte o suporte para revisão.",
+                account_delete_stripe_unverified: "Não foi possível identificar com segurança todos os dados Stripe. A conta não foi apagada, mas poderão já ter sido canceladas subscrições ou removidos clientes Stripe e ficheiros. Contacte o suporte.",
+                account_delete_local_failed: "A conta foi apagada, mas não foi possível limpar todos os dados locais neste dispositivo.",
                 profile_contact_saved: "Contactos guardados.",
                 profile_contact_unchanged: "Não existem alterações para guardar.",
                 profile_contact_confirm: "Confirme a alteração através do link enviado para o novo endereço de email. Poderá também ser necessária confirmação no endereço atual.",
@@ -634,6 +651,20 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 profile_contact_email: "Email",
                 profile_contact_phone: "Mobile / Phone",
                 profile_contact_save: "Save contact details",
+                account_delete_title: "Delete account",
+                account_delete_checking: "Checking whether the account can be deleted...",
+                account_delete_recheck: "Check again",
+                account_delete_blocked: "Account deletion is unavailable. Contact suporte@hostacleaner.com.",
+                account_delete_unavailable: "Could not check deletion availability. Please try again.",
+                account_delete_cleaner: "Your access account will be deleted, but your cleaning and incident records will remain in the manager's history.",
+                account_delete_admin: "This action is irreversible and permanently deletes all properties, schedules, team members, history, photographs and the account. Associated Stripe subscriptions will be canceled immediately and the customer's payment data will be removed.",
+                account_delete_confirm_label: "Type APAGAR to confirm.",
+                account_delete_offline_warning: "Unsynced data in this browser will be deleted.",
+                account_delete_failed: "Could not confirm account deletion. Some files may already have been removed; retry or contact support.",
+                account_delete_stripe_failed: "Stripe cleanup could not be completed. The Supabase account was not deleted, but subscriptions may already have been canceled or Stripe customers and files removed. Retry or contact support.",
+                account_delete_stripe_ambiguous: "Stripe customers or associations are ambiguous. The account was not deleted, but subscriptions may already have been canceled or Stripe customers and files removed. Contact support for review.",
+                account_delete_stripe_unverified: "Stripe data could not be identified safely. The account was not deleted, but subscriptions may already have been canceled or Stripe customers and files removed. Contact support.",
+                account_delete_local_failed: "The account was deleted, but some local data could not be cleared from this device.",
                 profile_contact_saved: "Contact details saved.",
                 profile_contact_unchanged: "There are no changes to save.",
                 profile_contact_confirm: "Confirm the change using the link sent to your new email address. Confirmation at your current address may also be required.",
@@ -1035,6 +1066,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 financialChartRequestId++;
                 hostingReportsRequestId++;
                 subscriptionLoadRequestId++;
+                accountDeleteStatusRequestId++;
+                accountDeletionAllowed = false;
+                const deleteButton = document.getElementById('account-delete-open');
+                if (deleteButton) deleteButton.disabled = true;
                 viewRenderRequestId++;
                 document.querySelectorAll('[data-subscription-plan]').forEach(button => {
                     button.disabled = true;
@@ -1054,7 +1089,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 [
                     'property-quick-modal', 'employee-hours-detail-modal', 'add-cleaning-modal',
                     'day-tasks-modal', 'task-modal', 'time-confirmation-modal',
-                    'incident-report-modal', 'hosting-delete-modal', 'financial-date-modal'
+                    'incident-report-modal', 'hosting-delete-modal', 'financial-date-modal', 'account-delete-modal'
                 ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
                 [
                     'property-quick-modal-body', 'employee-hours-detail-modal-body', 'day-modal-tasks-container',
@@ -1524,6 +1559,172 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             setCurrentUser(null); userRole = null; profileRoleVerified = false; showLandingScreen();
         }
 
+        async function loadAccountDeletionStatus() {
+            const userId = currentUser?.id;
+            const requestId = ++accountDeleteStatusRequestId;
+            const button = document.getElementById('account-delete-open');
+            const status = document.getElementById('account-delete-status');
+            accountDeletionAllowed = false;
+            button.disabled = true;
+            updateAccountDeleteConfirmation();
+            status.textContent = i18n[currentLang].account_delete_checking;
+            try {
+                if (!userId || !profileRoleVerified || !navigator.onLine) throw new Error('Account verification unavailable');
+                const { data, error } = await supabaseClient.functions.invoke('delete-account', { body: { action: 'status' } });
+                if (error) throw error;
+                if (currentUser?.id !== userId || requestId !== accountDeleteStatusRequestId) return;
+                if (!data || typeof data.allowed !== 'boolean' || data.role !== userRole) throw new Error('Invalid deletion status or role');
+                status.textContent = data.allowed ? '' : i18n[currentLang].account_delete_blocked;
+                accountDeletionAllowed = data.allowed;
+                button.disabled = !data.allowed;
+                updateAccountDeleteConfirmation();
+            } catch (error) {
+                if (currentUser?.id !== userId || requestId !== accountDeleteStatusRequestId) return;
+                console.error('Não foi possível verificar a eliminação da conta:', error);
+                status.textContent = i18n[currentLang].account_delete_unavailable;
+            }
+        }
+
+        function openAccountDeleteModal() {
+            if (!currentUser || !profileRoleVerified || !accountDeletionAllowed || document.getElementById('account-delete-open').disabled) return;
+            const modal = document.getElementById('account-delete-modal');
+            document.getElementById('account-delete-description').textContent = userRole === 'admin'
+                ? i18n[currentLang].account_delete_admin : i18n[currentLang].account_delete_cleaner;
+            document.getElementById('account-delete-confirmation').value = '';
+            document.getElementById('account-delete-error').classList.add('hidden');
+            updateAccountDeleteConfirmation();
+            modal.classList.remove('hidden');
+            document.getElementById('account-delete-confirmation').focus();
+        }
+
+        function closeAccountDeleteModal() {
+            if (accountDeleteInProgress) return;
+            document.getElementById('account-delete-modal').classList.add('hidden');
+            document.getElementById('account-delete-open').focus();
+        }
+
+        function updateAccountDeleteConfirmation() {
+            document.getElementById('account-delete-submit').disabled =
+                accountDeleteInProgress || !accountDeletionAllowed ||
+                document.getElementById('account-delete-confirmation').value !== 'APAGAR';
+        }
+
+        async function clearDeletedAccountOfflineData(userId) {
+            const errors = [];
+            try {
+                if ('indexedDB' in window) {
+                    const database = await openOfflineDatabase();
+                    await new Promise((resolve, reject) => {
+                        const transaction = database.transaction(['pending', 'snapshots'], 'readwrite');
+                        const request = transaction.objectStore('pending').openCursor();
+                        request.onsuccess = () => {
+                            const cursor = request.result;
+                            if (!cursor) return;
+                            if (cursor.value?.userId === userId) cursor.delete();
+                            cursor.continue();
+                        };
+                        transaction.objectStore('snapshots').delete(userId);
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error || new Error('Não foi possível limpar os dados offline.'));
+                        transaction.onabort = () => reject(transaction.error || new Error('Não foi possível limpar os dados offline.'));
+                    });
+                }
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                const key = 'host_cleaner_offline_queue';
+                const raw = localStorage.getItem(key);
+                if (raw !== null) {
+                    const queue = JSON.parse(raw);
+                    if (!Array.isArray(queue)) throw new Error('Fila offline antiga inválida.');
+                    if (queue.some(item => !item?.userId)) errors.push(new Error('Existem itens antigos sem conta identificada.'));
+                    const remaining = queue.filter(item => item?.userId !== userId);
+                    if (remaining.length) localStorage.setItem(key, JSON.stringify(remaining));
+                    else localStorage.removeItem(key);
+                }
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                localStorage.removeItem(`host_cleaner_operational_preferences_${userId}`);
+            } catch (error) {
+                errors.push(error);
+            }
+            if (errors.length) throw new AggregateError(errors, 'Não foi possível limpar todos os dados locais.');
+        }
+
+        async function deleteAccount(event) {
+            event.preventDefault();
+            if (accountDeleteInProgress || !accountDeletionAllowed || !currentUser || !profileRoleVerified ||
+                document.getElementById('account-delete-confirmation').value !== 'APAGAR') return;
+            const userId = currentUser.id;
+            const errorElement = document.getElementById('account-delete-error');
+            accountDeleteInProgress = true;
+            updateAccountDeleteConfirmation();
+            errorElement.classList.add('hidden');
+            try {
+                if (syncPendingPromise) await syncPendingPromise;
+                if (currentUser?.id !== userId) throw new Error('Session changed');
+                const { data, error } = await supabaseClient.functions.invoke('delete-account', {
+                    body: { action: 'delete', confirmation: 'APAGAR' }
+                });
+                if (error) {
+                    if (error.context?.clone) {
+                        let detail;
+                        try {
+                            detail = await error.context.clone().json();
+                        } catch (parseError) {
+                            console.error('Não foi possível ler o erro da eliminação:', parseError);
+                        }
+                        if (['stripe_cleanup_failed', 'stripe_ambiguous', 'stripe_unverified'].includes(detail?.code)) {
+                            throw Object.assign(new Error('Stripe cleanup failed'), { code: detail.code });
+                        }
+                    }
+                    throw error;
+                }
+                if (!data || data.success !== true) throw new Error('Deletion was not confirmed');
+            } catch (error) {
+                console.error('Não foi possível apagar a conta:', error);
+                const errorKey = {
+                    stripe_cleanup_failed: 'account_delete_stripe_failed',
+                    stripe_ambiguous: 'account_delete_stripe_ambiguous',
+                    stripe_unverified: 'account_delete_stripe_unverified'
+                }[error?.code] || 'account_delete_failed';
+                errorElement.textContent = i18n[currentLang][errorKey];
+                errorElement.classList.remove('hidden');
+                accountDeleteInProgress = false;
+                updateAccountDeleteConfirmation();
+                void loadAccountDeletionStatus();
+                return;
+            }
+            let localError = null;
+            try {
+                await clearDeletedAccountOfflineData(userId);
+            } catch (error) {
+                localError = error;
+                console.error('Não foi possível limpar os dados locais da conta apagada:', error);
+            }
+            if (currentUser && currentUser.id !== userId) {
+                accountDeleteInProgress = false;
+                if (localError) showToast(i18n[currentLang].account_delete_local_failed, 'error');
+                return;
+            }
+            try {
+                const { error: signOutError } = await supabaseClient.auth.signOut({ scope: 'local' });
+                if (signOutError) throw signOutError;
+            } catch (error) {
+                localError = error;
+                console.error('Não foi possível limpar a sessão local:', error);
+            }
+            accountDeleteInProgress = false;
+            setCurrentUser(null);
+            userRole = null;
+            profileRoleVerified = false;
+            showLandingScreen();
+            if (localError) showToast(i18n[currentLang].account_delete_local_failed, 'error');
+        }
+
         function switchProfileTab(tab) {
             if (!['account', 'operations', 'subscription'].includes(tab)) return;
             if (tab === 'subscription' && userRole !== 'admin') return;
@@ -1701,6 +1902,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function loadProfileSettings() {
             const userId = currentUser?.id;
+            void loadAccountDeletionStatus();
             document.getElementById('profile-email-val').textContent = currentUser?.email || '---';
             document.getElementById('profile-contact-email').value = currentUser?.email || '';
             document.getElementById('profile-contact-phone').value = currentUser?.user_metadata?.phone || '';
@@ -2613,7 +2815,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function syncPendingData() {
             if (syncPendingPromise) return syncPendingPromise;
-            if (!navigator.onLine || !currentUser) {
+            if (accountDeleteInProgress || !navigator.onLine || !currentUser) {
                 await updateOfflineIndicator();
                 return false;
             }
@@ -2624,7 +2826,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const allPending = await listPendingOfflineItems();
                     const pending = allPending.filter(item => item.userId === currentUser.id);
                     for (const item of pending) {
-                        if (!navigator.onLine || !currentUser || item.userId !== currentUser.id) break;
+                        if (accountDeleteInProgress || !navigator.onLine || !currentUser || item.userId !== currentUser.id) break;
                         try {
                             await syncPendingOfflineItem(item);
                             await deletePendingOfflineItem(item.sequence);
