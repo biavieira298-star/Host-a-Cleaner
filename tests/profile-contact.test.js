@@ -37,6 +37,7 @@ function setup(error = null) {
         localStorage: { getItem: () => null },
         getOperationalPreferencesStorageKey: () => 'preferences',
         applyThemePreference() {},
+        loadAccountDeletionStatus: async () => {},
         applyOperationalPreferencesToInviteForm() {},
         console: { error() {} }
     };
