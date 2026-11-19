@@ -103,14 +103,29 @@ test('landing actions open the existing auth form in the requested mode', () => 
     assert.equal(focused.at(-1), 'auth-email');
 });
 
-test('landing monthly prices match the existing subscription cards', () => {
+test('landing and subscription cards show the requested prices and limits', () => {
     const articles = html.match(/<article\b[\s\S]*?<\/article>/g);
-    for (const [plan, label] of [['gratuito', 'Gratuito'], ['starter', 'Starter'], ['pro', 'Pro'], ['business', 'Business']]) {
+    for (const [plan, label, price, propertyKey, teamKey] of [
+        ['gratuito', 'Gratuito', '0€', 'landing_free_properties', 'landing_free_cleaners'],
+        ['starter', 'Starter', '9,99€', 'landing_starter_properties', 'landing_starter_cleaners'],
+        ['pro', 'Pro', '19,99€', 'landing_pro_properties', 'landing_unlimited_cleaners'],
+        ['business', 'Business', '49,99€', 'landing_business_properties', 'landing_unlimited_cleaners']
+    ]) {
         const accountCard = articles.find(card => card.includes(`data-subscription-plan="${plan}"`));
         const landingCard = articles.find(card => card.includes('landing-price-card') && card.includes(`>${label}</h3>`));
         assert.ok(accountCard && landingCard, `Missing ${label} card`);
         const accountPrice = accountCard.match(/text-3xl[^>]*>([^<]+)/)[1].trim();
         const landingPrice = landingCard.match(/class="landing-price">([^<]+)/)[1].trim();
-        assert.equal(landingPrice, accountPrice);
+        assert.equal(accountPrice, price);
+        assert.equal(landingPrice, price);
+        for (const card of [accountCard, landingCard]) {
+            assert.match(card, new RegExp(`data-i18n="${propertyKey}"`));
+            assert.match(card, new RegExp(`data-i18n="${teamKey}"`));
+            assert.doesNotMatch(card, /desconto|\/ano|suporte prioritário|relatórios financeiros|pdf\/csv|co-host/i);
+        }
     }
+    assert.match(app, /landing_business_properties: "Imóveis ilimitados"/);
+    assert.match(app, /landing_business_properties: "Unlimited properties"/);
+    assert.match(app, /landing_unlimited_cleaners: "Equipa ilimitada"/);
+    assert.match(app, /landing_unlimited_cleaners: "Unlimited team"/);
 });
