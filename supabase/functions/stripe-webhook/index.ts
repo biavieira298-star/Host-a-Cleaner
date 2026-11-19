@@ -87,6 +87,30 @@ async function handleCheckoutCompleted(
     const subscriptionId = stripeObjectId(session.subscription);
     if (!subscriptionId) return;
 
+    if (session.client_reference_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session.client_reference_id)) {
+        const { data: deleted, error: deletedError } = await supabase
+            .from('account_deletion_tombstones')
+            .select('user_id')
+            .eq('user_id', session.client_reference_id)
+            .maybeSingle();
+        if (deletedError) throw deletedError;
+        if (deleted) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            if (!['canceled', 'incomplete_expired'].includes(subscription.status)) {
+                await stripe.subscriptions.cancel(subscriptionId);
+            }
+            console.warn(`Canceled subscription ${subscriptionId} for a deleted account.`);
+            return;
+        }
+        const { data: pending, error: pendingError } = await supabase
+            .from('account_deletion_jobs')
+            .select('user_id')
+            .eq('user_id', session.client_reference_id)
+            .maybeSingle();
+        if (pendingError) throw pendingError;
+        if (pending) throw new Error('Account deletion is in progress; retry this checkout event.');
+    }
+
     const email = await stripeCustomerEmail(
         customerId,
         session.customer_details?.email ?? session.customer_email
