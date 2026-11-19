@@ -3,8 +3,8 @@
   "short_name": "HostCleaner",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f0f4f8",
-  "theme_color": "#f0f4f8",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
   "icons": [
     {
       "src": "images/icon-192.png",
