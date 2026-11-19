@@ -324,7 +324,7 @@ function backend(options = {}) {
     const context = {
         Stripe, createClient: () => client, Response, console: { info() {}, error() {} },
         Deno: {
-            env: { get: name => name === 'STRIPE_PRICE_PLAN_MAP' ? '{"price_pro":"pro"}' : 'configured' },
+            env: { get: name => name === 'STRIPE_PRICE_PLAN_MAP' ? '{"price_pro":"pro","price_business":"business"}' : 'configured' },
             serve: callback => { handler = callback; }
         }
     };
@@ -353,6 +353,17 @@ test('verified checkout updates the authenticated profile using current subscrip
     assert.equal(fixture.profile.max_properties, 10);
     assert.equal(fixture.profile.stripe_current_period_end, new Date(200000).toISOString());
     assert.equal(fixture.profile.stripe_checkout_session_created, 100);
+});
+
+test('a verified Business checkout stores unlimited properties and team', { skip: !stripTypeScriptTypes }, async () => {
+    const fixture = backend({
+        subscription: { items: { data: [{ price: { id: 'price_business' }, current_period_end: 200 }] } }
+    });
+    const response = await fixture.request();
+    assert.equal(response.status, 200);
+    assert.equal(fixture.profile.subscription_plan, 'business');
+    assert.equal(fixture.profile.max_properties, null);
+    assert.equal(fixture.profile.max_cleaners, null);
 });
 
 test('authentication, account ownership and payment are required before updating', { skip: !stripTypeScriptTypes }, async () => {
