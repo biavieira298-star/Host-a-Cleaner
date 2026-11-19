@@ -190,6 +190,8 @@ test('team reads are limited to the active owner', async () => {
 
 test('switching accounts clears cached records and discards an earlier response', async () => {
     const { context } = environment('owner-a', 'admin');
+    context.accountDeleteStatusRequestId = 0;
+    context.accountDeletionAllowed = false;
     let active = true;
     let hidden = false;
     const badge = { classList: { add: () => { hidden = true; } } };
