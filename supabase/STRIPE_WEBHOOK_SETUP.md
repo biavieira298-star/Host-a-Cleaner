@@ -12,13 +12,14 @@ Na configuração de secrets das Edge Functions do Supabase, definir:
 
 - `STRIPE_SECRET_KEY`: chave secreta Stripe do mesmo modo (Test ou Live) que os Payment Links.
 - `STRIPE_WEBHOOK_SECRET`: segredo de assinatura `whsec_` apresentado pelo Stripe para este endpoint.
-- `STRIPE_PRICE_PLAN_MAP`: objeto JSON que associa cada Price ID recorrente Stripe ao plano. Incluir todos os preços mensais e anuais, por exemplo:
+- `STRIPE_PRICE_PLAN_MAP`: objeto JSON que associa cada Price ID recorrente Stripe ao plano. Incluir todos os preços em utilização, por exemplo:
 
 ```json
-{"price_id_starter_mensal":"starter","price_id_starter_anual":"starter","price_id_pro_mensal":"pro","price_id_pro_anual":"pro","price_id_business_mensal":"business","price_id_business_anual":"business"}
+{"price_id_starter_mensal":"starter","price_id_pro_mensal":"pro","price_id_business_mensal":"business"}
 ```
 
 Os valores `price_id_...` são apenas marcadores: substituí-los pelos Price IDs reais (`price_...`) no Dashboard do Stripe. Nunca colocar chaves secretas no frontend ou neste ficheiro.
+Mantenha também no mapa os Price IDs antigos que ainda tenham subscrições ativas.
 
 O Supabase disponibiliza `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no ambiente das Edge Functions. A chave service role deve permanecer apenas no servidor.
 
@@ -57,6 +58,12 @@ Se for necessário confirmar o pagamento imediatamente no regresso e permitir no
 Começar com a chave e os Payment Links `test_`. Fazer uma subscrição de teste Starter, Pro e Business com uma conta existente na app e o mesmo email da conta Host a Cleaner. Verificar o redirecionamento configurado, a entrega do webhook, a atualização do plano na interface e, no Supabase, os limites e IDs Stripe. Testar também um pagamento pendente e o cancelamento, verificando que o plano passa a Gratuito após `customer.subscription.deleted`. Se usar o URL alternativo com `session_id`, testar ainda uma sessão de outra conta e a recuperação de um webhook temporariamente indisponível.
 
 Os links atuais são Payment Links de teste; a passagem para produção requer substituir os links no frontend por links Live, configurar os Price IDs Live e criar um endpoint Live com um novo signing secret. Nunca reutilizar os secrets de teste em produção.
+
+## Limites e preços dos planos
+
+O plano Business permite imóveis e equipa ilimitados (`max_properties` e `max_cleaners` a `NULL`). Depois da migração `202611190001_account_deletion.sql`, aplique `migrations/202611190003_business_unlimited.sql` para atualizar os perfis Business existentes e implemente novamente `stripe-webhook` e `stripe-sync-subscription` para aplicar os novos limites nas sincronizações futuras. Se tiver publicado uma versão autocontida no editor do Supabase, atualize também nela o `planLimits('business')` para devolver ambos os limites como `null`. A migração não altera contas cuja eliminação esteja em curso.
+
+O preço apresentado na aplicação não altera os valores cobrados no Stripe. Configure e confirme o preço mensal Business de 49,99 € nos Price IDs e Payment Links adequados, atualize o mapa e os links se necessário e verifique separadamente as condições das subscrições existentes.
 
 ## 6. Eliminação de contas
 
