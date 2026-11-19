@@ -64,7 +64,8 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; 
 .landing-step p { margin: 0; color: #64748b; font-size: 0.85rem; line-height: 1.7; }
 .landing-features-section { background: #f8fafc; }
 .landing-features-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
-.landing-features-note { margin: 1rem 0 0; color: #64748b; font-size: 0.8rem; }
+.landing-features-note, .landing-pricing-note { margin: 1rem 0 0; color: #64748b; font-size: 0.8rem; }
+.landing-pricing-note { text-align: center; }
 .landing-features-list, .landing-price-card ul { margin: 0; padding: 0; list-style: none; }
 .landing-features-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .landing-features-list li { padding: 1.1rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #334155; font-size: 0.8rem; font-weight: 700; }
