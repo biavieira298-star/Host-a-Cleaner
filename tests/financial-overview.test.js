@@ -57,6 +57,9 @@ test('financial chart uses readable light-theme labels and updates them when the
     assert.equal(context.financialOverviewChart.options.plugins.legend.labels.color, '#cbd5e1');
     assert.equal(context.financialOverviewChart.options.scales.y.ticks.color, '#94a3b8');
     assert.equal(context.financialOverviewChart.updated, true);
+    context.saveThemePreference('default');
+    assert.equal(context.financialOverviewChart.options.plugins.legend.labels.color, '#334155');
+    assert.equal(context.financialOverviewChart.options.scales.x.ticks.color, '#475569');
 });
 
 function createReportEnvironment(month, selectedProperty = 'p1', entriesError = null) {
