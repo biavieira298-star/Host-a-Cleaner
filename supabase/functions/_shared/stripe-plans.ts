@@ -66,7 +66,7 @@ export function planLimits(plan: Plan) {
         case 'pro':
             return { subscription_plan: plan, max_properties: 10, max_cleaners: null };
         case 'business':
-            return { subscription_plan: plan, max_properties: 25, max_cleaners: null };
+            return { subscription_plan: plan, max_properties: null, max_cleaners: null };
         default:
             return { subscription_plan: plan, max_properties: 1, max_cleaners: 1 };
     }
