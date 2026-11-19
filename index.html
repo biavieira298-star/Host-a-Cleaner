@@ -904,6 +904,12 @@
                                 <p id="profile-password-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
                                 <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-teal-700">Atualizar Palavra-passe</button>
                             </form>
+                            <div class="space-y-2 border-t border-slate-100 pt-4">
+                                <h5 data-i18n="account_delete_title" class="text-sm font-bold text-slate-900">Apagar conta</h5>
+                                <p id="account-delete-status" role="status" aria-live="polite" class="text-xs text-slate-600"></p>
+                                <button type="button" id="account-delete-open" disabled onclick="openAccountDeleteModal()" data-i18n="account_delete_title" class="rounded-xl border border-rose-200 px-4 py-2.5 text-xs font-bold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50">Apagar conta</button>
+                                <button type="button" onclick="loadAccountDeletionStatus()" data-i18n="account_delete_recheck" class="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600">Verificar novamente</button>
+                            </div>
                         </section>
 
                         <section id="profile-subtab-operations" role="tabpanel" aria-labelledby="btn-profile-tab-operations" class="hidden space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1179,6 +1185,21 @@
             </div>
             <p id="task-manual-sync-message" role="status" aria-live="polite" class="hidden text-[11px] font-semibold"></p>
         </div>
+    </div>
+
+    <div id="account-delete-modal" onkeydown="if (event.key === 'Escape') closeAccountDeleteModal()" class="fixed inset-0 z-[80] hidden flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="account-delete-modal-title" aria-describedby="account-delete-description">
+        <form onsubmit="runFormAction(event, () => deleteAccount(event), () => !accountDeletionAllowed || document.getElementById('account-delete-confirmation').value !== 'APAGAR')" class="w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6">
+            <h2 id="account-delete-modal-title" data-i18n="account_delete_title" class="text-lg font-bold text-slate-900">Apagar conta</h2>
+            <p id="account-delete-description" class="text-sm text-slate-700"></p>
+            <p data-i18n="account_delete_offline_warning" class="text-sm text-slate-700">Os dados ainda não sincronizados neste navegador serão apagados.</p>
+            <label for="account-delete-confirmation" data-i18n="account_delete_confirm_label" class="block text-sm font-bold text-slate-700">Escreva APAGAR para confirmar.</label>
+            <input id="account-delete-confirmation" required autocomplete="off" oninput="updateAccountDeleteConfirmation()" class="w-full rounded-xl border border-slate-300 p-3 text-sm">
+            <p id="account-delete-error" role="alert" class="hidden text-sm font-semibold text-rose-700"></p>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeAccountDeleteModal()" data-i18n="btn_cancel" class="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancelar</button>
+                <button type="submit" id="account-delete-submit" disabled data-i18n="account_delete_title" class="rounded-xl bg-rose-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Apagar conta</button>
+            </div>
+        </form>
     </div>
 
     <div id="time-confirmation-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="time-confirmation-title">
