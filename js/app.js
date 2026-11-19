@@ -107,23 +107,80 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         // Dicionário de Traduções (PT / EN)
         const i18n = {
             pt: {
-                login_subtitle: "Gestão inteligente e automatizada de alojamentos",
+                landing_how_nav: "Como funciona",
+                landing_navigation: "Navegação principal",
+                landing_features_nav: "Funcionalidades",
+                landing_prices_nav: "Preços",
+                landing_login: "Entrar",
+                landing_start: "Começar Grátis",
+                landing_eyebrow: "Gestão de limpezas para alojamento local",
+                landing_hero_title: "Acabe com a confusão do WhatsApp na gestão das limpezas do seu Alojamento Local.",
+                landing_hero_description: "Sincronize calendários iCal (Airbnb e Booking), atribua turnos à sua equipa e receba fotos de verificação e ocorrências num único painel.",
+                landing_hero_cta: "Criar conta gratuita",
+                landing_no_card: "Sem cartão de crédito necessário para testar.",
+                landing_preview_title: "Agenda diária",
+                landing_preview_date: "Exemplo de um dia de trabalho",
+                landing_preview_task1: "Apartamento da Baixa",
+                landing_preview_task2: "Casa do Pátio",
+                landing_preview_checkout: "Após check-out",
+                landing_preview_progress: "Em curso",
+                landing_preview_pending: "Pendente",
+                landing_preview_caption: "Exemplo ilustrativo",
+                landing_how_eyebrow: "Como funciona",
+                landing_how_title: "Da reserva à limpeza, sem perder o fio.",
+                landing_how_description: "Organize o trabalho da equipa e acompanhe cada alojamento num só lugar.",
+                landing_step1_title: "Importe os seus calendários",
+                landing_step1_text: "Ligue os links iCal das plataformas de reserva para gerar limpezas automaticamente após cada check-out.",
+                landing_step2_title: "Coordene a equipa no terreno",
+                landing_step2_text: "Cada membro vê no telemóvel as tarefas do dia, códigos de keybox e instruções específicas do imóvel.",
+                landing_step3_title: "Valide com fotos e registe avarias",
+                landing_step3_text: "Receba fotografias de verificação e acompanhe ocorrências de manutenção no painel, sem mensagens perdidas.",
+                landing_features_eyebrow: "Funcionalidades",
+                landing_features_title: "O essencial para acompanhar a operação.",
+                landing_feature1: "Agenda diária, semanal e mensal",
+                landing_feature2: "Histórico de ocorrências por imóvel",
+                landing_feature3: "Acesso para a equipa de limpeza",
+                landing_feature4: "Registo de horas e relatórios",
+                landing_features_note: "Algumas funcionalidades estão disponíveis apenas nos planos pagos.",
+                landing_pricing_eyebrow: "Preços",
+                landing_pricing_title: "Um plano para cada dimensão de operação.",
+                landing_pricing_description: "Comece gratuitamente. Depois de criar conta, pode subscrever um plano pago nas definições.",
+                landing_free: "Gratuito",
+                landing_month: "/ mês",
+                landing_free_properties: "Até 1 imóvel",
+                landing_free_cleaners: "1 cleaner",
+                landing_free_agenda: "Agenda diária de limpezas",
+                landing_starter_properties: "Até 4 imóveis",
+                landing_starter_cleaners: "Até 3 cleaners",
+                landing_starter_features: "Ocorrências com foto e iCal",
+                landing_pro_properties: "Até 10 imóveis",
+                landing_unlimited_cleaners: "Cleaners ilimitados",
+                landing_pro_features: "Relatórios financeiros e exportação",
+                landing_business_properties: "Até 25 imóveis",
+                landing_business_features: "Suporte prioritário",
+                landing_plan_cta: "Criar conta para subscrever",
+                landing_support: "Contactar suporte",
+                landing_language: "Idioma",
+                landing_back: "Voltar à página inicial",
+                login_subtitle: "Gestão de alojamentos e equipas de limpeza.",
                 btn_login_tab: "Fazer Login",
                 btn_signup_tab: "Criar Conta",
                 label_email: "Email",
                 label_password: "Palavra-passe",
+                password_visibility: "Mostrar palavra-passe",
+                nav_employee_hours: "Horas por funcionário",
                 btn_submit_login: "Entrar na Plataforma",
                 btn_submit_signup: "Criar Nova Conta",
                 btn_forgot_pwd: "Esqueceu-se da palavra-passe?",
                 support_contact: "Suporte: suporte@hostacleaner.com",
                 workspace_title: "Painel de trabalho",
-                nav_cat_calendar: "📅 Agenda",
+                nav_cat_calendar: "Agenda",
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Tarefas Diárias (Lista)",
                 nav_overview_cal: "Vista Semanal / Mensal",
                 nav_history: "Histórico & Notas",
                 history_eyebrow: "Registos operacionais",
-                history_description: "Consulte incidentes, notas, prioridades e fotografias dos alojamentos.",
+                history_description: "Registo de ocorrências e manutenção por imóvel.",
                 history_priority_filter: "Prioridade",
                 history_filter_all: "Todos",
                 history_filter_urgent: "Urgentes",
@@ -226,7 +283,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 time_confirmation_invalid: "Indique uma duração válida superior a zero.",
                 time_tracking_started: "Limpeza iniciada. O tempo está a ser contado.",
                 time_tracking_start_error: "Não foi possível iniciar a limpeza",
-                incident_report_button: "⚠️ Reportar Incidente",
+                incident_report_button: "Reportar Incidente",
                 incident_report_title: "Reportar Ocorrência / Danos",
                 incident_priority: "Prioridade",
                 incident_not_priority: "Não prioritário",
@@ -291,10 +348,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 team_copy_link: "Copiar Link",
                 team_link_copied: "Link copiado.",
                 invite_signup_title: "Ativar acesso à equipa",
-                invite_signup_subtitle: "Defina o email e a palavra-passe para entrar na PWA de Limpezas.",
+                invite_signup_subtitle: "Defina o email e a palavra-passe para aceder à sua conta.",
                 invite_signup_confirm_password: "Confirmar palavra-passe",
                 invite_signup_submit: "Criar conta e entrar",
-                nav_cat_finance: "💶 Finanças & Relatórios",
+                nav_cat_finance: "Finanças & Relatórios",
                 nav_history_accounts: "Histórico & Contas",
                 offline_status: "Modo Offline — {count} itens pendentes de sincronização",
                 offline_pending_status: "{count} itens pendentes de sincronização",
@@ -311,8 +368,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 btn_sync_ical: "Sincronizar Agenda",
                 btn_logout: "Sair da Conta",
                 label_date: "Data:",
-                opt_all_properties: "🏠 Todos os Alojamentos",
-                btn_add_cleaning: "➕ Adicionar Limpeza",
+                opt_all_properties: "Todos os Alojamentos",
+                btn_add_cleaning: "Adicionar Limpeza",
                 btn_prev: "◀ Anterior",
                 btn_next: "Seguinte ▶",
                 btn_mode_week: "Semanal",
@@ -413,7 +470,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 photo_upload_error: "Não foi possível anexar a fotografia",
                 photo_upload_type_error: "Selecione um ficheiro de imagem até 10 MB.",
                 photo_empty: "Ainda não há fotografias anexadas.",
-                btn_add_property_new: "➕ Adicionar Nova Propriedade",
+                btn_add_property_new: "Adicionar Nova Propriedade",
                 label_assigned_cleaner: "Cleaner Atribuído",
                 option_no_cleaner: "Sem atribuição",
                 loading_cleaners: "A carregar cleaners...",
@@ -422,7 +479,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 retry: "Tentar novamente",
                 empty_properties: "Ainda não tem propriedades registadas.",
                 property_cleaner_label: "Cleaner:",
-                property_access_label: "🔑 Acesso:",
+                property_access_label: "Acesso:",
                 property_team_load_error: "Não foi possível carregar a equipa",
                 property_form_access_error: "Inicie sessão como gestor para guardar propriedades.",
                 property_form_validation_error: "Preencha o nome, a morada e um valor por hora válido.",
@@ -442,7 +499,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 subtitle_history: "Cálculo automático de horas, valores e estado de pagamento",
                 title_invite_member: "Convidar Membro para a Equipa",
                 subtitle_invite_member: "Crie um convite para o membro definir o email e a palavra-passe no primeiro acesso.",
-                btn_send_invite: "✉️ Criar Convite",
+                btn_send_invite: "Criar Convite",
                 title_team_list: "Membros da Sua Equipa",
                 modal_add_cleaning_title: "Adicionar Limpeza",
                 modal_add_cleaning_sub: "Selecione a listagem e o dia pretendido",
@@ -452,36 +509,93 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 btn_schedule_cleaning: "Agendar Limpeza",
                 btn_cancel: "Cancelar",
                 btn_close: "Fechar",
-                label_notify_team: "📢 Notificar equipa por WhatsApp",
-                btn_whatsapp: "💬 Enviar WhatsApp",
-                btn_delete_task: "🗑️ Apagar Limpeza",
+                label_notify_team: "Notificar equipa por WhatsApp",
+                btn_whatsapp: "Enviar WhatsApp",
+                btn_delete_task: "Apagar Limpeza",
                 label_new_pwd: "Nova Palavra-passe",
                 label_confirm_pwd: "Confirmar Nova Palavra-passe",
                 btn_update_pwd: "Atualizar Palavra-passe",
                 badge_comm_license: "Licença Comercial",
-                badge_active: "🟢 Ativa",
+                badge_active: "Ativa",
                 plan_title: "Plano Profissional (29.00€/mês)",
                 plan_desc: "Acesso ilimitado a alojamentos, sincronização iCal automática e gestão de equipa.",
-                btn_stripe_portal: "💳 Abrir Portal de Pagamento Stripe"
+                btn_stripe_portal: "Abrir Portal de Pagamento Stripe"
             },
             en: {
-                login_subtitle: "Smart & automated rental property management",
+                landing_how_nav: "How it works",
+                landing_navigation: "Main navigation",
+                landing_features_nav: "Features",
+                landing_prices_nav: "Pricing",
+                landing_login: "Log in",
+                landing_start: "Get started free",
+                landing_eyebrow: "Cleaning management for rental properties",
+                landing_hero_title: "Put an end to WhatsApp confusion when managing your rental property cleanings.",
+                landing_hero_description: "Sync iCal calendars from Airbnb and Booking, assign cleaning shifts, and receive verification photos and incident reports in one dashboard.",
+                landing_hero_cta: "Create a free account",
+                landing_no_card: "No credit card needed to try it.",
+                landing_preview_title: "Daily schedule",
+                landing_preview_date: "Example working day",
+                landing_preview_task1: "Downtown apartment",
+                landing_preview_task2: "Courtyard house",
+                landing_preview_checkout: "After checkout",
+                landing_preview_progress: "In progress",
+                landing_preview_pending: "Pending",
+                landing_preview_caption: "Illustrative example",
+                landing_how_eyebrow: "How it works",
+                landing_how_title: "From booking to cleaning, stay on track.",
+                landing_how_description: "Organize your team's work and keep track of every property in one place.",
+                landing_step1_title: "Import your calendars",
+                landing_step1_text: "Connect iCal links from booking platforms to generate cleanings automatically after each checkout.",
+                landing_step2_title: "Coordinate your team on site",
+                landing_step2_text: "Each team member can see the day's tasks, keybox codes and property instructions on their phone.",
+                landing_step3_title: "Verify with photos and report damage",
+                landing_step3_text: "Receive verification photos and track maintenance incidents in the dashboard, without lost messages.",
+                landing_features_eyebrow: "Features",
+                landing_features_title: "The essentials for managing your operation.",
+                landing_feature1: "Daily, weekly and monthly schedule",
+                landing_feature2: "Incident history by property",
+                landing_feature3: "Access for your cleaning team",
+                landing_feature4: "Work hours and reports",
+                landing_features_note: "Some features are available only on paid plans.",
+                landing_pricing_eyebrow: "Pricing",
+                landing_pricing_title: "A plan for every size of operation.",
+                landing_pricing_description: "Start for free. After creating an account, you can subscribe to a paid plan in settings.",
+                landing_free: "Free",
+                landing_month: "/ month",
+                landing_free_properties: "Up to 1 property",
+                landing_free_cleaners: "1 cleaner",
+                landing_free_agenda: "Daily cleaning schedule",
+                landing_starter_properties: "Up to 4 properties",
+                landing_starter_cleaners: "Up to 3 cleaners",
+                landing_starter_features: "Incident photos and iCal",
+                landing_pro_properties: "Up to 10 properties",
+                landing_unlimited_cleaners: "Unlimited cleaners",
+                landing_pro_features: "Financial reports and exports",
+                landing_business_properties: "Up to 25 properties",
+                landing_business_features: "Priority support",
+                landing_plan_cta: "Create an account to subscribe",
+                landing_support: "Contact support",
+                landing_language: "Language",
+                landing_back: "Back to home",
+                login_subtitle: "Manage properties and cleaning teams.",
                 btn_login_tab: "Log In",
                 btn_signup_tab: "Sign Up",
                 label_email: "Email",
                 label_password: "Password",
+                password_visibility: "Show password",
+                nav_employee_hours: "Employee hours",
                 btn_submit_login: "Log In to Platform",
                 btn_submit_signup: "Create New Account",
                 btn_forgot_pwd: "Forgot password?",
                 support_contact: "Support: suporte@hostacleaner.com",
                 workspace_title: "Workspace",
-                nav_cat_calendar: "📅 Agenda",
+                nav_cat_calendar: "Agenda",
                 nav_agenda: "Agenda",
                 nav_daily_tasks: "Daily Tasks (List)",
                 nav_overview_cal: "Weekly / Monthly View",
                 nav_history: "History & Notes",
                 history_eyebrow: "Operational records",
-                history_description: "Browse property incidents, notes, priorities, and photos.",
+                history_description: "Property incidents and maintenance records.",
                 history_priority_filter: "Priority",
                 history_filter_all: "All",
                 history_filter_urgent: "Urgent",
@@ -584,7 +698,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 time_confirmation_invalid: "Enter a valid duration greater than zero.",
                 time_tracking_started: "Cleaning started. Time is now being tracked.",
                 time_tracking_start_error: "Could not start the cleaning",
-                incident_report_button: "⚠️ Report Incident",
+                incident_report_button: "Report Incident",
                 incident_report_title: "Report Incident / Damage",
                 incident_priority: "Priority",
                 incident_not_priority: "Not a priority",
@@ -649,10 +763,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 team_copy_link: "Copy Link",
                 team_link_copied: "Link copied.",
                 invite_signup_title: "Activate team access",
-                invite_signup_subtitle: "Set your email and password to access the Cleaning PWA.",
+                invite_signup_subtitle: "Set your email and password to access your account.",
                 invite_signup_confirm_password: "Confirm password",
                 invite_signup_submit: "Create account and continue",
-                nav_cat_finance: "💶 Finance & Reports",
+                nav_cat_finance: "Finance & Reports",
                 nav_history_accounts: "History & Accounts",
                 offline_status: "Offline Mode — {count} items waiting to sync",
                 offline_pending_status: "{count} items waiting to sync",
@@ -669,8 +783,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 btn_sync_ical: "Sync Calendar Now",
                 btn_logout: "Log Out",
                 label_date: "Date:",
-                opt_all_properties: "🏠 All Properties",
-                btn_add_cleaning: "➕ Add Cleaning",
+                opt_all_properties: "All Properties",
+                btn_add_cleaning: "Add Cleaning",
                 btn_prev: "◀ Previous",
                 btn_next: "Next ▶",
                 btn_mode_week: "Weekly",
@@ -771,7 +885,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 photo_upload_error: "Could not attach the photo",
                 photo_upload_type_error: "Select an image file up to 10 MB.",
                 photo_empty: "No photos attached yet.",
-                btn_add_property_new: "➕ Add New Property",
+                btn_add_property_new: "Add New Property",
                 label_assigned_cleaner: "Assigned Cleaner",
                 option_no_cleaner: "Unassigned",
                 loading_cleaners: "Loading cleaners...",
@@ -780,7 +894,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 retry: "Try again",
                 empty_properties: "No properties registered yet.",
                 property_cleaner_label: "Cleaner:",
-                property_access_label: "🔑 Access:",
+                property_access_label: "Access:",
                 property_team_load_error: "Could not load the team",
                 property_form_access_error: "Sign in as an admin to save properties.",
                 property_form_validation_error: "Enter a name, address, and valid hourly rate.",
@@ -800,7 +914,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 subtitle_history: "Automatic calculation of hours, amounts and payment status",
                 title_invite_member: "Invite Team Member",
                 subtitle_invite_member: "Create an invite so the team member can set an email and password on first access.",
-                btn_send_invite: "✉️ Create Invite",
+                btn_send_invite: "Create Invite",
                 title_team_list: "Your Team Members",
                 modal_add_cleaning_title: "Add Cleaning",
                 modal_add_cleaning_sub: "Select property and date",
@@ -810,17 +924,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 btn_schedule_cleaning: "Schedule Cleaning",
                 btn_cancel: "Cancel",
                 btn_close: "Close",
-                label_notify_team: "📢 Notify team via WhatsApp",
-                btn_whatsapp: "💬 Send WhatsApp",
-                btn_delete_task: "🗑️ Delete Task",
+                label_notify_team: "Notify team via WhatsApp",
+                btn_whatsapp: "Send WhatsApp",
+                btn_delete_task: "Delete Task",
                 label_new_pwd: "New Password",
                 label_confirm_pwd: "Confirm New Password",
                 btn_update_pwd: "Update Password",
                 badge_comm_license: "Commercial License",
-                badge_active: "🟢 Active",
+                badge_active: "Active",
                 plan_title: "Professional Plan (€29.00/mo)",
                 plan_desc: "Unlimited properties, automatic iCal sync and team management.",
-                btn_stripe_portal: "💳 Open Stripe Payment Portal"
+                btn_stripe_portal: "Open Stripe Payment Portal"
             }
         };
 
@@ -830,12 +944,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const icon = document.getElementById(eyeIconId);
             if (!input) return;
 
-            if (input.type === "password") {
-                input.type = "text";
-                if (icon) icon.innerText = "🙈";
-            } else {
-                input.type = "password";
-                if (icon) icon.innerText = "👁️";
+            const showPassword = input.type === "password";
+            input.type = showPassword ? "text" : "password";
+            if (icon) {
+                icon.querySelector('.password-visible').classList.toggle('hidden', !showPassword);
+                icon.querySelector('.password-hidden').classList.toggle('hidden', showPassword);
+                icon.parentElement.setAttribute('aria-pressed', String(showPassword));
             }
         }
 
@@ -843,9 +957,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         function changeLanguage(lang) {
             currentLang = lang;
             localStorage.setItem('host_cleaner_lang', lang);
+            document.documentElement.lang = lang;
 
             // Sincroniza seletores
-            document.querySelectorAll('#lang-select-login, #lang-select-mobile, #lang-select-desktop').forEach(sel => {
+            document.querySelectorAll('#lang-select-login, #lang-select-mobile, #lang-select-desktop, #lang-select-landing').forEach(sel => {
                 if (sel) sel.value = lang;
             });
 
@@ -979,13 +1094,18 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 setAuthMode('signup');
             } else if (currentUser) {
                 await initializeAuthenticatedApp();
-            } else {
+            } else if (window.location.hash.toLowerCase() === '#login'
+                || new URLSearchParams(window.location.search).has('session_id')
+                || new URLSearchParams(window.location.search).get('status') === 'success') {
                 showLoginScreen();
+                setAuthMode('login');
+            } else {
+                showLandingScreen();
             }
 
             supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 setCurrentUser(session ? session.user : null);
-                if (registrationRequested && event === 'INITIAL_SESSION') return;
+                if (event === 'INITIAL_SESSION') return;
                 if (currentUser) {
                     await initializeAuthenticatedApp();
                 } else {
@@ -994,7 +1114,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     currentTeamMemberId = null;
                     currentTeamOwnerId = null;
                     currentTeamMemberPreferences = { track_hours: false, require_photos: false };
-                    showLoginScreen();
+                    showLandingScreen();
                     void updateOfflineIndicator();
                 }
             });
@@ -1209,8 +1329,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         function setAuthMode(mode) {
             currentAuthMode = mode;
-            document.getElementById('btn-mode-login').className = mode === 'login' ? "flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
-            document.getElementById('btn-mode-signup').className = mode === 'signup' ? "flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
+            document.getElementById('btn-mode-login').className = mode === 'login' ? "flex-1 py-2.5 rounded-xl bg-white text-teal-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
+            document.getElementById('btn-mode-signup').className = mode === 'signup' ? "flex-1 py-2.5 rounded-xl bg-white text-teal-600 shadow-sm transition" : "flex-1 py-2.5 rounded-xl text-slate-500 transition";
             document.getElementById('auth-submit-btn').innerText = mode === 'login' ? i18n[currentLang].btn_submit_login : i18n[currentLang].btn_submit_signup;
             const nameInput = document.getElementById('auth-name');
             document.getElementById('auth-name-field').classList.toggle('hidden', mode !== 'signup');
@@ -1274,6 +1394,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         function showTeamInviteSignup() {
+            document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('section-login').classList.add('hidden');
             document.getElementById('app-layout').classList.add('hidden');
             document.getElementById('team-invite-signup').classList.remove('hidden');
@@ -1346,13 +1467,29 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             else showToast('Email de recuperação enviado! Verifique a sua caixa de entrada.');
         }
 
+        function showLandingScreen() {
+            document.getElementById('landing-page').classList.remove('hidden');
+            document.getElementById('team-invite-signup').classList.add('hidden');
+            document.getElementById('section-login').classList.add('hidden');
+            document.getElementById('app-layout').classList.add('hidden');
+        }
+
+        function openLandingAuth(mode) {
+            showLoginScreen();
+            setAuthMode(mode);
+            document.getElementById(mode === 'signup' ? 'auth-name' : 'auth-email').focus();
+            window.scrollTo(0, 0);
+        }
+
         function showLoginScreen() {
+            document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('team-invite-signup').classList.add('hidden');
             document.getElementById('section-login').classList.remove('hidden');
             document.getElementById('app-layout').classList.add('hidden');
         }
 
         function showAppLayout() {
+            document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('team-invite-signup').classList.add('hidden');
             document.getElementById('section-login').classList.add('hidden');
             document.getElementById('app-layout').classList.remove('hidden');
@@ -1384,7 +1521,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         async function handleLogout() {
             localStorage.removeItem('host_cleaner_active_tab');
             await supabaseClient.auth.signOut();
-            setCurrentUser(null); userRole = null; profileRoleVerified = false; showLoginScreen();
+            setCurrentUser(null); userRole = null; profileRoleVerified = false; showLandingScreen();
         }
 
         function switchProfileTab(tab) {
@@ -1404,7 +1541,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 button.setAttribute('aria-selected', String(active));
                 button.className = `profile-settings-tab min-w-fit rounded-xl px-3 py-2.5 text-left text-xs transition ${
                     active
-                        ? 'bg-indigo-50 font-bold text-indigo-700'
+                        ? 'bg-teal-50 font-bold text-teal-700'
                         : 'font-semibold text-slate-500 hover:bg-slate-50'
                 }${key === 'subscription' ? ' admin-only' : ''}`;
             });
@@ -1536,11 +1673,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             if (selector) selector.value = selectedTheme;
             const themeColor = document.querySelector('meta[name="theme-color"]');
             if (themeColor) {
-                themeColor.content = selectedTheme === 'dark'
-                    ? '#0f172a'
-                    : selectedTheme === 'light'
-                        ? '#f7f4ec'
-                        : '#f0f4f8';
+                themeColor.content = selectedTheme === 'dark' ? '#0f172a' : '#f8fafc';
             }
             if (persist) localStorage.setItem('host_cleaner_theme', selectedTheme);
             return selectedTheme;
@@ -1549,7 +1682,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         function saveThemePreference(theme) {
             const selectedTheme = applyThemePreference(theme, true);
             if (financialOverviewChart) {
-                const light = selectedTheme === 'light';
+                const light = selectedTheme !== 'dark';
                 financialOverviewChart.options.plugins.legend.labels.color = light ? '#334155' : '#cbd5e1';
                 financialOverviewChart.options.scales.x.ticks.color = light ? '#475569' : '#94a3b8';
                 financialOverviewChart.options.scales.y.ticks.color = light ? '#475569' : '#94a3b8';
@@ -1847,9 +1980,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const isActive = t === subtabId && !(userRole === 'cleaner' && t === 'sub-team-management');
                     btn.classList.toggle('font-bold', isActive);
                     btn.classList.toggle('font-semibold', !isActive);
-                    btn.classList.toggle('bg-indigo-600', isActive);
+                    btn.classList.toggle('bg-teal-600', isActive);
                     btn.classList.toggle('text-white', isActive);
-                    btn.classList.toggle('shadow-lg', isActive);
+                    btn.classList.toggle('shadow-sm', isActive);
                     btn.classList.toggle('text-slate-300', !isActive);
                 }
             });
@@ -1867,7 +2000,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const directoryStateClass = userRole !== 'cleaner'
                     ? 'hidden text-slate-300'
                     : subtabId === 'sub-team-management'
-                        ? 'bg-indigo-600 text-white shadow-lg'
+                        ? 'bg-teal-600 text-white shadow-sm'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white';
                 teamDirectoryButton.className = `cleaner-only ${directoryStateClass} w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap`;
             }
@@ -2713,7 +2846,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     </div>
 
                     <div class="flex gap-2 pt-2">
-                        ${userRole === 'admin' ? `<button type="button" data-property-edit-id="${escapePropertyHTML(String(property.id))}" class="property-edit-modal-btn flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-indigo-700">Editar</button>` : ''}
+                        ${userRole === 'admin' ? `<button type="button" data-property-edit-id="${escapePropertyHTML(String(property.id))}" class="property-edit-modal-btn flex-1 rounded-xl bg-teal-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-teal-700">Editar</button>` : ''}
                         <button type="button" onclick="closePropertyQuickModal()" class="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Fechar</button>
                     </div>
                 </div>
@@ -2771,17 +2904,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 gridEl.innerHTML = `
                     <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
                         <p class="text-slate-500 text-xs">${i18n[currentLang].empty_properties}</p>
-                        ${userRole === 'admin' ? `<button type="button" onclick="runButtonAction(this, () => abrirFormularioPropriedade())" class="mt-3 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
+                        ${userRole === 'admin' ? `<button type="button" onclick="runButtonAction(this, () => abrirFormularioPropriedade())" class="mt-3 rounded-xl bg-teal-50 px-4 py-2 text-xs font-bold text-teal-700 hover:bg-teal-100">${i18n[currentLang].btn_add_property_new}</button>` : ''}
                     </div>
                 `;
                 return;
             }
 
             gridEl.innerHTML = data.map(prop => `
-                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-2.5 shadow-sm transition hover:border-indigo-300 hover:bg-white">
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-2.5 shadow-sm transition hover:border-teal-300 hover:bg-white">
                     <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-row-button block w-full rounded-xl text-left">
                         <div class="flex items-start gap-2">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-[10px] font-black text-indigo-700">${escapePropertyHTML((prop.name || 'P').slice(0, 2).toUpperCase())}</div>
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-[10px] font-black text-teal-700">${escapePropertyHTML((prop.name || 'P').slice(0, 2).toUpperCase())}</div>
                             <div class="min-w-0 flex-1">
                                 <h4 class="truncate text-[12px] font-bold text-slate-900">${escapePropertyHTML(prop.name)}</h4>
                                 <p class="mt-0.5 truncate text-[10px] text-slate-500">${escapePropertyHTML(prop.address || 'Sem morada')}</p>
@@ -2790,11 +2923,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     </button>
 
                     <div class="mt-2 flex gap-1.5">
-                        <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-view-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600">
+                        <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" class="property-view-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-teal-300 hover:text-teal-600">
                             Detalhes
                         </button>
                         ${userRole === 'admin' ? `
-                            <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-indigo-300 hover:text-indigo-600">
+                            <button type="button" data-property-id="${escapePropertyHTML(prop.id)}" title="Editar" aria-label="Editar ${escapePropertyHTML(prop.name)}" class="edit-property-button flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 hover:border-teal-300 hover:text-teal-600">
                                 Editar
                             </button>
                         ` : ''}
@@ -2973,7 +3106,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         : 'normal';
                     const priorityClasses = {
                         urgent: 'border-rose-200 bg-rose-50 text-rose-700',
-                        normal: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+                        normal: 'border-teal-200 bg-teal-50 text-teal-700',
                         low: 'border-slate-200 bg-slate-100 text-slate-600'
                     };
                     const author = authors.get(String(incident.created_by))
@@ -3038,7 +3171,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             const submitBtn = document.getElementById('prop-submit-btn');
             submitBtn.innerText = "Atualizar Alojamento";
-            submitBtn.className = "md:col-span-2 bg-amber-500 hover:bg-amber-600 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-amber-500/20";
+            submitBtn.className = "md:col-span-2 bg-amber-500 hover:bg-amber-600 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-sm shadow-amber-500/20";
             
             switchTab('sub-properties-add');
         }
@@ -3055,7 +3188,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             const submitBtn = document.getElementById('prop-submit-btn');
             submitBtn.innerText = i18n[currentLang].btn_save_property;
-            submitBtn.className = "md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30";
+            submitBtn.className = "md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-sm";
         }
 
         async function abrirFormularioPropriedade() {
@@ -3209,7 +3342,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     if (!button) return;
                     button.setAttribute('aria-pressed', String(active));
                     button.classList.toggle('bg-white', active);
-                    button.classList.toggle('text-indigo-700', active);
+                    button.classList.toggle('text-teal-700', active);
                     button.classList.toggle('shadow-sm', active);
                     button.classList.toggle('font-bold', active);
                     button.classList.toggle('text-slate-600', !active);
@@ -3235,7 +3368,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         function getGlobalHistoryPriorityClasses(priority) {
             if (priority === 'urgent') return 'border-rose-200 bg-rose-50 text-rose-700';
             if (priority === 'low') return 'border-slate-200 bg-slate-100 text-slate-600';
-            return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+            return 'border-teal-200 bg-teal-50 text-teal-700';
         }
 
         async function loadGlobalIncidentHistory() {
@@ -3377,7 +3510,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         || allPropertiesCache.find(property => String(property.id) === String(incident.property_id))?.name
                         || 'Alojamento';
                     return `
-                        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+                        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md">
                             <header class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
                                 <div class="min-w-0">
                                     <h3 class="truncate text-xs font-extrabold text-slate-900">${escapePropertyHTML(propertyName)}</h3>
@@ -3481,18 +3614,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             list.innerHTML = data.map(incident => `
                 <article class="rounded-xl border border-rose-200 bg-white p-2.5 sm:p-3">
                     <div class="incident-alert-mobile flex items-center gap-2">
-                        <span class="shrink-0 text-base" title="${incident.priority === 'urgent' ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}" aria-label="${incident.priority === 'urgent' ? i18n[currentLang].incident_priority_badge : getIncidentTypeLabel(incident.type)}">${incident.priority === 'urgent' ? '🚨' : incident.type === 'note' ? '📝' : '⚠️'}</span>
                         <p class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title="${escapePropertyHTML(`${incident.properties?.name || 'Alojamento'} · ${getIncidentTypeLabel(incident.type)}: ${incident.description}`)}">
                             ${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}: ${escapePropertyHTML(incident.description)}
                         </p>
-                        ${incident.photo_urls.length ? `<a href="${escapePropertyHTML(incident.photo_urls[0])}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">📷 ${incident.photo_urls.length > 1 ? incident.photo_urls.length : ''}</a>` : ''}
+                        ${incident.photo_urls.length ? `<a href="${escapePropertyHTML(incident.photo_urls[0])}" target="_blank" rel="noopener noreferrer" aria-label="${escapePropertyHTML(i18n[currentLang].incident_photo)}" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100">${i18n[currentLang].incident_photo}${incident.photo_urls.length > 1 ? ` (${incident.photo_urls.length})` : ''}</a>` : ''}
                         ${incident.queued ? `<span title="${escapePropertyHTML(i18n[currentLang].offline_photo_pending)}" class="max-w-24 shrink-0 truncate text-right text-[10px] font-semibold text-slate-500">${i18n[currentLang].offline_photo_pending}</span>` : `<button type="button" onclick="runButtonAction(this, () => resolvePropertyIncident('${escapePropertyHTML(incident.id)}'))" class="min-h-10 shrink-0 rounded-lg bg-rose-600 px-2.5 text-[11px] font-bold text-white hover:bg-rose-700">${currentLang === 'pt' ? 'Resolver' : 'Resolve'}</button>`}
                     </div>
                     <div class="incident-alert-desktop flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-extrabold text-slate-900">${escapePropertyHTML(incident.properties?.name || 'Alojamento')} · ${getIncidentTypeLabel(incident.type)}</p>
                             <span class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800">${i18n[currentLang].incident_pending}</span>
-                            ${incident.priority === 'urgent' ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800">🚨 ${i18n[currentLang].incident_priority_badge}</span>` : ''}
+                            ${incident.priority === 'urgent' ? `<span class="ml-1 mt-1 inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"> ${i18n[currentLang].incident_priority_badge}</span>` : ''}
                             <p class="mt-1 whitespace-pre-wrap break-words text-xs text-slate-700">${escapePropertyHTML(incident.description)}</p>
                             <p class="mt-2 text-[10px] text-slate-500">${i18n[currentLang].incident_date}: ${new Date(incident.created_at).toLocaleString(currentLang === 'pt' ? 'pt-PT' : 'en-GB')}</p>
                         </div>
@@ -3582,8 +3714,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     <div class="py-6 text-center space-y-3">
                         <p class="text-slate-400 text-xs">${i18n[currentLang].agenda_no_tasks}</p>
                         ${userRole === 'admin' ? `
-                            <button type="button" onclick="openAddCleaningModal('${selectedDate}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl text-xs border border-indigo-200 transition">
-                                ➕ ${i18n[currentLang].btn_add_cleaning} ${selectedDate}
+                            <button type="button" onclick="openAddCleaningModal('${selectedDate}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-4 py-2 rounded-xl text-xs border border-teal-200 transition">
+                                 ${i18n[currentLang].btn_add_cleaning} ${selectedDate}
                             </button>
                         ` : ''}
                     </div>
@@ -3592,17 +3724,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
 
             container.innerHTML = filtered.map(task => `
-                <div onclick='openTaskModal(${JSON.stringify(task)})' class="border border-slate-200/80 bg-slate-50 hover:bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer transition shadow-sm hover:border-indigo-300">
+                <div onclick='openTaskModal(${JSON.stringify(task)})' class="border border-slate-200/80 bg-slate-50 hover:bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer transition shadow-sm hover:border-teal-300">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs shrink-0">🧹</div>
                         <div>
                             <h4 class="font-bold text-slate-900 text-xs">${task.properties?.name || 'Alojamento'}</h4>
-                            <p class="text-[11px] text-slate-500">📍 ${task.properties?.address || 'Sem morada'}</p>
+                            <p class="text-[11px] text-slate-500"> ${task.properties?.address || 'Sem morada'}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${isTaskCompleted(task) ? 'bg-emerald-100 text-emerald-800' : isTaskInProgress(task) ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}">
-                            ${isTaskCompleted(task) ? '🟢 Concluída' : isTaskInProgress(task) ? '🔄 Em Andamento' : '⏳ Pendente'}
+                            ${isTaskCompleted(task) ? 'Concluída' : isTaskInProgress(task) ? 'Em Andamento' : 'Pendente'}
                         </span>
                     </div>
                 </div>
@@ -3668,7 +3799,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         function openDayTasksModal(dateStr) {
             selectedModalDate = dateStr;
             document.getElementById('day-modal-title').innerText = `Limpezas do Dia`;
-            document.getElementById('day-modal-date-subtitle').innerText = `📅 ${dateStr}`;
+            document.getElementById('day-modal-date-subtitle').innerText = ` ${dateStr}`;
 
             const container = document.getElementById('day-modal-tasks-container');
             const dayTasks = allTasksCache.filter(t => t.scheduled_date === dateStr);
@@ -3680,11 +3811,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     <div onclick='openTaskModal(${JSON.stringify(task)})' class="border border-slate-200 bg-slate-50 hover:bg-white p-3 rounded-xl flex justify-between items-center cursor-pointer transition">
                         <div>
                             <strong class="text-xs text-slate-900 block">${task.properties?.name || 'Alojamento'}</strong>
-                            <span class="text-[10px] text-slate-500">📍 ${task.properties?.address || '---'}</span>
-                            ${task.cleaner_notes ? `<span class="text-[10px] text-slate-600 block mt-1">📝 ${task.cleaner_notes}</span>` : ''}
+                            <span class="text-[10px] text-slate-500"> ${task.properties?.address || '---'}</span>
+                            ${task.cleaner_notes ? `<span class="text-[10px] text-slate-600 block mt-1"> ${task.cleaner_notes}</span>` : ''}
                         </div>
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isTaskCompleted(task) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">
-                            ${isTaskCompleted(task) ? '🟢 Concluída' : '⏳ Pendente'}
+                            ${isTaskCompleted(task) ? 'Concluída' : 'Pendente'}
                         </span>
                     </div>
                 `).join('');
@@ -3715,8 +3846,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             return `
                 <div class="space-y-3 pt-2 border-t border-slate-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <span class="block font-bold text-slate-700">📸 ${i18n[currentLang].task_photos_verification}</span>
-                        <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-indigo-50 px-3 py-2 text-center text-[11px] font-bold text-indigo-700 hover:bg-indigo-100">
+                    <span class="block font-bold text-slate-700"> ${i18n[currentLang].task_photos_verification}</span>
+                        <label for="task-photo-input-${taskId}" class="cursor-pointer rounded-xl bg-teal-50 px-3 py-2 text-center text-[11px] font-bold text-teal-700 hover:bg-teal-100">
                             ${i18n[currentLang].photo_upload}
                         </label>
                         <input id="task-photo-input-${taskId}" type="file" accept="image/*" capture="environment" class="sr-only" onchange="handleTaskPhotoUpload(event, '${taskId}', '${escapePropertyHTML(task.property_id)}')">
@@ -3873,14 +4004,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             document.getElementById('modal-content').innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
-                        <p><strong>📅 Data:</strong> ${task.scheduled_date}</p>
-                        <p><strong>📍 Morada:</strong> ${task.properties?.address || '---'}</p>
-                        <p class="text-emerald-700"><strong>🔑 Keybox:</strong> ${task.properties?.access_code || 'N/A'}</p>
-                        ${canViewFinancials() ? `<p class="text-indigo-700"><strong>💶 Taxa Base:</strong> ${task.properties?.hourly_rate || 10.00}€/h</p>` : ''}
+                        <p><strong> Data:</strong> ${task.scheduled_date}</p>
+                        <p><strong> Morada:</strong> ${task.properties?.address || '---'}</p>
+                        <p class="text-emerald-700"><strong> Keybox:</strong> ${task.properties?.access_code || 'N/A'}</p>
+                        ${canViewFinancials() ? `<p class="text-teal-700"><strong> Taxa Base:</strong> ${task.properties?.hourly_rate || 10.00}€/h</p>` : ''}
                     </div>
 
                     <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-amber-900">
-                        <strong>📋 Instruções Específicas:</strong>
+                        <strong> Instruções Específicas:</strong>
                         <p class="mt-1">${task.properties?.instructions || 'Nenhuma instrução definida.'}</p>
                     </div>
 
@@ -3894,9 +4025,9 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <label class="block font-bold text-slate-700">Estado da Tarefa</label>
                         <select id="modal-status-${task.id}" ${userRole !== 'admin' ? 'disabled' : ''} class="w-full border border-slate-200 p-2.5 rounded-xl font-bold bg-white text-xs disabled:bg-slate-100 disabled:text-slate-500">
-                            <option value="pending" ${isTaskPending(task) ? 'selected' : ''}>⏳ Pendente</option>
-                            <option value="in_progress" ${isTaskInProgress(task) ? 'selected' : ''}>🔄 Em Andamento</option>
-                            <option value="completed" ${isTaskCompleted(task) ? 'selected' : ''}>🟢 Concluída</option>
+                            <option value="pending" ${isTaskPending(task) ? 'selected' : ''}> Pendente</option>
+                            <option value="in_progress" ${isTaskInProgress(task) ? 'selected' : ''}> Em Andamento</option>
+                            <option value="completed" ${isTaskCompleted(task) ? 'selected' : ''}> Concluída</option>
                         </select>
                     </div>
 
@@ -3938,14 +4069,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             if (isTaskInProgress(task) && task.started_at) {
                 return `
-                    <div class="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
-                        <p class="text-[11px] font-semibold text-indigo-800">${i18n[currentLang].time_started_at}: ${new Date(task.started_at).toLocaleTimeString(currentLang === 'pt' ? 'pt-PT' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <div class="space-y-2 rounded-2xl border border-teal-100 bg-teal-50 p-3">
+                        <p class="text-[11px] font-semibold text-teal-800">${i18n[currentLang].time_started_at}: ${new Date(task.started_at).toLocaleTimeString(currentLang === 'pt' ? 'pt-PT' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                         <button type="button" onclick="runButtonAction(this, () => requestCleaningCompletion('${escapePropertyHTML(task.id)}'))" class="min-h-14 w-full rounded-xl bg-emerald-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-emerald-700">${i18n[currentLang].btn_complete_cleaning}</button>
                     </div>
                 `;
             }
 
-            return `<button type="button" onclick="runButtonAction(this, () => startCleaningTask('${escapePropertyHTML(task.id)}'))" class="min-h-14 w-full rounded-xl bg-indigo-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-indigo-700">${i18n[currentLang].btn_start_cleaning}</button>`;
+            return `<button type="button" onclick="runButtonAction(this, () => startCleaningTask('${escapePropertyHTML(task.id)}'))" class="min-h-14 w-full rounded-xl bg-teal-600 px-4 py-4 text-sm font-extrabold text-white shadow-md transition hover:bg-teal-700">${i18n[currentLang].btn_start_cleaning}</button>`;
         }
 
         function formatTaskDuration(totalMinutes) {
@@ -4501,12 +4632,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const access = task.properties?.access_code || 'Ver app';
             const notes = task.cleaner_notes || task.properties?.instructions || 'Sem notas adicionais';
 
-            const message = `🧹 *Host a Cleaner - Tarefa de Limpeza*\n\n` +
-                            `🏠 *Imóvel:* ${propName}\n` +
-                            `📅 *Data:* ${task.scheduled_date}\n` +
-                            `📍 *Morada:* ${address}\n` +
-                            `🔑 *Keybox:* ${access}\n\n` +
-                            `📋 *Instruções:* ${notes}\n\n` +
+            const message = `*Host a Cleaner - Tarefa de Limpeza*\n\n` +
+                            `*Imóvel:* ${propName}\n` +
+                            `*Data:* ${task.scheduled_date}\n` +
+                            `*Morada:* ${address}\n` +
+                            `*Keybox:* ${access}\n\n` +
+                            `*Instruções:* ${notes}\n\n` +
                             `Por favor confirma a receção desta mensagem!`;
 
             const encodedMsg = encodeURIComponent(message);
@@ -4724,20 +4855,20 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
                                 <strong class="text-slate-100">${escapePropertyHTML(task.properties?.name || 'Alojamento')}</strong>
-                                <span class="text-slate-400">📅 ${escapePropertyHTML(task.scheduled_date)}</span>
+                                <span class="text-slate-400"> ${escapePropertyHTML(task.scheduled_date)}</span>
                             </div>
-                            ${task.cleaner_notes ? `<p class="text-slate-400">💬 "${escapePropertyHTML(task.cleaner_notes)}"</p>` : ''}
+                            ${task.cleaner_notes ? `<p class="text-slate-400"> "${escapePropertyHTML(task.cleaner_notes)}"</p>` : ''}
                         </div>
                         <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 shrink-0">
                             <span class="font-bold text-slate-200">${hours}h × ${rate.toFixed(2)}€ = ${taskTotal.toFixed(2)}€</span>
                             
                             ${userRole === 'admin' ? `
                                 <button onclick="runButtonAction(this, () => togglePaymentStatus('${task.id}', '${task.payment_status || 'pending'}'))" class="px-3 py-1.5 rounded-xl font-bold transition ${isPaid ? 'bg-emerald-800 text-emerald-100 shadow-sm' : 'bg-amber-800 text-amber-100 shadow-sm hover:bg-amber-700'}">
-                                    ${isPaid ? `🟢 ${i18n[currentLang].finance_paid}` : `⏳ ${i18n[currentLang].finance_pending}`}
+                                    ${isPaid ? ` ${i18n[currentLang].finance_paid}` : ` ${i18n[currentLang].finance_pending}`}
                                 </button>
                             ` : `
                                 <span class="px-3 py-1.5 rounded-xl font-bold ${isPaid ? 'bg-emerald-950 text-emerald-200' : 'bg-amber-950 text-amber-200'}">
-                                    ${isPaid ? `🟢 ${i18n[currentLang].finance_paid}` : `⏳ ${i18n[currentLang].finance_pending}`}
+                                    ${isPaid ? ` ${i18n[currentLang].finance_paid}` : ` ${i18n[currentLang].finance_pending}`}
                                 </span>
                             `}
                         </div>
@@ -4858,15 +4989,15 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 <div class="space-y-5">
                     <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-base font-black text-indigo-700">${escapePropertyHTML(initials)}</div>
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-base font-black text-teal-700">${escapePropertyHTML(initials)}</div>
                             <div>
                                 <h4 class="text-base font-extrabold text-slate-900">${escapePropertyHTML(member.name)}</h4>
                                 <p class="text-[11px] text-slate-500">${member.totalCleanings} ${currentLang === 'en' ? 'cleanings' : 'limpezas'} neste mês</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <div class="rounded-2xl bg-indigo-600 px-3 py-2 text-left text-white">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-100">${currentLang === 'en' ? 'Hours' : 'Horas'}</p>
+                            <div class="rounded-2xl bg-teal-600 px-3 py-2 text-left text-white">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-100">${currentLang === 'en' ? 'Hours' : 'Horas'}</p>
                                 <p class="text-lg font-black">${formatEmployeeHoursHours(member.totalHours)}</p>
                             </div>
                             <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left">
@@ -4877,7 +5008,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     </div>
 
                     <div class="flex justify-end">
-                        <button type="button" data-export-employee-detail="${escapePropertyHTML(String(member.id))}" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">
+                        <button type="button" data-export-employee-detail="${escapePropertyHTML(String(member.id))}" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-600">
                             Exportar Extrato (CSV)
                         </button>
                     </div>
@@ -4985,11 +5116,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             summaryContainer.innerHTML = `
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                     <div>
-                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">${currentLang === 'en' ? 'Current month' : 'Mês atual'}</p>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500">${currentLang === 'en' ? 'Current month' : 'Mês atual'}</p>
                         <h3 class="mt-1 text-lg font-extrabold text-slate-900">${monthLabel}</h3>
                     </div>
-                    <div class="rounded-2xl bg-indigo-600 px-4 py-3 text-left text-white shadow-md xl:text-right">
-                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-100">${currentLang === 'en' ? 'Team total' : 'Total da equipa'}</p>
+                    <div class="rounded-2xl bg-teal-600 px-4 py-3 text-left text-white shadow-md xl:text-right">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-100">${currentLang === 'en' ? 'Team total' : 'Total da equipa'}</p>
                         <p class="mt-1 text-2xl font-black">${formatEmployeeHoursHours(totalTeamHours)}</p>
                     </div>
                 </div>
@@ -5037,7 +5168,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     <article class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex items-center gap-3">
-                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-sm font-black text-indigo-700">${escapePropertyHTML(initials)}</div>
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-sm font-black text-teal-700">${escapePropertyHTML(initials)}</div>
                                 <div>
                                     <h4 class="text-sm font-bold text-slate-900">${escapePropertyHTML(member.name)}</h4>
                                     <p class="text-[11px] text-slate-500">${member.totalCleanings} ${currentLang === 'en' ? 'cleanings' : 'limpezas'}</p>
@@ -5058,7 +5189,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                             `).join('')}
                         </div>
 
-                        <button type="button" data-employee-detail-id="${escapePropertyHTML(String(member.id))}" class="employee-hours-detail-btn mt-4 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-100">
+                        <button type="button" data-employee-detail-id="${escapePropertyHTML(String(member.id))}" class="employee-hours-detail-btn mt-4 w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-[11px] font-bold text-teal-700 transition hover:bg-teal-100">
                             ${currentLang === 'en' ? 'View full detail' : 'Ver detalhe completo'}
                         </button>
                     </article>
@@ -5145,7 +5276,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 <article class="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <strong class="text-slate-900">${escapePropertyHTML(propertyNames.get(String(entry.property_id)) || i18n[currentLang].time_entry_property)}</strong>
-                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">${escapePropertyHTML(entry.hours)}h</span>
+                        <span class="rounded-full bg-teal-50 px-2.5 py-1 font-bold text-teal-700">${escapePropertyHTML(entry.hours)}h</span>
                     </div>
                     <p class="mt-1 text-[11px] text-slate-500">${escapePropertyHTML(entry.work_date)}${isAdmin && memberNames.get(String(entry.user_id)) ? ` · ${escapePropertyHTML(memberNames.get(String(entry.user_id)))}` : ''}</p>
                     <p class="mt-2 whitespace-pre-wrap text-slate-700">${escapePropertyHTML(entry.description)}</p>
@@ -5282,7 +5413,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 });
 
                 if (financialOverviewChart) financialOverviewChart.destroy();
-                const lightTheme = document.documentElement.dataset.theme === 'light';
+                const lightTheme = document.documentElement.dataset.theme !== 'dark';
                 financialOverviewChart = new Chart(canvas, {
                     type: 'bar',
                     data: {
@@ -5296,7 +5427,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         datasets: [
                             { label: 'Airbnb', data: totals.airbnb, backgroundColor: '#f87171', stack: 'income' },
                             { label: 'Booking.com', data: totals.booking, backgroundColor: '#60a5fa', stack: 'income' },
-                            { label: currentLang === 'pt' ? 'Outros ganhos' : 'Other income', data: totals.otherIncome, backgroundColor: '#a78bfa', stack: 'income' },
+                            { label: currentLang === 'pt' ? 'Outros ganhos' : 'Other income', data: totals.otherIncome, backgroundColor: '#0f766e', stack: 'income' },
                             { label: currentLang === 'pt' ? 'Despesas' : 'Expenses', data: totals.expenses, backgroundColor: '#fbbf24', stack: 'expenses' }
                         ]
                     },
@@ -5627,7 +5758,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         <p class="text-[10px] font-bold uppercase tracking-wide text-rose-300">${i18n[currentLang].finance_metric_expenses}</p>
                         <p class="mt-2 text-xl font-extrabold text-rose-100">${formatFinancialAmount(totals.expenses)}</p>
                     </article>
-                    <article class="rounded-2xl border border-emerald-400/50 bg-emerald-900/70 p-4 shadow-lg shadow-emerald-950/30">
+                    <article class="rounded-2xl border border-emerald-400/50 bg-emerald-900/70 p-4 shadow-sm shadow-emerald-950/30">
                         <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-200">${i18n[currentLang].reports_net_total}</p>
                         <p class="mt-2 text-xl font-extrabold text-white">${formatFinancialAmount(totals.income - totals.expenses)}</p>
                     </article>
@@ -6255,14 +6386,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     return `
                         <article class="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex min-w-0 items-center gap-3">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[10px] font-extrabold uppercase text-indigo-300">${report.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'CSV'}</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-[10px] font-extrabold uppercase text-teal-300">${report.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'CSV'}</span>
                                 <div class="min-w-0">
                                     <p class="truncate text-xs font-bold text-white">${escapePropertyHTML(report.file_name)}</p>
                                     <p class="mt-1 truncate text-[10px] text-slate-400">${escapePropertyHTML(report.platform)} · ${escapePropertyHTML(propertyLabel)} · ${uploadedAt}</p>
                                 </div>
                             </div>
                             <div class="flex shrink-0 gap-2">
-                                <button type="button" data-hosting-download="${escapePropertyHTML(report.id)}" class="rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-200 transition hover:border-indigo-400 hover:text-white">${i18n[currentLang].hosting_download}</button>
+                                <button type="button" data-hosting-download="${escapePropertyHTML(report.id)}" class="rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-200 transition hover:border-teal-400 hover:text-white">${i18n[currentLang].hosting_download}</button>
                                 <button type="button" data-hosting-delete="${escapePropertyHTML(report.id)}" class="rounded-lg border border-rose-900 px-3 py-2 text-[10px] font-bold text-rose-300 transition hover:bg-rose-950">${i18n[currentLang].hosting_delete}</button>
                             </div>
                         </article>
@@ -6468,7 +6599,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         function modeButtonClass(active) {
             return active
-                ? 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm font-bold'
+                ? 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-teal-600 shadow-sm font-bold'
                 : 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500 font-bold';
         }
 
@@ -6513,12 +6644,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const isToday = formattedDate === getLocalDateString();
 
                     grid.innerHTML += `
-                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-300' : 'border-slate-200/80 bg-white'} p-1.5 rounded-xl min-h-[75px] md:min-h-[100px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1">
-                            <span class="text-xs font-bold ${isToday ? 'text-indigo-700' : 'text-slate-700'} block text-right pr-0.5">${day}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
+                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-300' : 'border-slate-200/80 bg-white'} p-1.5 rounded-xl min-h-[75px] md:min-h-[100px] flex flex-col justify-start hover:border-teal-400 hover:shadow-sm cursor-pointer transition space-y-1">
+                            <span class="text-xs font-bold ${isToday ? 'text-teal-700' : 'text-slate-700'} block text-right pr-0.5">${day}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
                             <div class="space-y-1 overflow-y-auto max-h-[50px] md:max-h-[70px]">
                                 ${dayTasks.map(t => `
-                                    <div class="text-[9px] bg-indigo-50 text-indigo-700 p-1 rounded-md font-bold truncate border border-indigo-100/60">
-                                        🧹 ${t.properties?.name || 'Limpeza'}
+                                    <div class="text-[9px] bg-teal-50 text-teal-700 p-1 rounded-md font-bold truncate border border-teal-100/60">
+                                         ${t.properties?.name || 'Limpeza'}
                                     </div>
                                 `).join('')}
                             </div>
@@ -6544,14 +6675,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const isToday = formattedDate === getLocalDateString();
 
                     grid.innerHTML += `
-                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-300' : 'border-slate-200/80 bg-white'} p-2 rounded-2xl min-h-[180px] md:min-h-[220px] flex flex-col justify-start hover:border-indigo-400 hover:shadow-sm cursor-pointer transition space-y-1.5">
+                        <button type="button" onclick="selectAgendaDate('${formattedDate}')" aria-label="${formattedDate}" class="text-left border ${isToday ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-300' : 'border-slate-200/80 bg-white'} p-2 rounded-2xl min-h-[180px] md:min-h-[220px] flex flex-col justify-start hover:border-teal-400 hover:shadow-sm cursor-pointer transition space-y-1.5">
                             <div class="text-center border-b border-slate-100 pb-1">
-                                <span class="text-xs font-extrabold ${isToday ? 'text-indigo-700' : 'text-slate-800'}">${loopDate.getDate()}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
+                                <span class="text-xs font-extrabold ${isToday ? 'text-teal-700' : 'text-slate-800'}">${loopDate.getDate()}${isToday ? ` · ${i18n[currentLang].agenda_today}` : ''}</span>
                             </div>
                             <div class="space-y-1 overflow-y-auto max-h-[140px] md:max-h-[170px] pr-0.5">
                                 ${dayTasks.map(t => `
-                                    <div class="text-[10px] bg-indigo-50 text-indigo-700 p-1.5 rounded-lg font-bold truncate border border-indigo-100/80 shadow-2xs">
-                                        🧹 ${t.properties?.name || 'Limpeza'}
+                                    <div class="text-[10px] bg-teal-50 text-teal-700 p-1.5 rounded-lg font-bold truncate border border-teal-100/80 shadow-2xs">
+                                         ${t.properties?.name || 'Limpeza'}
                                     </div>
                                 `).join('')}
                             </div>
