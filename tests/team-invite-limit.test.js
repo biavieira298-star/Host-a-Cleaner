@@ -94,6 +94,14 @@ test('a full free plan blocks a second cleaner, and an invalid form does not que
     assert.equal(invalid.toasts[0][1], 'error');
 });
 
+test('Business can add properties beyond the former 25-property limit', async () => {
+    const env = setup({ profile: { subscription_plan: 'business', max_properties: null }, count: 25 });
+    assert.equal(await env.context.checkSubscriptionLimit('properties'), true);
+    assert.equal(env.calls.some(call => call[0] === 'from' && call[1] === 'properties'), false);
+    const pro = setup({ profile: { subscription_plan: 'pro', max_properties: 10 }, count: 10 });
+    assert.equal(await pro.context.checkSubscriptionLimit('properties'), false);
+});
+
 test('invited cleaner signup never checks a host subscription', async () => {
     const signup = extract(app, 'async function handleTeamInviteSignup(', 'async function handleForgotPassword(');
     assert.doesNotMatch(signup, /checkSubscriptionLimit|\.from\(['"]profiles['"]\)/);
