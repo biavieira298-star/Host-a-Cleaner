@@ -7,15 +7,15 @@
 
     <!-- Configurações para PWA e Telemóvel -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#f0f4f8">
+    <meta name="theme-color" content="#f8fafc">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Host a Cleaner">
     <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
     <link rel="apple-touch-icon" href="images/icon-192.png">
     <style>
-        html, body { min-height: 100%; background: #f0f4f8; }
-        body { margin: 0; background-color: #f0f4f8; }
+        html, body { min-height: 100%; background: #f8fafc; }
+        body { margin: 0; background-color: #f8fafc; }
         .hidden { display: none !important; }
         html.app-loading #main-app-container,
         html.app-loading #set-password-container { visibility: hidden; }
@@ -26,7 +26,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #f0f4f8;
+            background: #f8fafc;
         }
         html:not(.app-loading) #app-loading-screen { display: none; }
         #app-loading-screen img { width: 64px; height: 64px; }
@@ -69,91 +69,246 @@
     </div>
 
     <div id="set-password-container" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/70 p-4">
-        <div class="w-full max-w-md space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div class="w-full max-w-md space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h1 class="text-lg font-bold text-slate-900">Criar palavra-passe</h1>
             <label for="input-new-password" class="block text-xs font-bold text-slate-700">Nova palavra-passe</label>
-            <input type="password" id="input-new-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <button type="button" id="btn-save-password" class="w-full rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white transition hover:bg-indigo-700">Guardar e Entrar</button>
+            <input type="password" id="input-new-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <button type="button" id="btn-save-password" class="w-full rounded-xl bg-teal-600 p-3 text-sm font-bold text-white transition hover:bg-teal-700">Guardar e Entrar</button>
         </div>
     </div>
 
     <div id="main-app-container">
 
+    <div id="landing-page" class="landing hidden">
+        <header class="landing-header">
+            <div class="landing-container landing-nav">
+                <a class="landing-brand" href="#inicio" aria-label="Host a Cleaner">
+                    <span class="landing-brand-mark" aria-hidden="true">H</span>
+                    <span>Host a Cleaner</span>
+                </a>
+                <nav class="landing-nav-links" aria-label="Navegação principal" data-i18n-aria-label="landing_navigation">
+                    <a href="#como-funciona" data-i18n="landing_how_nav">Como funciona</a>
+                    <a href="#funcionalidades" data-i18n="landing_features_nav">Funcionalidades</a>
+                    <a href="#precos" data-i18n="landing_prices_nav">Preços</a>
+                </nav>
+                <div class="landing-nav-actions">
+                    <button type="button" class="landing-button landing-button-plain" onclick="openLandingAuth('login')" data-i18n="landing_login">Entrar</button>
+                    <button type="button" class="landing-button landing-button-primary" onclick="openLandingAuth('signup')" data-i18n="landing_start">Começar Grátis</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section id="inicio" class="landing-hero">
+                <div class="landing-container landing-hero-grid">
+                    <div class="landing-hero-copy">
+                        <p class="landing-eyebrow" data-i18n="landing_eyebrow">Gestão de limpezas para alojamento local</p>
+                        <h1 data-i18n="landing_hero_title">Acabe com a confusão do WhatsApp na gestão das limpezas do seu Alojamento Local.</h1>
+                        <p class="landing-hero-description" data-i18n="landing_hero_description">Sincronize calendários iCal (Airbnb e Booking), atribua turnos à sua equipa e receba fotos de verificação e ocorrências num único painel.</p>
+                        <button type="button" class="landing-button landing-button-primary landing-hero-button" onclick="openLandingAuth('signup')" data-i18n="landing_hero_cta">Criar conta gratuita</button>
+                        <p class="landing-hero-note" data-i18n="landing_no_card">Sem cartão de crédito necessário para testar.</p>
+                    </div>
+                    <div class="landing-preview-wrap">
+                        <div class="landing-preview">
+                            <div class="landing-preview-top">
+                                <span class="landing-preview-logo" aria-hidden="true">H</span>
+                                <span>Host a Cleaner</span>
+                                <span class="landing-preview-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                            </div>
+                            <div class="landing-preview-content">
+                                <div class="landing-preview-heading">
+                                    <div><p data-i18n="landing_preview_date">Exemplo de um dia de trabalho</p><h2 data-i18n="landing_preview_title">Agenda diária</h2></div>
+                                    <span class="landing-preview-calendar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg></span>
+                                </div>
+                                <div class="landing-preview-task">
+                                    <div><strong data-i18n="landing_preview_task1">Apartamento da Baixa</strong><span data-i18n="landing_preview_checkout">Após check-out</span></div>
+                                    <span class="landing-status landing-status-progress" data-i18n="landing_preview_progress">Em curso</span>
+                                </div>
+                                <div class="landing-preview-task">
+                                    <div><strong data-i18n="landing_preview_task2">Casa do Pátio</strong><span data-i18n="landing_preview_checkout">Após check-out</span></div>
+                                    <span class="landing-status landing-status-pending" data-i18n="landing_preview_pending">Pendente</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="landing-preview-caption" data-i18n="landing_preview_caption">Exemplo ilustrativo</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="como-funciona" class="landing-section">
+                <div class="landing-container">
+                    <div class="landing-section-heading">
+                        <p class="landing-eyebrow" data-i18n="landing_how_eyebrow">Como funciona</p>
+                        <h2 data-i18n="landing_how_title">Da reserva à limpeza, sem perder o fio.</h2>
+                        <p data-i18n="landing_how_description">Organize o trabalho da equipa e acompanhe cada alojamento num só lugar.</p>
+                    </div>
+                    <div class="landing-steps">
+                        <article class="landing-step">
+                            <div class="landing-step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18m6 5h6"/></svg></div>
+                            <span class="landing-step-number">01</span>
+                            <h3 data-i18n="landing_step1_title">Importe os seus calendários</h3>
+                            <p data-i18n="landing_step1_text">Ligue os links iCal das plataformas de reserva para gerar limpezas automaticamente após cada check-out.</p>
+                        </article>
+                        <article class="landing-step">
+                            <div class="landing-step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></div>
+                            <span class="landing-step-number">02</span>
+                            <h3 data-i18n="landing_step2_title">Coordene a equipa no terreno</h3>
+                            <p data-i18n="landing_step2_text">Cada membro vê no telemóvel as tarefas do dia, códigos de keybox e instruções específicas do imóvel.</p>
+                        </article>
+                        <article class="landing-step">
+                            <div class="landing-step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="3"/></svg></div>
+                            <span class="landing-step-number">03</span>
+                            <h3 data-i18n="landing_step3_title">Valide com fotos e registe avarias</h3>
+                            <p data-i18n="landing_step3_text">Receba fotografias de verificação e acompanhe ocorrências de manutenção no painel, sem mensagens perdidas.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section id="funcionalidades" class="landing-section landing-features-section">
+                <div class="landing-container landing-features-layout">
+                    <div>
+                        <p class="landing-eyebrow" data-i18n="landing_features_eyebrow">Funcionalidades</p>
+                        <h2 data-i18n="landing_features_title">O essencial para acompanhar a operação.</h2>
+                        <p class="landing-features-note" data-i18n="landing_features_note">Algumas funcionalidades estão disponíveis apenas nos planos pagos.</p>
+                    </div>
+                    <ul class="landing-features-list">
+                        <li data-i18n="landing_feature1">Agenda diária, semanal e mensal</li>
+                        <li data-i18n="landing_feature2">Histórico de ocorrências por imóvel</li>
+                        <li data-i18n="landing_feature3">Acesso para a equipa de limpeza</li>
+                        <li data-i18n="landing_feature4">Registo de horas e relatórios</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="precos" class="landing-section">
+                <div class="landing-container">
+                    <div class="landing-section-heading">
+                        <p class="landing-eyebrow" data-i18n="landing_pricing_eyebrow">Preços</p>
+                        <h2 data-i18n="landing_pricing_title">Um plano para cada dimensão de operação.</h2>
+                        <p data-i18n="landing_pricing_description">Comece gratuitamente. Depois de criar conta, pode subscrever um plano pago nas definições.</p>
+                    </div>
+                    <div class="landing-pricing-grid">
+                        <article class="landing-price-card">
+                            <h3 data-i18n="landing_free">Gratuito</h3>
+                            <p class="landing-price">0€ <span data-i18n="landing_month">/ mês</span></p>
+                            <ul><li data-i18n="landing_free_properties">Até 1 imóvel</li><li data-i18n="landing_free_cleaners">1 cleaner</li><li data-i18n="landing_free_agenda">Agenda diária de limpezas</li></ul>
+                            <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_hero_cta">Criar conta gratuita</button>
+                        </article>
+                        <article class="landing-price-card">
+                            <h3>Starter</h3>
+                            <p class="landing-price">9,99€ <span data-i18n="landing_month">/ mês</span></p>
+                            <ul><li data-i18n="landing_starter_properties">Até 4 imóveis</li><li data-i18n="landing_starter_cleaners">Até 3 cleaners</li><li data-i18n="landing_starter_features">Ocorrências com foto e iCal</li></ul>
+                            <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
+                        </article>
+                        <article class="landing-price-card landing-price-featured">
+                            <h3>Pro</h3>
+                            <p class="landing-price">19,99€ <span data-i18n="landing_month">/ mês</span></p>
+                            <ul><li data-i18n="landing_pro_properties">Até 10 imóveis</li><li data-i18n="landing_unlimited_cleaners">Cleaners ilimitados</li><li data-i18n="landing_pro_features">Relatórios financeiros e exportação</li></ul>
+                            <button type="button" class="landing-button landing-button-primary" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
+                        </article>
+                        <article class="landing-price-card">
+                            <h3>Business</h3>
+                            <p class="landing-price">39,99€ <span data-i18n="landing_month">/ mês</span></p>
+                            <ul><li data-i18n="landing_business_properties">Até 25 imóveis</li><li data-i18n="landing_unlimited_cleaners">Cleaners ilimitados</li><li data-i18n="landing_business_features">Suporte prioritário</li></ul>
+                            <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="landing-footer">
+            <div class="landing-container landing-footer-content">
+                <span class="landing-footer-brand">Host a Cleaner</span>
+                <a href="mailto:suporte@hostacleaner.com">suporte@hostacleaner.com</a>
+                <label><span data-i18n="landing_language">Idioma</span>
+                    <select id="lang-select-landing" onchange="changeLanguage(this.value)">
+                        <option value="pt">PT</option><option value="en">EN</option>
+                    </select>
+                </label>
+            </div>
+        </footer>
+    </div>
+
     <!-- Ecrã de Autenticação -->
-    <div id="section-login" class="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative">
+    <div id="section-login" class="min-h-screen hidden flex flex-col items-center justify-center p-4 bg-slate-50 relative">
 
         <!-- Seletor de Idioma no Login -->
         <div class="absolute top-4 right-4 bg-white/85 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-md border border-white/40 flex items-center gap-2 text-xs font-bold">
-            <span>🌐</span>
-            <select id="lang-select-login" onchange="changeLanguage(this.value)" class="bg-transparent font-bold focus:outline-none cursor-pointer">
+            <select id="lang-select-login" onchange="changeLanguage(this.value)" aria-label="Idioma" class="bg-transparent font-bold focus:outline-none cursor-pointer">
                 <option value="pt">PT (Português)</option>
                 <option value="en">EN (English)</option>
             </select>
         </div>
 
-        <div class="max-w-md w-full bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl space-y-6 border border-white/25">
+        <div class="max-w-md w-full bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-sm space-y-6 border border-white/25">
+            <button type="button" onclick="showLandingScreen()" class="text-xs font-semibold text-slate-500 hover:text-teal-700" data-i18n="landing_back">Voltar à página inicial</button>
             <div class="text-center space-y-2">
-                <div class="w-14 h-14 rounded-2xl gradient-bg text-white flex items-center justify-center font-extrabold text-2xl mx-auto shadow-lg shadow-indigo-500/30">✨</div>
+                <div class="w-14 h-14 rounded-2xl gradient-bg text-white flex items-center justify-center font-extrabold text-2xl mx-auto shadow-sm">H</div>
                 <h2 id="auth-title" class="text-xl font-bold text-slate-900">Host a Cleaner</h2>
-                <p id="auth-subtitle" data-i18n="login_subtitle" class="text-xs text-slate-500 font-medium">Gestão inteligente e automatizada de alojamentos</p>
+                <p id="auth-subtitle" data-i18n="login_subtitle" class="text-xs text-slate-500 font-medium">Gestão de alojamentos e equipas de limpeza.</p>
             </div>
 
             <div class="flex bg-slate-100 p-1.5 rounded-2xl text-xs font-bold">
-                <button type="button" onclick="setAuthMode('login')" id="btn-mode-login" data-i18n="btn_login_tab" class="flex-1 py-2.5 rounded-xl bg-white text-indigo-600 shadow-sm transition">Fazer Login</button>
+                <button type="button" onclick="setAuthMode('login')" id="btn-mode-login" data-i18n="btn_login_tab" class="flex-1 py-2.5 rounded-xl bg-white text-teal-600 shadow-sm transition">Fazer Login</button>
                 <button type="button" onclick="setAuthMode('signup')" id="btn-mode-signup" data-i18n="btn_signup_tab" class="flex-1 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 transition">Criar Conta</button>
             </div>
 
             <form id="auth-form" onsubmit="runFormAction(event, () => handleAuthSubmit(event))" class="space-y-4">
                 <div id="auth-name-field" class="hidden">
                     <label for="auth-name" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Nome completo</label>
-                    <input type="text" id="auth-name" autocomplete="name" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <input type="text" id="auth-name" autocomplete="name" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
                 </div>
                 <div>
                     <label data-i18n="label_email" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email</label>
-                    <input type="email" id="auth-email" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <input type="email" id="auth-email" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
                 </div>
                 <div>
                     <label data-i18n="label_password" class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Palavra-passe</label>
                     <div class="relative">
-                        <input type="password" id="auth-password" required minlength="6" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                        <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon-login')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none text-sm">
-                            <span id="eye-icon-login">👁️</span>
+                        <input type="password" id="auth-password" required minlength="6" class="w-full border border-slate-200 bg-slate-50 p-3 pr-10 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
+                        <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon-login')" aria-label="Mostrar palavra-passe" data-i18n-aria-label="password_visibility" aria-pressed="false" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 focus:outline-none text-sm">
+                            <span id="eye-icon-login">
+                                <svg class="password-hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="password-visible hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A11 11 0 0 1 12 6c6.5 0 10 6 10 6a13 13 0 0 1-3 3.4M6.5 6.5A13 13 0 0 0 2 12s3.5 6 10 6c1.8 0 3.3-.5 4.7-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                            </span>
                         </button>
                     </div>
                 </div>
-                <button type="submit" id="auth-submit-btn" data-i18n="btn_submit_login" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Entrar na Plataforma</button>
+                <button type="submit" id="auth-submit-btn" data-i18n="btn_submit_login" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3 rounded-xl text-xs transition shadow-sm">Entrar na Plataforma</button>
                 <p id="auth-message" role="status" aria-live="polite" class="hidden text-center text-xs font-semibold"></p>
             </form>
 
             <div class="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
-                <button type="button" onclick="runButtonAction(this, () => handleForgotPassword())" data-i18n="btn_forgot_pwd" class="text-slate-500 hover:text-indigo-600 font-semibold">Esqueceu-se da palavra-passe?</button>
+                <button type="button" onclick="runButtonAction(this, () => handleForgotPassword())" data-i18n="btn_forgot_pwd" class="text-slate-500 hover:text-teal-600 font-semibold">Esqueceu-se da palavra-passe?</button>
             </div>
             <footer class="text-center">
-                <a href="mailto:suporte@hostacleaner.com" data-i18n="support_contact" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-indigo-600 hover:decoration-indigo-400">Suporte: suporte@hostacleaner.com</a>
+                <a href="mailto:suporte@hostacleaner.com" data-i18n="support_contact" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-600 hover:decoration-teal-400">Suporte: suporte@hostacleaner.com</a>
             </footer>
         </div>
     </div>
 
-    <div id="team-invite-signup" class="min-h-screen hidden flex items-center justify-center p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-        <form onsubmit="runFormAction(event, () => handleTeamInviteSignup(event))" class="w-full max-w-md space-y-5 rounded-3xl border border-white/25 bg-white/95 p-8 shadow-2xl">
+    <div id="team-invite-signup" class="min-h-screen hidden flex items-center justify-center p-4 bg-slate-50">
+        <form onsubmit="runFormAction(event, () => handleTeamInviteSignup(event))" class="w-full max-w-md space-y-5 rounded-3xl border border-white/25 bg-white/95 p-8 shadow-sm">
             <div class="text-center space-y-2">
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl gradient-bg text-2xl font-extrabold text-white">✨</div>
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl gradient-bg text-2xl font-extrabold text-white">H</div>
                 <h1 data-i18n="invite_signup_title" class="text-xl font-bold text-slate-900">Ativar acesso à equipa</h1>
-                <p data-i18n="invite_signup_subtitle" class="text-xs text-slate-500">Defina o email e a palavra-passe para entrar na PWA de Limpezas.</p>
+                <p data-i18n="invite_signup_subtitle" class="text-xs text-slate-500">Defina o email e a palavra-passe para aceder à sua conta.</p>
             </div>
             <div>
                 <label for="invite-signup-email" data-i18n="label_email" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Email</label>
-                <input type="email" id="invite-signup-email" required autocomplete="email" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="email" id="invite-signup-email" required autocomplete="email" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
             </div>
             <div>
                 <label for="invite-signup-password" data-i18n="label_password" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Palavra-passe</label>
-                <input type="password" id="invite-signup-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="invite-signup-password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
             </div>
             <div>
                 <label for="invite-signup-password-confirm" data-i18n="invite_signup_confirm_password" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Confirmar palavra-passe</label>
-                <input type="password" id="invite-signup-password-confirm" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="invite-signup-password-confirm" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
             </div>
-            <button type="submit" id="btn-team-invite-signup" data-i18n="invite_signup_submit" class="w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Criar conta e entrar</button>
+            <button type="submit" id="btn-team-invite-signup" data-i18n="invite_signup_submit" class="w-full rounded-xl bg-teal-600 p-3 text-xs font-bold text-white transition hover:bg-teal-700">Criar conta e entrar</button>
             <p id="team-invite-signup-message" role="status" class="hidden text-center text-xs font-semibold text-slate-600"></p>
         </form>
     </div>
@@ -184,19 +339,19 @@
         <div id="mobile-backdrop" onclick="toggleMobileDrawer()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
 
         <!-- Sidebar / Menu Lateral -->
-        <aside id="sidebar-menu" class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 -translate-x-full md:translate-x-0 md:relative md:inset-auto md:w-72 md:shadow-xl border-r border-slate-800">
+        <aside id="sidebar-menu" class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white p-6 flex flex-col justify-between shadow-sm transition-transform duration-300 -translate-x-full md:translate-x-0 md:relative md:inset-auto md:w-72 md:shadow-sm border-r border-slate-800">
 
-            <button type="button" onclick="toggleDesktopSidebar()" id="sidebar-toggle-btn" class="hidden md:flex absolute -right-3.5 top-8 w-7 h-7 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full items-center justify-center text-xs shadow-md border-2 border-slate-900 transition z-40" title="Expandir/Recolher Menu">
+            <button type="button" onclick="toggleDesktopSidebar()" id="sidebar-toggle-btn" class="hidden md:flex absolute -right-3.5 top-8 w-7 h-7 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-full items-center justify-center text-xs shadow-md border-2 border-slate-900 transition z-40" title="Expandir/Recolher Menu">
                 ◀
             </button>
 
             <div class="space-y-8 overflow-y-auto">
                 <div class="flex items-center justify-between md:justify-start gap-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/40 shrink-0">H</div>
+                        <div class="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center font-black text-xl shadow-sm shrink-0">H</div>
                         <div class="sidebar-text transition-opacity">
                             <h1 class="text-sm font-extrabold tracking-tight text-white whitespace-nowrap">Host a Cleaner</h1>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30" id="sidebar-role-subtitle">Admin Hub</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-semibold border border-teal-500/30" id="sidebar-role-subtitle">Admin Hub</span>
                         </div>
                     </div>
                     <button type="button" onclick="toggleMobileDrawer()" class="md:hidden text-slate-400 hover:text-white font-bold text-lg p-1">✕</button>
@@ -204,46 +359,46 @@
 
                 <nav class="space-y-6">
                     <div class="space-y-2">
-                        <div data-i18n="nav_cat_calendar" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">📅 Agenda</div>
+                        <div data-i18n="nav_cat_calendar" class="sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">Agenda</div>
                         <div class="space-y-1 pl-1">
-                            <button type="button" onclick="switchTab('sub-agenda')" id="btn-sub-agenda" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📅 <span class="sidebar-text" data-i18n="nav_agenda">Agenda</span></button>
-                            <button type="button" onclick="switchTab('history')" id="nav-history" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">
-                                📝 <span class="sidebar-text" data-i18n="nav_history">Histórico &amp; Notas</span>
+                            <button type="button" onclick="switchTab('sub-agenda')" id="btn-sub-agenda" aria-label="Agenda" data-i18n-aria-label="nav_agenda" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg> <span class="sidebar-text" data-i18n="nav_agenda">Agenda</span></button>
+                            <button type="button" onclick="switchTab('history')" id="nav-history" aria-label="Histórico e Notas" data-i18n-aria-label="nav_history" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">
+                                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4ZM13.5 6.5l4 4"/></svg> <span class="sidebar-text" data-i18n="nav_history">Histórico &amp; Notas</span>
                                 <span class="urgent-badge hidden ml-auto h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-black leading-none text-white"></span>
                             </button>
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <button type="button" onclick="toggleSettingsMenu()" id="btn-settings-menu" aria-expanded="false" aria-controls="settings-menu-items" class="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">
-                            <span class="flex items-center gap-2.5">⚙️ <span class="sidebar-text" data-i18n="nav_settings">Gestão</span></span>
+                        <button type="button" onclick="toggleSettingsMenu()" id="btn-settings-menu" aria-label="Gestão" data-i18n-aria-label="nav_settings" aria-expanded="false" aria-controls="settings-menu-items" class="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">
+                            <span class="flex items-center gap-2.5"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/><circle cx="12" cy="12" r="8"/></svg> <span class="sidebar-text" data-i18n="nav_settings">Gestão</span></span>
                             <span id="settings-menu-chevron" class="sidebar-text transition-transform">⌄</span>
                         </button>
                         <div id="settings-menu-items" class="hidden space-y-1 pl-3 border-l border-slate-700 ml-4">
-                            <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">🏠 <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
-                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-directory" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👥 <span class="sidebar-text" data-i18n="nav_team_directory">Equipa (consulta)</span></button>
+                            <button type="button" onclick="switchTab('sub-properties-list')" id="btn-sub-properties-list" aria-label="Gestão de Alojamento" data-i18n-aria-label="nav_manage_properties" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6"/></svg> <span class="sidebar-text" data-i18n="nav_manage_properties">Gestão de Alojamento</span></button>
+                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-management" aria-label="Gestão de Equipa" data-i18n-aria-label="nav_add_team" data-admin-route="true" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5v1"/></svg> <span class="sidebar-text" data-i18n="nav_add_team">Gestão de Equipa</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></button>
+                            <button type="button" onclick="switchTab('sub-team-management')" id="btn-sub-team-directory" aria-label="Equipa (consulta)" data-i18n-aria-label="nav_team_directory" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5v1"/></svg> <span class="sidebar-text" data-i18n="nav_team_directory">Equipa (consulta)</span></button>
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <div data-i18n="nav_cat_finance" class="admin-only hidden sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">💶 Finanças</div>
+                        <div data-i18n="nav_cat_finance" class="admin-only hidden sidebar-text text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-2 whitespace-nowrap">Finanças</div>
                         <div class="space-y-1 pl-1">
-                            <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📈 <span class="sidebar-text" data-i18n="finance_tab_overview">Visão Geral</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-financial-entries')" id="btn-sub-financial-entries" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">💶 <span class="sidebar-text" data-i18n="finance_tab_manual_entries">Finanças</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-hosting-reports')" id="btn-sub-hosting-reports" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">📄 <span class="sidebar-text" data-i18n="finance_tab_reports">Documentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-employee-hours')" id="btn-sub-employee-hours" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">👨‍💼 <span class="sidebar-text">Horas por Funcionário</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true">🔒</span></button>
-                            <button type="button" onclick="switchTab('sub-time-entries')" id="btn-sub-time-entries" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">⏱️ <span class="sidebar-text" data-i18n="nav_my_hours">As Minhas Horas</span></button>
+                            <button type="button" onclick="switchTab('sub-reports')" id="btn-sub-reports" aria-label="Visão Geral" data-i18n-aria-label="finance_tab_overview" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6"/></svg> <span class="sidebar-text" data-i18n="finance_tab_overview">Visão Geral</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></button>
+                            <button type="button" onclick="switchTab('sub-financial-entries')" id="btn-sub-financial-entries" aria-label="Finanças" data-i18n-aria-label="finance_tab_manual_entries" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M16 8a5 5 0 1 0 0 8M6 10h7M6 14h7"/></svg> <span class="sidebar-text" data-i18n="finance_tab_manual_entries">Finanças</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></button>
+                            <button type="button" onclick="switchTab('sub-hosting-reports')" id="btn-sub-hosting-reports" aria-label="Documentos" data-i18n-aria-label="finance_tab_reports" data-admin-route="true" class="admin-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 12h6M9 16h6"/></svg> <span class="sidebar-text" data-i18n="finance_tab_reports">Documentos</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></button>
+                            <button type="button" onclick="switchTab('sub-employee-hours')" id="btn-sub-employee-hours" aria-label="Horas por funcionário" data-i18n-aria-label="nav_employee_hours" data-admin-route="true" class="admin-only w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2M12 14v4"/></svg> <span class="sidebar-text" data-i18n="nav_employee_hours">Horas por funcionário</span><span class="role-lock-icon hidden ml-auto" aria-hidden="true"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></button>
+                            <button type="button" onclick="switchTab('sub-time-entries')" id="btn-sub-time-entries" aria-label="As Minhas Horas" data-i18n-aria-label="nav_my_hours" class="cleaner-only hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg> <span class="sidebar-text" data-i18n="nav_my_hours">As Minhas Horas</span></button>
                         </div>
                     </div>
 
                     <div class="space-y-2 pt-2 border-t border-slate-800 admin-only">
-                        <button type="button" onclick="runButtonAction(this, () => forceSyncICalNow())" id="btn-force-sync-sidebar" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition whitespace-nowrap">
-                            <span id="sync-icon">🔄</span> <span class="sidebar-text" data-i18n="btn_sync_ical">Sincronizar Agenda</span>
+                        <button type="button" onclick="runButtonAction(this, () => forceSyncICalNow())" id="btn-force-sync-sidebar" aria-label="Sincronizar Agenda" data-i18n-aria-label="btn_sync_ical" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition whitespace-nowrap">
+                            <span id="sync-icon"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5 9a7 7 0 0 1 12-3l3 3M19 15a7 7 0 0 1-12 3l-3-3"/></svg></span> <span class="sidebar-text" data-i18n="btn_sync_ical">Sincronizar Agenda</span>
                         </button>
                     </div>
                     <div class="space-y-1 border-t border-slate-800 pt-2">
-                        <button type="button" onclick="switchTab('sub-profile-settings')" id="btn-sub-profile-settings" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap">⚙️ <span class="sidebar-text" data-i18n="nav_profile">Definições de Perfil</span></button>
+                        <button type="button" onclick="switchTab('sub-profile-settings')" id="btn-sub-profile-settings" aria-label="Definições de Perfil" data-i18n-aria-label="nav_profile" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/><circle cx="12" cy="12" r="8"/></svg> <span class="sidebar-text" data-i18n="nav_profile">Definições de Perfil</span></button>
                     </div>
                 </nav>
             </div>
@@ -251,7 +406,6 @@
             <div class="pt-6 border-t border-slate-800 space-y-2 overflow-hidden">
                 <div class="sidebar-text">
                     <div class="desktop-language-selector items-center gap-2 px-2 text-xs font-bold text-slate-300">
-                        <span aria-hidden="true">🌐</span>
                         <select id="lang-select-desktop" onchange="changeLanguage(this.value)" aria-label="Idioma" class="bg-slate-800 text-slate-200 px-2 py-1 rounded-lg border border-slate-700">
                             <option value="pt">Português (PT)</option>
                             <option value="en">English (EN)</option>
@@ -261,7 +415,7 @@
                 <div class="px-2 sidebar-text">
                     <span id="user-email-display" class="block text-[11px] font-semibold text-slate-400 truncate"></span>
                 </div>
-                <button type="button" onclick="runButtonAction(this, () => handleLogout())" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 text-xs font-bold p-2.5 rounded-xl transition whitespace-nowrap">🚪 <span class="sidebar-text" data-i18n="btn_logout">Sair da Conta</span></button>
+                <button type="button" onclick="runButtonAction(this, () => handleLogout())" aria-label="Sair da Conta" data-i18n-aria-label="btn_logout" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 text-xs font-bold p-2.5 rounded-xl transition whitespace-nowrap"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M13 8l4 4-4 4M8 12h9"/></svg> <span class="sidebar-text" data-i18n="btn_logout">Sair da Conta</span></button>
             </div>
         </aside>
 
@@ -275,15 +429,15 @@
             <!-- Agenda unificada: resumo diário e vistas diária, semanal e mensal -->
             <div id="view-sub-agenda" class="space-y-6">
                 <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <article class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                        <p data-i18n="agenda_total" class="text-[11px] font-bold text-indigo-700">Limpezas hoje</p>
-                        <p id="agenda-today-total" class="mt-1 text-xl font-extrabold text-indigo-900">0</p>
+                    <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p data-i18n="agenda_total" class="text-[11px] font-bold text-teal-700">Limpezas hoje</p>
+                        <p id="agenda-today-total" class="mt-1 text-xl font-extrabold text-teal-900">0</p>
                     </article>
-                    <article class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-4">
                         <p data-i18n="agenda_completed" class="text-[11px] font-bold text-emerald-700">Concluídas hoje</p>
                         <p id="agenda-today-completed" class="mt-1 text-xl font-extrabold text-emerald-900">0</p>
                     </article>
-                    <article class="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-4">
                         <p data-i18n="agenda_pending" class="text-[11px] font-bold text-amber-700">Pendentes hoje</p>
                         <p id="agenda-today-pending" class="mt-1 text-xl font-extrabold text-amber-900">0</p>
                     </article>
@@ -297,20 +451,20 @@
                             <button type="button" onclick="changeCalendarPeriod(1)" data-i18n="btn_next" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-xs">Seguinte ▶</button>
                         </div>
                         <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold w-full sm:w-auto">
-                            <button type="button" onclick="setCalendarMode('day')" id="btn-mode-day" data-i18n="btn_mode_day" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm">Diária</button>
+                            <button type="button" onclick="setCalendarMode('day')" id="btn-mode-day" data-i18n="btn_mode_day" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-white text-teal-600 shadow-sm">Diária</button>
                             <button type="button" onclick="setCalendarMode('week')" id="btn-mode-week" data-i18n="btn_mode_week" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500">Semanal</button>
                             <button type="button" onclick="setCalendarMode('month')" id="btn-mode-month" data-i18n="btn_mode_month" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-slate-500">Mensal</button>
                         </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
                         <label for="calendar-date-picker" data-i18n="label_date" class="text-xs font-bold text-slate-500 uppercase">Data:</label>
-                        <input type="date" id="calendar-date-picker" onchange="onDateFilterChange(this.value)" class="border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <select id="filter-property-select" onchange="onCalendarPropertyFilterChange(this.value)" class="flex-1 border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="all" data-i18n="opt_all_properties">🏠 Todos os Alojamentos</option>
+                        <input type="date" id="calendar-date-picker" onchange="onDateFilterChange(this.value)" class="border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <select id="filter-property-select" onchange="onCalendarPropertyFilterChange(this.value)" class="flex-1 min-w-40 border border-slate-200 bg-slate-50 p-2 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="all" data-i18n="opt_all_properties">Todos os Alojamentos</option>
                         </select>
-                        <button type="button" onclick="openAddCleaningModal(selectedDate)" data-i18n="btn_add_cleaning" class="admin-only bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md shrink-0">
-                            ➕ Adicionar Limpeza
+                        <button type="button" onclick="openAddCleaningModal(selectedDate)" data-i18n="btn_add_cleaning" class="admin-only bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-md shrink-0">
+                             Adicionar Limpeza
                         </button>
                     </div>
 
@@ -325,32 +479,32 @@
 
             <section id="view-history" class="hidden space-y-5" aria-labelledby="history-title">
                 <header class="space-y-1">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="history_eyebrow">Registos operacionais</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500" data-i18n="history_eyebrow">Registos operacionais</p>
                     <h2 id="history-title" class="text-lg font-extrabold text-slate-900" data-i18n="nav_history">Histórico &amp; Notas</h2>
-                    <p class="text-xs text-slate-500" data-i18n="history_description">Consulte incidentes, notas, prioridades e fotografias dos alojamentos.</p>
+                    <p class="text-xs text-slate-500" data-i18n="history_description">Registo de ocorrências e manutenção por imóvel.</p>
                 </header>
                 <section class="space-y-4 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm md:p-6">
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <div>
                             <span class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500" data-i18n="history_priority_filter">Prioridade</span>
                             <div class="flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Filtrar por prioridade">
-                                <button type="button" id="history-filter-all" onclick="setGlobalIncidentPriorityFilter('all')" aria-pressed="true" class="min-h-10 flex-1 rounded-lg bg-white px-3 text-xs font-bold text-indigo-700 shadow-sm" data-i18n="history_filter_all">Todos</button>
+                                <button type="button" id="history-filter-all" onclick="setGlobalIncidentPriorityFilter('all')" aria-pressed="true" class="min-h-10 flex-1 rounded-lg bg-white px-3 text-xs font-bold text-teal-700 shadow-sm" data-i18n="history_filter_all">Todos</button>
                                 <button type="button" id="history-filter-urgent" onclick="setGlobalIncidentPriorityFilter('urgent')" aria-pressed="false" class="min-h-10 flex-1 rounded-lg px-3 text-xs font-semibold text-slate-600" data-i18n="history_filter_urgent">Urgentes</button>
                             </div>
                         </div>
                         <label class="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                             <span class="mb-1.5 block" data-i18n="history_date_filter">Data</span>
-                            <input id="history-date-filter" type="date" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input id="history-date-filter" type="date" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </label>
                         <label class="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                             <span class="mb-1.5 block" data-i18n="history_property_filter">Alojamento</span>
-                            <select id="history-property-filter" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="history-property-filter" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 <option value="all" data-i18n="history_all_properties">Todos os alojamentos</option>
                             </select>
                         </label>
                         <label class="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                             <span class="mb-1.5 block" data-i18n="history_sort">Ordenação</span>
-                            <select id="history-sort" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="history-sort" onchange="loadGlobalIncidentHistory()" class="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 <option value="desc" data-i18n="history_sort_newest">Mais recentes</option>
                                 <option value="asc" data-i18n="history_sort_oldest">Mais antigos</option>
                             </select>
@@ -371,11 +525,11 @@
                 <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                         <h3 data-i18n="title_registered_properties" class="text-sm font-bold text-slate-900">Alojamentos Registados</h3>
-                        <button type="button" onclick="runButtonAction(this, () => abrirFormularioPropriedade())" data-i18n="btn_add_property_new" class="admin-only w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md">
-                            ➕ Adicionar Nova Propriedade
+                        <button type="button" onclick="runButtonAction(this, () => abrirFormularioPropriedade())" data-i18n="btn_add_property_new" class="admin-only w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md">
+                             Adicionar Nova Propriedade
                         </button>
                     </div>
-                    <p class="cleaner-only hidden rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs font-semibold text-indigo-800" data-i18n="role_read_only">Modo de consulta</p>
+                    <p class="cleaner-only hidden rounded-xl border border-teal-100 bg-teal-50 p-3 text-xs font-semibold text-teal-800" data-i18n="role_read_only">Modo de consulta</p>
                     <p id="properties-list-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
                     <div id="properties-grid" class="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
                         <p class="text-slate-400 text-xs col-span-full">A carregar alojamentos...</p>
@@ -384,10 +538,10 @@
             </div>
 
             <div id="property-quick-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
-                <div class="w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+                <div class="w-full max-w-md rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <div>
-                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">Detalhe do alojamento</p>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500">Detalhe do alojamento</p>
                             <h3 id="property-quick-modal-title" class="text-base font-extrabold text-slate-900">Alojamento</h3>
                         </div>
                         <button type="button" onclick="closePropertyQuickModal()" class="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:bg-slate-100">Fechar</button>
@@ -407,56 +561,56 @@
                     <form id="property-form" onsubmit="runFormAction(event, () => handlePropertySubmit(event))" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label data-i18n="label_prop_name" class="block text-xs font-bold text-slate-700 mb-1">Nome do Imóvel</label>
-                            <input type="text" id="prop-name" placeholder="ex: Apartamento Lagos Centro" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="prop-name" placeholder="ex: Apartamento Lagos Centro" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div>
                             <label data-i18n="label_prop_address" class="block text-xs font-bold text-slate-700 mb-1">Morada Completa</label>
-                            <input type="text" id="prop-address" placeholder="ex: Rua 25 de Abril, Lagos" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="prop-address" placeholder="ex: Rua 25 de Abril, Lagos" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div>
                             <label data-i18n="label_prop_keybox" class="block text-xs font-bold text-slate-700 mb-1">Código Keybox / Acesso</label>
-                            <input type="text" id="prop-access" placeholder="ex: Cofre 1234, porta azul" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="prop-access" placeholder="ex: Cofre 1234, porta azul" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div data-financial-access class="hidden">
                             <label data-i18n="label_prop_rate" class="block text-xs font-bold text-slate-700 mb-1">Valor por Hora (€/h)</label>
-                            <input type="number" step="0.5" id="prop-rate" placeholder="ex: 12.00" value="10.00" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="number" step="0.5" id="prop-rate" placeholder="ex: 12.00" value="10.00" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div class="md:col-span-2">
                             <label for="prop-assigned-cleaner" data-i18n="label_assigned_cleaner" class="block text-xs font-bold text-slate-700 mb-1">Cleaner Atribuído</label>
-                            <select id="prop-assigned-cleaner" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="prop-assigned-cleaner" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 <option value="" data-i18n="option_no_cleaner">Sem atribuição</option>
                             </select>
                             <p id="property-cleaner-status" role="status" class="hidden mt-1 text-[11px] text-rose-600"></p>
                         </div>
                         <div class="md:col-span-2">
                             <label data-i18n="label_prop_ical" class="block text-xs font-bold text-slate-700 mb-1">Link iCal do Airbnb / Booking (.ics)</label>
-                            <input type="url" id="prop-ical" placeholder="https://www.airbnb.com/calendar/ical/..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="url" id="prop-ical" placeholder="https://www.airbnb.com/calendar/ical/..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div class="md:col-span-2">
                             <label data-i18n="label_prop_instructions" class="block text-xs font-bold text-slate-700 mb-1">Instruções Específicas de Limpeza</label>
-                            <textarea id="prop-instructions" placeholder="ex: Mudança total de lençóis, lavar varanda..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24"></textarea>
+                            <textarea id="prop-instructions" placeholder="ex: Mudança total de lençóis, lavar varanda..." class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 h-24"></textarea>
                         </div>
 
                         <p id="property-form-message" role="status" aria-live="polite" class="hidden md:col-span-2 text-xs font-semibold"></p>
-                        <button type="submit" id="prop-submit-btn" data-i18n="btn_save_property" class="md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">Guardar Alojamento</button>
+                        <button type="submit" id="prop-submit-btn" data-i18n="btn_save_property" class="md:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-sm">Guardar Alojamento</button>
                     </form>
                 </div>
             </div>
 
             <div id="view-sub-reports" class="space-y-4 hidden">
                 <header>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="finance_overview">Visão geral</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500" data-i18n="finance_overview">Visão geral</p>
                     <h3 data-i18n="finance_tab_overview" class="mt-1 text-lg font-extrabold text-slate-900">Visão Geral</h3>
                 </header>
-                    <div class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
+                    <div class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-sm md:p-6">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <label class="text-[10px] font-bold text-slate-400">
                                 <span data-i18n="finance_filter_month">Mês</span>
-                                <input id="financial-filter-month" type="month" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input id="financial-filter-month" type="month" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
                             </label>
                             <label class="text-[10px] font-bold text-slate-400">
                                 <span data-i18n="finance_filter_property">Imóvel</span>
-                                <select id="financial-filter-property" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                                <select id="financial-filter-property" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500"></select>
                             </label>
                         </div>
                         <p id="reports-summary-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
@@ -466,7 +620,7 @@
                         <section class="space-y-3 border-t border-slate-800 pt-4">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <h4 class="text-sm font-bold text-white">Ganhos e despesas mensais</h4>
-                                <button type="button" id="open-financial-date-modal" class="rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-200 transition hover:border-indigo-400 hover:text-white" onclick="openFinancialDateModal()">Filtrar datas / Exportar</button>
+                                <button type="button" id="open-financial-date-modal" class="rounded-xl border border-slate-700 px-3 py-2 text-[10px] font-bold text-slate-200 transition hover:border-teal-400 hover:text-white" onclick="openFinancialDateModal()">Filtrar datas / Exportar</button>
                             </div>
                             <p id="financialOverviewChart-error" role="status" aria-live="polite" class="hidden text-xs font-semibold text-rose-300"></p>
                             <div class="relative h-72 w-full">
@@ -484,10 +638,10 @@
 
             <div id="view-sub-financial-entries" class="space-y-4 hidden">
                 <header>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="finance_manual_entries_eyebrow">Gestão financeira</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500" data-i18n="finance_manual_entries_eyebrow">Gestão financeira</p>
                     <h3 data-i18n="finance_tab_manual_entries" class="mt-1 text-lg font-extrabold text-slate-900">Finanças</h3>
                 </header>
-                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
+                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-sm md:p-6">
                     <div class="space-y-3 border-b border-slate-800 pb-4">
                         <div>
                             <h4 data-i18n="finance_new_entry" class="text-sm font-bold text-white">Novo lançamento</h4>
@@ -516,7 +670,7 @@
                                 <input type="text" id="financial-description" maxlength="200" required class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white">
                             </label>
                             <p id="financial-entry-message" role="status" aria-live="polite" class="hidden col-span-2 text-xs font-semibold sm:col-span-6"></p>
-                            <button id="financial-entry-submit" type="submit" class="col-span-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 sm:col-span-6">Guardar lançamento</button>
+                            <button id="financial-entry-submit" type="submit" class="col-span-2 rounded-lg bg-teal-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-teal-700 sm:col-span-6">Guardar lançamento</button>
                         </form>
                     </div>
                     <div class="space-y-2 border-b border-slate-800 pb-4">
@@ -546,7 +700,7 @@
                         <form id="hosting-report-form" onsubmit="runFormAction(event, () => submitHostingReport(event))" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label for="hosting-report-platform" data-i18n="hosting_platform" class="mb-1 block text-xs font-bold text-slate-300">Plataforma</label>
-                                <select id="hosting-report-platform" required class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="hosting-report-platform" required class="w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
                                     <option value="Airbnb">Airbnb</option>
                                     <option value="Booking.com">Booking.com</option>
                                 </select>
@@ -557,18 +711,18 @@
                             </div>
                             <div id="hosting-report-dropzone" class="hosting-report-dropzone sm:col-span-2">
                                 <input id="hosting-report-file" type="file" accept=".pdf,.csv,application/pdf,text/csv" class="sr-only">
-                                <label for="hosting-report-file" class="block cursor-pointer rounded-2xl border border-dashed border-slate-600 bg-slate-900/70 p-5 text-center transition hover:border-indigo-400 hover:bg-slate-900">
-                                    <span class="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-lg text-indigo-300" aria-hidden="true">⇧</span>
+                                <label for="hosting-report-file" class="block cursor-pointer rounded-2xl border border-dashed border-slate-600 bg-slate-900/70 p-5 text-center transition hover:border-teal-400 hover:bg-slate-900">
+                                    <span class="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/15 text-lg text-teal-300" aria-hidden="true">⇧</span>
                                     <span id="hosting-report-file-label" data-i18n="hosting_choose_file" class="block text-xs font-bold text-white">Escolher ou largar um PDF/CSV</span>
                                     <span data-i18n="hosting_file_limit" class="mt-1 block text-[10px] text-slate-400">PDF ou CSV · máximo 20 MB</span>
                                 </label>
                             </div>
                             <p id="hosting-report-message" role="status" aria-live="polite" class="hidden sm:col-span-2 text-xs font-semibold"></p>
-                            <button id="hosting-report-submit" type="submit" data-i18n="hosting_upload" class="sm:col-span-2 w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Enviar documento</button>
+                            <button id="hosting-report-submit" type="submit" data-i18n="hosting_upload" class="sm:col-span-2 w-full rounded-xl bg-teal-600 p-3 text-xs font-bold text-white transition hover:bg-teal-700">Enviar documento</button>
                         </form>
                     </div>
                     <details class="border-t border-slate-800 pt-3">
-                        <summary class="cursor-pointer text-xs font-bold text-indigo-300 hover:text-white">
+                        <summary class="cursor-pointer text-xs font-bold text-teal-300 hover:text-white">
                             <span data-i18n="finance_service_history">Histórico de serviços e pagamentos</span>
                         </summary>
                         <div class="pt-4">
@@ -584,10 +738,10 @@
 
             <div id="view-sub-hosting-reports" class="space-y-4 hidden">
                 <header>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="hosting_reports_eyebrow">Documentos de plataformas</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500" data-i18n="hosting_reports_eyebrow">Documentos de plataformas</p>
                     <h3 data-i18n="finance_tab_reports" class="mt-1 text-lg font-extrabold text-slate-900">Documentos</h3>
                 </header>
-                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-xl md:p-6">
+                <section class="finance-panel space-y-4 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-sm md:p-6">
                     <div>
                         <h4 data-i18n="hosting_documents" class="text-sm font-bold text-white">Documentos enviados</h4>
                     </div>
@@ -607,24 +761,24 @@
                     <form id="time-entry-form" onsubmit="runFormAction(event, () => registarHorasTrabalhadas(event))" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label for="time-entry-date" data-i18n="time_entry_date" class="mb-1 block text-xs font-bold text-slate-700">Data</label>
-                            <input type="date" id="time-entry-date" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="date" id="time-entry-date" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div>
                             <label for="time-entry-hours" data-i18n="time_entry_hours" class="mb-1 block text-xs font-bold text-slate-700">Horas trabalhadas</label>
-                            <input type="number" id="time-entry-hours" min="0.25" max="24" step="0.25" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="number" id="time-entry-hours" min="0.25" max="24" step="0.25" required class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div class="sm:col-span-2">
                             <label for="time-entry-property" data-i18n="time_entry_property" class="mb-1 block text-xs font-bold text-slate-700">Alojamento</label>
-                            <select id="time-entry-property" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="time-entry-property" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 <option value="">Sem alojamento associado</option>
                             </select>
                         </div>
                         <div class="sm:col-span-2">
                             <label for="time-entry-description" data-i18n="time_entry_task" class="mb-1 block text-xs font-bold text-slate-700">Tarefa / descrição</label>
-                            <textarea id="time-entry-description" maxlength="500" required data-i18n-placeholder="time_entry_description_placeholder" placeholder="Descreva a tarefa realizada" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                            <textarea id="time-entry-description" maxlength="500" required data-i18n-placeholder="time_entry_description_placeholder" placeholder="Descreva a tarefa realizada" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"></textarea>
                         </div>
                         <p id="time-entry-message" role="status" aria-live="polite" class="hidden sm:col-span-2 text-xs font-semibold"></p>
-                        <button id="time-entry-submit" type="submit" data-i18n="time_entry_submit" class="sm:col-span-2 w-full rounded-xl bg-indigo-600 p-3 text-xs font-bold text-white transition hover:bg-indigo-700">Registar horas</button>
+                        <button id="time-entry-submit" type="submit" data-i18n="time_entry_submit" class="sm:col-span-2 w-full rounded-xl bg-teal-600 p-3 text-xs font-bold text-white transition hover:bg-teal-700">Registar horas</button>
                     </form>
                     <div>
                         <h4 data-i18n="time_entries_submitted" class="mb-3 text-xs font-bold text-slate-700 uppercase tracking-wider">Registos submetidos</h4>
@@ -639,10 +793,10 @@
                 <section class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-4">
                     <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div class="space-y-1">
-                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">Horas por Funcionário</p>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500">Horas por Funcionário</p>
                             <h3 class="text-lg font-extrabold text-slate-900">Controlo mensal da equipa</h3>
                         </div>
-                        <button type="button" onclick="exportEmployeeHoursSummaryCsv()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">
+                        <button type="button" onclick="exportEmployeeHoursSummaryCsv()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-600">
                             Exportar Mês (CSV)
                         </button>
                     </header>
@@ -652,10 +806,10 @@
             </div>
 
             <div id="employee-hours-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                <div class="w-full max-w-4xl rounded-3xl bg-white shadow-2xl">
+                <div class="w-full max-w-4xl rounded-3xl bg-white shadow-sm">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 md:px-6">
                         <div>
-                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">Detalhe do colaborador</p>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500">Detalhe do colaborador</p>
                             <h3 id="employee-hours-detail-title" class="text-base font-extrabold text-slate-900">Funcionário</h3>
                         </div>
                         <button type="button" id="close-employee-hours-detail" onclick="closeEmployeeHoursDetailModal()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100">Fechar</button>
@@ -676,29 +830,29 @@
                       <form id="team-add-form" onsubmit="runFormAction(event, () => handleAddTeamMember(event))" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label data-i18n="team_name" for="team-name" class="block text-xs font-bold text-slate-700 mb-1">Nome</label>
-                            <input type="text" id="team-name" required autocomplete="name" placeholder="Nome do membro" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="team-name" required autocomplete="name" placeholder="Nome do membro" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div>
                             <label data-i18n="team_phone" for="team-phone" class="block text-xs font-bold text-slate-700 mb-1">Telemóvel</label>
-                            <input type="tel" id="team-phone" required autocomplete="tel" value="+351 " placeholder="+351 912 345 678" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="tel" id="team-phone" required autocomplete="tel" value="+351 " placeholder="+351 912 345 678" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
                         <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                                <input type="checkbox" id="team-track-hours" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <input type="checkbox" id="team-track-hours" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                                 <span data-i18n="team_track_hours">Ativar registo de horas</span>
                             </label>
                             <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                                <input type="checkbox" id="team-require-photos" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <input type="checkbox" id="team-require-photos" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                                 <span data-i18n="team_require_photos">Exigir fotos antes e depois</span>
                             </label>
                         </div>
-                        <button type="submit" id="btn-add-team" data-i18n="btn_send_invite" class="sm:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">
-                            ✉️ Criar Convite
+                        <button type="submit" id="btn-add-team" data-i18n="btn_send_invite" class="sm:col-span-2 gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-sm">
+                             Criar Convite
                         </button>
                       </form>
                     </div>
 
-                    <p id="team-readonly-notice" class="cleaner-only hidden rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs font-semibold text-indigo-800" data-i18n="role_read_only">Modo de consulta</p>
+                    <p id="team-readonly-notice" class="cleaner-only hidden rounded-xl border border-teal-100 bg-teal-50 p-3 text-xs font-semibold text-teal-800" data-i18n="role_read_only">Modo de consulta</p>
                     <h3 class="cleaner-only hidden text-sm font-bold text-slate-900" data-i18n="team_read_only_title">Equipa</h3>
                     <div class="pt-6 border-t border-slate-100 space-y-4">
                         <h4 data-i18n="title_team_list" class="text-xs font-bold text-slate-900 uppercase tracking-wider">Membros da Sua Equipa</h4>
@@ -711,12 +865,12 @@
 
             <section id="view-sub-profile-settings" class="hidden space-y-5">
                 <header>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500" data-i18n="profile_settings_eyebrow">Conta e preferências</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-500" data-i18n="profile_settings_eyebrow">Conta e preferências</p>
                     <h3 data-i18n="nav_profile" class="mt-1 text-lg font-extrabold text-slate-900">Definições de Perfil</h3>
                 </header>
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
                     <nav class="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 lg:flex-col lg:overflow-visible" role="tablist" aria-label="Definições de perfil">
-                        <button type="button" id="btn-profile-tab-account" onclick="switchProfileTab('account')" role="tab" aria-controls="profile-subtab-security" class="profile-settings-tab min-w-fit rounded-xl bg-indigo-50 px-3 py-2.5 text-left text-xs font-bold text-indigo-700" data-i18n="settings_account_tab">Conta / Palavra-passe</button>
+                        <button type="button" id="btn-profile-tab-account" onclick="switchProfileTab('account')" role="tab" aria-controls="profile-subtab-security" class="profile-settings-tab min-w-fit rounded-xl bg-teal-50 px-3 py-2.5 text-left text-xs font-bold text-teal-700" data-i18n="settings_account_tab">Conta / Palavra-passe</button>
                         <button type="button" id="btn-profile-tab-operations" onclick="switchProfileTab('operations')" role="tab" aria-controls="profile-subtab-operations" class="profile-settings-tab min-w-fit rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-500 hover:bg-slate-50" data-i18n="settings_preferences_tab">Preferências Operacionais</button>
                         <button type="button" id="btn-profile-tab-subscription" onclick="switchProfileTab('subscription')" role="tab" aria-controls="profile-subtab-subscription" class="profile-settings-tab admin-only min-w-fit rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-500 hover:bg-slate-50" data-i18n="settings_subscription_tab">Plano de Subscrição</button>
                     </nav>
@@ -729,26 +883,26 @@
                             <form onsubmit="runFormAction(event, () => saveProfileContact(event))" class="max-w-xl space-y-3 border-b border-slate-100 pb-4">
                                 <label for="profile-contact-email" class="block text-xs font-bold text-slate-700">
                                     <span data-i18n="profile_contact_email">Email</span>
-                                    <input type="email" id="profile-contact-email" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input type="email" id="profile-contact-email" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 </label>
                                 <label for="profile-contact-phone" class="block text-xs font-bold text-slate-700">
                                     <span data-i18n="profile_contact_phone">Telemóvel / Telefone</span>
-                                    <input type="tel" id="profile-contact-phone" autocomplete="tel" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input type="tel" id="profile-contact-phone" autocomplete="tel" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 </label>
                                 <p id="profile-contact-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
-                                <button type="submit" data-i18n="profile_contact_save" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Guardar contactos</button>
+                                <button type="submit" data-i18n="profile_contact_save" class="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-teal-700">Guardar contactos</button>
                             </form>
                             <form onsubmit="runFormAction(event, () => handleChangePassword(event))" class="max-w-xl space-y-3">
                                 <label for="new-password-input" class="block text-xs font-bold text-slate-700">
                                     <span data-i18n="label_new_pwd">Nova Palavra-passe</span>
-                                    <input type="password" id="new-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_min_length" placeholder="Mínimo de 6 caracteres" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input type="password" id="new-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_min_length" placeholder="Mínimo de 6 caracteres" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 </label>
                                 <label for="confirm-password-input" class="block text-xs font-bold text-slate-700">
                                     <span data-i18n="label_confirm_pwd">Confirmar Nova Palavra-passe</span>
-                                    <input type="password" id="confirm-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_confirm_placeholder" placeholder="Repita a palavra-passe" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input type="password" id="confirm-password-input" required minlength="6" autocomplete="new-password" data-i18n-placeholder="password_confirm_placeholder" placeholder="Repita a palavra-passe" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 </label>
                                 <p id="profile-password-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
-                                <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Atualizar Palavra-passe</button>
+                                <button type="submit" id="btn-update-pwd" data-i18n="btn_update_pwd" class="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-teal-700">Atualizar Palavra-passe</button>
                             </form>
                         </section>
 
@@ -762,26 +916,26 @@
                                         <span data-i18n="settings_require_photos" class="block text-xs font-bold text-slate-800">Pedir fotos de verificação</span>
                                         <span data-i18n="settings_require_photos_help" class="mt-0.5 block text-[10px] text-slate-500">Solicitar fotos antes e depois da limpeza.</span>
                                     </span>
-                                    <input id="settings-require-photos" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                    <input id="settings-require-photos" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                                 </label>
                                 <label class="admin-only flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                     <span>
                                         <span data-i18n="settings-track-hours" class="block text-xs font-bold text-slate-800">Pedir total de horas</span>
                                         <span data-i18n="settings-track-hours-help" class="mt-0.5 block text-[10px] text-slate-500">Solicitar a duração total ao concluir uma limpeza.</span>
                                     </span>
-                                    <input id="settings-track-hours" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                    <input id="settings-track-hours" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                                 </label>
                             </div>
                             <label for="profile-theme-select" class="block max-w-sm text-xs font-bold text-slate-700">
                                 <span data-i18n="settings_theme">Tema</span>
-                                <select id="profile-theme-select" onchange="saveThemePreference(this.value)" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="profile-theme-select" onchange="saveThemePreference(this.value)" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                                     <option value="light" data-i18n="theme_light">Claro</option>
                                     <option value="dark" data-i18n="theme_dark">Escuro</option>
                                     <option value="default" data-i18n="theme_default">Padrão</option>
                                 </select>
                             </label>
                             <p id="profile-settings-message" role="status" aria-live="polite" class="hidden text-xs font-semibold"></p>
-                            <button type="button" id="save-operational-preferences" onclick="runButtonAction(this, () => saveOperationalPreferences())" data-i18n="settings_save_preferences" class="admin-only rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">Guardar preferências</button>
+                            <button type="button" id="save-operational-preferences" onclick="runButtonAction(this, () => saveOperationalPreferences())" data-i18n="settings_save_preferences" class="admin-only rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-teal-700">Guardar preferências</button>
                         </section>
 
                         <section id="profile-subtab-subscription" role="tabpanel" aria-labelledby="btn-profile-tab-subscription" class="admin-only hidden space-y-5">
@@ -822,7 +976,7 @@
                                 <li>✓ Sincronização iCal</li>
                             </ul>
                         </div>
-                        <button type="button" data-subscription-plan="starter" disabled onclick="subscribePlan('starter')" class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Subscrever Starter</button>
+                        <button type="button" data-subscription-plan="starter" disabled onclick="subscribePlan('starter')" class="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700">Subscrever Starter</button>
                     </article>
 
                     <article class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -835,12 +989,12 @@
                             <p class="mb-4 mt-3 text-xs text-slate-400">Equipa totalmente ilimitada e relatórios.</p>
                             <ul class="my-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                                 <li>✓ Até 10 Imóveis</li>
-                                <li class="font-semibold text-indigo-600 dark:text-indigo-400">✓ Cleaners Ilimitados</li>
+                                <li class="font-semibold text-teal-600 dark:text-teal-400">✓ Cleaners Ilimitados</li>
                                 <li>✓ Relatórios financeiros</li>
                                 <li>✓ Exportação PDF/CSV</li>
                             </ul>
                         </div>
-                        <button type="button" data-subscription-plan="pro" disabled onclick="subscribePlan('pro')" class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700">Subscrever Pro</button>
+                        <button type="button" data-subscription-plan="pro" disabled onclick="subscribePlan('pro')" class="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-teal-700">Subscrever Pro</button>
                     </article>
 
                     <article class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -862,7 +1016,7 @@
                     </article>
                             </div>
                             <div class="pt-2 text-center">
-                                <button type="button" onclick="openCancellationPolicyModal()" aria-controls="cancellation-policy-modal" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-indigo-600 hover:decoration-indigo-400">
+                                <button type="button" onclick="openCancellationPolicyModal()" aria-controls="cancellation-policy-modal" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-600 hover:decoration-teal-400">
                                     Política de Cancelamento e Reembolso
                                 </button>
                             </div>
@@ -870,7 +1024,7 @@
                     </div>
                 </div>
                 <footer class="pt-2 text-center">
-                    <a href="mailto:suporte@hostacleaner.com" data-i18n="support_contact" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-indigo-600 hover:decoration-indigo-400">Suporte: suporte@hostacleaner.com</a>
+                    <a href="mailto:suporte@hostacleaner.com" data-i18n="support_contact" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-600 hover:decoration-teal-400">Suporte: suporte@hostacleaner.com</a>
                 </footer>
             </section>
 
@@ -878,10 +1032,10 @@
     </div>
 
     <div id="cancellation-policy-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cancellation-policy-title">
-        <section class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+        <section class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6 dark:border-slate-700">
                 <h2 id="cancellation-policy-title" class="text-base font-extrabold leading-snug text-slate-900 sm:text-lg dark:text-white">Política de Cancelamento e Reembolso</h2>
-                <button id="cancellation-policy-close" type="button" onclick="closeCancellationPolicyModal()" aria-label="Fechar política" class="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-slate-700 dark:hover:text-white">✕</button>
+                <button id="cancellation-policy-close" type="button" onclick="closeCancellationPolicyModal()" aria-label="Fechar política" class="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:hover:bg-slate-700 dark:hover:text-white">✕</button>
             </header>
             <div class="min-h-0 space-y-5 overflow-y-auto px-4 py-4 text-sm leading-relaxed text-slate-600 sm:px-6 sm:py-5 dark:text-slate-300">
                 <section class="space-y-2">
@@ -909,14 +1063,14 @@
                 </section>
             </div>
             <footer class="shrink-0 border-t border-slate-200 px-4 py-3 text-right dark:border-slate-700">
-                <button type="button" onclick="closeCancellationPolicyModal()" class="min-h-11 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Fechar</button>
+                <button type="button" onclick="closeCancellationPolicyModal()" class="min-h-11 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">Fechar</button>
             </footer>
         </section>
     </div>
 
     <!-- QUESTIONÁRIO DE ADICIONAR LIMPEZA -->
     <div id="add-cleaning-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-sm space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <div>
                     <h3 data-i18n="modal_add_cleaning_title" class="text-sm font-bold text-slate-900">Adicionar Limpeza</h3>
@@ -928,21 +1082,21 @@
             <form id="add-cleaning-form" onsubmit="runFormAction(event, () => handleAddCleaningSubmit(event))" class="space-y-4">
                 <div>
                     <label data-i18n="label_select_prop" class="block text-xs font-bold text-slate-700 mb-1">1. Escolha a Listagem / Alojamento</label>
-                    <select id="modal-cleaning-prop" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <select id="modal-cleaning-prop" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
                     </select>
                 </div>
 
                 <div>
                     <label data-i18n="label_select_date" class="block text-xs font-bold text-slate-700 mb-1">2. Escolha o Dia da Limpeza</label>
-                    <input type="date" id="modal-cleaning-date" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="date" id="modal-cleaning-date" required class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
 
                 <div>
                     <label data-i18n="label_notes_optional" class="block text-xs font-bold text-slate-700 mb-1">3. Observações / Instruções para a Equipa (Opcional)</label>
-                    <input type="text" id="modal-cleaning-notes" placeholder="ex: Check-in direto às 15h, trocar atoalhados" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="modal-cleaning-notes" placeholder="ex: Check-in direto às 15h, trocar atoalhados" class="w-full border border-slate-200 bg-slate-50 p-3 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
 
-                <button type="submit" id="btn-submit-add-cleaning" data-i18n="btn_schedule_cleaning" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-lg shadow-indigo-500/30">
+                <button type="submit" id="btn-submit-add-cleaning" data-i18n="btn_schedule_cleaning" class="w-full gradient-bg hover:opacity-95 text-white font-bold p-3.5 rounded-xl text-xs transition shadow-sm">
                     Agendar Limpeza
                 </button>
             </form>
@@ -955,7 +1109,7 @@
 
     <!-- MODAL DO DIA DO CALENDÁRIO -->
     <div id="day-tasks-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-sm space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="text-sm font-bold text-slate-900" id="day-modal-title">Limpezas do Dia</h3>
@@ -969,8 +1123,8 @@
             </div>
 
             <div class="pt-3 border-t border-slate-100 admin-only">
-                <button type="button" onclick="openAddCleaningModal(selectedModalDate); closeDayTasksModal();" data-i18n="btn_add_cleaning" class="admin-only w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold p-3 rounded-2xl border border-indigo-200/80 transition">
-                    ➕ Adicionar Limpeza
+                <button type="button" onclick="openAddCleaningModal(selectedModalDate); closeDayTasksModal();" data-i18n="btn_add_cleaning" class="admin-only w-full flex items-center justify-center gap-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold p-3 rounded-2xl border border-teal-200/80 transition">
+                     Adicionar Limpeza
                 </button>
             </div>
 
@@ -982,7 +1136,7 @@
 
     <!-- MODAL DE DETALHES DA TAREFA -->
     <div id="task-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-sm space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 class="text-sm font-bold text-slate-900" id="modal-prop-name">Detalhes da Limpeza</h3>
                 <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-700 font-bold text-base">✕</button>
@@ -998,7 +1152,7 @@
                 <div class="space-y-2">
                     <label for="task-notes" class="block font-bold text-slate-700 mb-1">Notas / Observações</label>
                     <textarea id="task-notes" rows="3" placeholder="Notas ou observações sobre esta limpeza..." class="w-full border border-slate-200 p-2.5 rounded-xl text-xs bg-white"></textarea>
-                    <button id="task-report-incident" type="button" onclick="" data-i18n="incident_report_button" class="min-h-11 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left text-xs font-bold text-rose-800 transition hover:border-rose-400 hover:bg-rose-100">⚠️ Reportar Incidente</button>
+                    <button id="task-report-incident" type="button" onclick="" data-i18n="incident_report_button" class="min-h-11 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left text-xs font-bold text-rose-800 transition hover:border-rose-400 hover:bg-rose-100"> Reportar Incidente</button>
                 </div>
             </div>
 
@@ -1006,19 +1160,18 @@
 
             <!-- Notificações da equipa (Admin) -->
             <div class="pt-3 border-t border-slate-100 admin-only space-y-2">
-                <label data-i18n="label_notify_team" class="block text-xs font-bold text-slate-700">📢 Notificar equipa por WhatsApp</label>
+                <label data-i18n="label_notify_team" class="block text-xs font-bold text-slate-700"> Notificar equipa por WhatsApp</label>
                 <div class="grid grid-cols-1 gap-2">
                     <button type="button" id="btn-whatsapp-notify" onclick="" data-i18n="btn_whatsapp" class="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold p-2.5 rounded-xl border border-emerald-200 transition text-xs">
-                        💬 Enviar WhatsApp
+                         Enviar WhatsApp
                     </button>
                 </div>
             </div>
 
             <div class="flex flex-col gap-2 border-t border-slate-100 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                <button id="btn-delete-task-modal" onclick="" data-i18n="btn_delete_task" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl text-xs transition border border-rose-200 hidden">🗑️ Apagar Limpeza</button>
+                <button id="btn-delete-task-modal" onclick="" data-i18n="btn_delete_task" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl text-xs transition border border-rose-200 hidden"> Apagar Limpeza</button>
                 <div class="flex w-full items-center justify-end gap-2 sm:ml-auto sm:w-auto">
-                    <button id="btn-task-manual-sync" type="button" onclick="runButtonAction(this, () => syncTaskModalData())" class="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60 sm:flex-none">
-                        <span aria-hidden="true">🔄</span>
+                    <button id="btn-task-manual-sync" type="button" onclick="runButtonAction(this, () => syncTaskModalData())" class="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60 sm:flex-none">
                         <span data-i18n="btn_sync_local_data">Sincronizar fotos e notas</span>
                     </button>
                     <button onclick="closeTaskModal()" data-i18n="btn_close" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
@@ -1029,32 +1182,32 @@
     </div>
 
     <div id="time-confirmation-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="time-confirmation-title">
-        <section class="w-full max-w-md space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7">
+        <section class="w-full max-w-md space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <header class="space-y-2 border-b border-slate-100 pb-4">
                 <h2 id="time-confirmation-title" data-i18n="time_confirmation_title" class="text-lg font-extrabold text-slate-900">Confirmar tempo da limpeza</h2>
                 <p data-i18n="time_confirmation_description" class="text-sm text-slate-500">Confirme o tempo calculado ou ajuste-o antes de concluir.</p>
             </header>
-            <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-center">
-                <p data-i18n="time_confirmation_elapsed" class="text-xs font-bold uppercase tracking-wide text-indigo-700">Tempo decorrido</p>
-                <p id="time-confirmation-elapsed" class="mt-1 text-3xl font-extrabold text-indigo-950">0h 00min</p>
+            <div class="rounded-2xl border border-teal-100 bg-teal-50 p-4 text-center">
+                <p data-i18n="time_confirmation_elapsed" class="text-xs font-bold uppercase tracking-wide text-teal-700">Tempo decorrido</p>
+                <p id="time-confirmation-elapsed" class="mt-1 text-3xl font-extrabold text-teal-950">0h 00min</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <label class="space-y-2 text-sm font-bold text-slate-700">
                     <span data-i18n="time_confirmation_hours">Horas</span>
-                    <input id="time-confirmation-hours" type="number" min="0" max="168" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="time-confirmation-hours" type="number" min="0" max="168" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </label>
                 <label class="space-y-2 text-sm font-bold text-slate-700">
                     <span data-i18n="time_confirmation_minutes">Minutos</span>
-                    <input id="time-confirmation-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input id="time-confirmation-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" required class="min-h-14 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-center text-xl font-extrabold focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </label>
             </div>
             <p id="time-confirmation-error" role="alert" class="hidden text-sm font-semibold text-rose-600"></p>
-            <button id="time-confirmation-submit" type="button" onclick="runButtonAction(this, () => confirmCleaningTime())" data-i18n="time_confirmation_confirm" class="min-h-14 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">Confirmar Tempo</button>
+            <button id="time-confirmation-submit" type="button" onclick="runButtonAction(this, () => confirmCleaningTime())" data-i18n="time_confirmation_confirm" class="min-h-14 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">Confirmar Tempo</button>
         </section>
     </div>
 
     <div id="incident-report-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="incident-report-title">
-        <section class="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7">
+        <section class="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <header class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <h2 id="incident-report-title" data-i18n="incident_report_title" class="text-lg font-extrabold text-slate-900">Reportar Ocorrência / Danos</h2>
                 <button type="button" onclick="closeIncidentReportModal()" data-i18n-aria-label="incident_close" aria-label="Fechar" class="rounded-xl p-2 text-slate-500 hover:bg-slate-100">✕</button>
@@ -1102,7 +1255,7 @@
     </div>
 
     <div id="hosting-delete-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="hosting-delete-title" aria-describedby="hosting-delete-description">
-        <section class="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
+        <section class="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 id="hosting-delete-title" data-i18n="hosting_delete_title" class="text-base font-extrabold text-slate-900">Confirmar Eliminação</h2>
             <p id="hosting-delete-description" data-i18n="hosting_delete_confirm" class="text-sm text-slate-600">Ao eliminar este relatório, todos os lançamentos financeiros associados serão também eliminados em cascata.</p>
             <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
@@ -1113,7 +1266,7 @@
     </div>
 
     <div id="financial-date-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="financial-date-modal-title">
-        <section class="w-full max-w-lg space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
+        <section class="w-full max-w-lg space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <header class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
                     <h2 id="financial-date-modal-title" class="text-base font-extrabold text-slate-900">Filtrar e exportar movimentos</h2>
@@ -1145,7 +1298,7 @@
                 </div>
                 <div class="flex gap-2">
                     <button type="button" class="rounded-xl px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100" onclick="closeFinancialDateModal()">Cancelar</button>
-                    <button type="button" id="financial-date-apply" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-700">Aplicar filtro</button>
+                    <button type="button" id="financial-date-apply" class="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-700">Aplicar filtro</button>
                 </div>
             </div>
         </section>
