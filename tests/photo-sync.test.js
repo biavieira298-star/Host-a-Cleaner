@@ -120,7 +120,7 @@ test('a failed upload keeps the item in the offline queue even when the error me
     let deleted = false;
     env.failUpload(new Error('duplicate upload denied'));
     Object.assign(env.context, {
-        navigator: { onLine: true }, currentUser: { id: 'cleaner' }, syncPendingPromise: null,
+        navigator: { onLine: true }, currentUser: { id: 'cleaner' }, syncPendingPromise: null, accountDeleteInProgress: false,
         isOfflineMode: false, listPendingOfflineItems: async () => [item],
         deletePendingOfflineItem: async () => { deleted = true; },
         updateOfflineIndicator: async () => {}, schedulePendingSyncRetry: () => {},
