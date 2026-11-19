@@ -36,7 +36,7 @@ async function fetchTeamMembers() {
         listEl.innerHTML = data.map(member => `
             <div class="border border-slate-200 bg-slate-50 p-3.5 rounded-2xl text-xs">
                 <strong class="text-slate-900 block">${escapeTeamMemberAttribute(member.name || 'Membro da equipa')}</strong>
-                <span class="text-[10px] font-bold text-indigo-700">${member.role === 'admin' ? '👑 Administrador' : '🧹 Equipa de Limpeza'}</span>
+                <span class="text-[10px] font-bold text-teal-700">${member.role === 'admin' ? 'Administrador' : 'Equipa de Limpeza'}</span>
             </div>
         `).join('');
         return true;
@@ -47,36 +47,36 @@ async function fetchTeamMembers() {
             <div class="flex justify-between items-center">
                 <div>
                     <strong class="text-slate-900 block">${escapeTeamMemberAttribute(member.name || member.email || 'Membro da equipa')}</strong>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${member.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800'}">${member.role === 'admin' ? '👑 Administrador' : '🧹 Equipa de Limpeza'}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">${member.role === 'admin' ? 'Administrador' : 'Equipa de Limpeza'}</span>
                 </div>
-                <button type="button" data-team-remove-id="${escapeTeamMemberAttribute(member.id)}" class="p-2 text-rose-500 hover:text-rose-700 font-bold transition">🗑️ Remover</button>
+                <button type="button" data-team-remove-id="${escapeTeamMemberAttribute(member.id)}" class="p-2 text-rose-500 hover:text-rose-700 font-bold transition"> Remover</button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label class="block text-xs font-medium text-slate-700">
                     <span data-i18n="team_name">Nome</span>
-                    <input data-team-name-id="${escapeTeamMemberAttribute(member.id)}" type="text" value="${escapeTeamMemberAttribute(member.name || '')}" class="mt-1 w-full border border-slate-200 bg-white p-2.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input data-team-name-id="${escapeTeamMemberAttribute(member.id)}" type="text" value="${escapeTeamMemberAttribute(member.name || '')}" class="mt-1 w-full border border-slate-200 bg-white p-2.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </label>
                 <label class="block text-xs font-medium text-slate-700">
                     <span data-i18n="team_phone">Telemóvel</span>
-                    <input data-team-phone-id="${escapeTeamMemberAttribute(member.id)}" type="tel" autocomplete="tel" value="${escapeTeamMemberAttribute(member.phone || '+351 ')}" placeholder="${escapeTeamMemberAttribute(i18n[currentLang].team_phone_placeholder)}" class="mt-1 w-full border border-slate-200 bg-white p-2.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input data-team-phone-id="${escapeTeamMemberAttribute(member.id)}" type="tel" autocomplete="tel" value="${escapeTeamMemberAttribute(member.phone || '+351 ')}" placeholder="${escapeTeamMemberAttribute(i18n[currentLang].team_phone_placeholder)}" class="mt-1 w-full border border-slate-200 bg-white p-2.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </label>
             </div>
             ${member.role === 'cleaner' ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-200 pt-3">
                 <label class="flex items-center gap-2 text-xs font-medium text-slate-700">
-                    <input type="checkbox" ${member.track_hours === true ? 'checked' : ''} data-team-preference-id="${escapeTeamMemberAttribute(member.id)}" data-preference="track_hours" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <input type="checkbox" ${member.track_hours === true ? 'checked' : ''} data-team-preference-id="${escapeTeamMemberAttribute(member.id)}" data-preference="track_hours" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                     <span data-i18n="team_track_hours">Ativar registo de horas</span>
                 </label>
                 <label class="flex items-center gap-2 text-xs font-medium text-slate-700">
-                    <input type="checkbox" ${member.require_photos === true ? 'checked' : ''} data-team-preference-id="${escapeTeamMemberAttribute(member.id)}" data-preference="require_photos" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <input type="checkbox" ${member.require_photos === true ? 'checked' : ''} data-team-preference-id="${escapeTeamMemberAttribute(member.id)}" data-preference="require_photos" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                     <span data-i18n="team_require_photos">Exigir fotos antes e depois</span>
                 </label>
             </div>` : ''}
             ${member.role === 'cleaner' && !member.auth_user_id ? `<div class="border-t border-slate-200 pt-3 flex flex-wrap gap-2">
                 <button type="button" data-team-whatsapp-id="${escapeTeamMemberAttribute(member.id)}" class="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-700 transition">
-                    💬 <span data-i18n="team_whatsapp_invite">Enviar acesso por WhatsApp</span>
+                     <span data-i18n="team_whatsapp_invite">Enviar acesso por WhatsApp</span>
                 </button>
                 <button type="button" data-team-copy-id="${escapeTeamMemberAttribute(member.id)}" class="rounded-xl bg-slate-200 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-300 transition">
-                    📋 <span data-i18n="team_copy_link">Copiar Link</span>
+                     <span data-i18n="team_copy_link">Copiar Link</span>
                 </button>
             </div>` : ''}
         </div>
@@ -271,7 +271,7 @@ async function sendTeamAccessByWhatsApp(memberId) {
     try {
         const link = await getTeamAccessLink(memberId);
         const memberName = nameInput && nameInput.value.trim() || 'Membro da equipa';
-        const message = `Olá ${memberName}! 👋 É com muito prazer que o convidamos para se juntar à nossa equipa na aplicação Host a Cleaner. \n\nPor favor, clique no link abaixo para criar a sua conta:\n\n${link}\n\nSe tiver alguma dúvida, não hesite em contactar-nos. Até breve! 😊`;
+        const message = `Olá ${memberName}! Foi convidado para a equipa no Host a Cleaner.\n\nCrie a sua conta através deste link:\n\n${link}\n\nSe tiver alguma dúvida, contacte-nos.`;
         whatsappWindow.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     } catch (error) {
         whatsappWindow.close();
