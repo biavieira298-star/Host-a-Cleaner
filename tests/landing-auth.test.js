@@ -128,14 +128,16 @@ test('landing and subscription cards show the requested prices and limits', () =
     assert.match(app, /landing_business_properties: "Unlimited properties"/);
     assert.match(app, /landing_unlimited_cleaners: "Equipa ilimitada"/);
     assert.match(app, /landing_unlimited_cleaners: "Unlimited team"/);
+    assert.match(app, /landing_free_description: "Para começar com uma casa e testar o básico\."/);
+    assert.match(app, /landing_free_description: "To get started with one property and test the basics\."/);
 });
 
 test('cancellation note appears in both pricing sections with PT and EN translations', () => {
     const landing = html.slice(html.indexOf('<section id="precos"'), html.indexOf('</section>', html.indexOf('<section id="precos"')));
     const subscription = html.slice(html.indexOf('<section id="profile-subtab-subscription"'), html.indexOf('</section>', html.indexOf('<section id="profile-subtab-subscription"')));
-    const note = /data-i18n="subscription_no_lock_in">Sem fidelização\. Pode cancelar a subscrição quando quiser\.<\/p>/;
+    const note = /data-i18n="subscription_no_lock_in">Sem fidelização\. Podes cancelar quando quiseres\.<\/p>/;
     assert.match(landing, note);
     assert.match(subscription, note);
-    assert.match(app, /subscription_no_lock_in: "Sem fidelização\. Pode cancelar a subscrição quando quiser\."/);
-    assert.match(app, /subscription_no_lock_in: "No lock-in contract\. Cancel your subscription whenever you want\."/);
+    assert.match(app, /subscription_no_lock_in: "Sem fidelização\. Podes cancelar quando quiseres\."/);
+    assert.match(app, /subscription_no_lock_in: "No lock-in contract\. Cancel whenever you want\."/);
 });
