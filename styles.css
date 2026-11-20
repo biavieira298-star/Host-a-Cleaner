@@ -10,8 +10,12 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; 
 .landing-header { border-bottom: 1px solid #e2e8f0; background: #fff; }
 .landing-nav { min-height: 76px; display: flex; align-items: center; gap: 2rem; }
 .landing-brand { display: inline-flex; align-items: center; gap: 0.65rem; flex-shrink: 0; color: #0f172a; font-size: 0.95rem; font-weight: 800; text-decoration: none; }
-.landing-brand-mark, .landing-preview-logo { display: grid; place-items: center; background: #0f766e; color: white; font-weight: 800; }
+.landing-brand-mark, .landing-preview-logo { display: block; background: transparent; object-fit: contain; }
 .landing-brand-mark { width: 36px; height: 36px; border-radius: 10px; }
+.landing-preview-logo { width: 24px; height: 24px; border-radius: 6px; }
+.app-brand-icon, .mobile-brand-icon { display: block; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); object-fit: contain; }
+.mobile-brand-icon { border-radius: 10px; }
+.app-brand-icon { border-radius: 12px; }
 .landing-nav-links { display: flex; justify-content: center; gap: 2rem; flex: 1; }
 .landing-nav-links a { color: #475569; font-size: 0.83rem; font-weight: 600; text-decoration: none; }
 .landing-nav-links a:hover, .landing-footer a:hover { color: #0f766e; }
