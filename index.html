@@ -83,7 +83,7 @@
         <header class="landing-header">
             <div class="landing-container landing-nav">
                 <a class="landing-brand" href="#inicio" aria-label="Host a Cleaner">
-                    <span class="landing-brand-mark" aria-hidden="true">H</span>
+                    <img class="landing-brand-mark" src="images/icon-192.png" alt="" aria-hidden="true">
                     <span>Host a Cleaner</span>
                 </a>
                 <nav class="landing-nav-links" aria-label="Navegação principal" data-i18n-aria-label="landing_navigation">
@@ -103,15 +103,15 @@
                 <div class="landing-container landing-hero-grid">
                     <div class="landing-hero-copy">
                         <p class="landing-eyebrow" data-i18n="landing_eyebrow">Gestão de limpezas para alojamento local</p>
-                        <h1 data-i18n="landing_hero_title">Acabe com a confusão do WhatsApp na gestão das limpezas do seu Alojamento Local.</h1>
-                        <p class="landing-hero-description" data-i18n="landing_hero_description">Sincronize calendários iCal (Airbnb e Booking), atribua turnos à sua equipa e receba fotos de verificação e ocorrências num único painel.</p>
+                        <h1 data-i18n="landing_hero_title">Feito para a parte do trabalho que o hóspede não vê. Não serve para gerir reservas nem falar com hóspedes — serve para organizar quem limpa, as horas feitas e as contas entre entradas e saídas.</h1>
+                        <p class="landing-hero-description" data-i18n="landing_hero_description">Continua a gerir as reservas no Airbnb, Booking, Lodgify ou onde já fazes isso. Liga o calendário por iCal e usa esta ferramenta apenas para a equipa e o controlo interno.</p>
                         <button type="button" class="landing-button landing-button-primary landing-hero-button" onclick="openLandingAuth('signup')" data-i18n="landing_hero_cta">Criar conta gratuita</button>
                         <p class="landing-hero-note" data-i18n="landing_no_card">Sem cartão de crédito necessário para testar.</p>
                     </div>
                     <div class="landing-preview-wrap">
                         <div class="landing-preview">
                             <div class="landing-preview-top">
-                                <span class="landing-preview-logo" aria-hidden="true">H</span>
+                                <img class="landing-preview-logo" src="images/icon-192.png" alt="" aria-hidden="true">
                                 <span>Host a Cleaner</span>
                                 <span class="landing-preview-dots" aria-hidden="true"><i></i><i></i><i></i></span>
                             </div>
@@ -132,6 +132,13 @@
                         </div>
                         <p class="landing-preview-caption" data-i18n="landing_preview_caption">Exemplo ilustrativo</p>
                     </div>
+                </div>
+            </section>
+
+            <section class="landing-section landing-sync-section">
+                <div class="landing-container landing-sync-wrap">
+                    <p class="landing-eyebrow" data-i18n="landing_sync_title">Sincronização</p>
+                    <p class="landing-sync-description" data-i18n="landing_sync_description">Continua a gerir as reservas no Airbnb, Booking, Lodgify ou onde já fazes isso. Liga o calendário por iCal e usa esta ferramenta apenas para a equipa e o controlo interno.</p>
                 </div>
             </section>
 
@@ -192,29 +199,33 @@
                         <article class="landing-price-card">
                             <h3 data-i18n="landing_free">Gratuito</h3>
                             <p class="landing-price">0€ <span data-i18n="landing_month">/ mês</span></p>
-                            <ul><li data-i18n="landing_free_properties">Até 1 imóvel</li><li data-i18n="landing_free_cleaners">Equipa até 1 pessoa</li></ul>
+                            <p class="landing-plan-description" data-i18n="landing_free_description">Para começar com uma casa e testar o básico.</p>
+                            <ul><li data-i18n="landing_free_properties">Até 1 imóvel</li><li data-i18n="landing_free_cleaners">Equipa de 1 pessoa</li><li data-i18n="landing_free_hours">Calendário sincronizado e registo de horas</li></ul>
                             <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_hero_cta">Criar conta gratuita</button>
                         </article>
                         <article class="landing-price-card">
                             <h3>Starter</h3>
                             <p class="landing-price">9,99€ <span data-i18n="landing_month">/ mês</span></p>
-                            <ul><li data-i18n="landing_starter_properties">Até 4 imóveis</li><li data-i18n="landing_starter_cleaners">Equipa até 3 pessoas</li></ul>
+                            <p class="landing-plan-description" data-i18n="landing_starter_description">Para várias casas e uma equipa pequena, sem andar atrás de mensagens.</p>
+                            <ul><li data-i18n="landing_starter_properties">Até 4 imóveis</li><li data-i18n="landing_starter_cleaners">Equipa até 3 pessoas</li><li data-i18n="landing_starter_notes">Histórico e notas da operação</li></ul>
                             <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
                         </article>
                         <article class="landing-price-card landing-price-featured">
                             <h3>Pro</h3>
                             <p class="landing-price">19,99€ <span data-i18n="landing_month">/ mês</span></p>
-                            <ul><li data-i18n="landing_pro_properties">Até 10 imóveis</li><li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li></ul>
+                            <p class="landing-plan-description" data-i18n="landing_pro_description">Para quem já tem equipa a crescer e precisa de ter horas e contas em ordem.</p>
+                            <ul><li data-i18n="landing_pro_properties">Até 10 imóveis</li><li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li><li data-i18n="landing_pro_finances">Finanças, documentos e horas por pessoa</li></ul>
                             <button type="button" class="landing-button landing-button-primary" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
                         </article>
                         <article class="landing-price-card">
                             <h3>Business</h3>
                             <p class="landing-price">49,99€ <span data-i18n="landing_month">/ mês</span></p>
-                            <ul><li data-i18n="landing_business_properties">Imóveis ilimitados</li><li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li></ul>
+                            <p class="landing-plan-description" data-i18n="landing_business_description">Para operações maiores, sem limites de casas nem de equipa.</p>
+                            <ul><li data-i18n="landing_business_properties">Imóveis ilimitados</li><li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li><li data-i18n="landing_business_control">Controlo completo de toda a operação</li></ul>
                             <button type="button" class="landing-button landing-button-outline" onclick="openLandingAuth('signup')" data-i18n="landing_plan_cta">Criar conta para subscrever</button>
                         </article>
                     </div>
-                    <p class="landing-pricing-note" data-i18n="subscription_no_lock_in">Sem fidelização. Pode cancelar a subscrição quando quiser.</p>
+                    <p class="landing-pricing-note" data-i18n="subscription_no_lock_in">Sem fidelização. Podes cancelar quando quiseres.</p>
                 </div>
             </section>
         </main>
@@ -330,7 +341,7 @@
                     <option value="en">EN</option>
                 </select>
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center font-black text-sm shadow-md">H</div>
+                <img class="mobile-brand-icon w-8 h-8 rounded-xl shadow-md" src="images/icon-192.png" alt="" aria-hidden="true">
                     <span class="text-xs font-bold text-white">Host a Cleaner</span>
                 </div>
             </div>
@@ -349,7 +360,7 @@
             <div class="space-y-8 overflow-y-auto">
                 <div class="flex items-center justify-between md:justify-start gap-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center font-black text-xl shadow-sm shrink-0">H</div>
+                        <img class="app-brand-icon w-10 h-10 rounded-2xl shadow-sm shrink-0" src="images/icon-192.png" alt="" aria-hidden="true">
                         <div class="sidebar-text transition-opacity">
                             <h1 class="text-sm font-extrabold tracking-tight text-white whitespace-nowrap">Host a Cleaner</h1>
                             <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-semibold border border-teal-500/30" id="sidebar-role-subtitle">Admin Hub</span>
@@ -957,9 +968,11 @@
                             <span class="subscription-current-badge hidden" data-i18n="subscription_current">Plano Atual</span>
                             <h2 class="text-lg font-bold text-slate-800 dark:text-white" data-i18n="landing_free">Gratuito</h2>
                             <p class="my-4 text-3xl font-extrabold text-slate-900 dark:text-white">0€ <span class="text-sm font-normal text-slate-500" data-i18n="landing_month">/ mês</span></p>
+                            <p class="mb-4 text-sm text-slate-600 dark:text-slate-300" data-i18n="landing_free_description">Para começar com uma casa e testar o básico.</p>
                             <ul class="my-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                                 <li data-i18n="landing_free_properties">Até 1 imóvel</li>
-                                <li data-i18n="landing_free_cleaners">Equipa até 1 pessoa</li>
+                                <li data-i18n="landing_free_cleaners">Equipa de 1 pessoa</li>
+                                <li data-i18n="landing_free_hours">Calendário sincronizado e registo de horas</li>
                             </ul>
                         </div>
                         <button type="button" data-subscription-plan="gratuito" disabled class="w-full cursor-default rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:bg-slate-700 dark:text-white">Gratuito</button>
@@ -970,9 +983,11 @@
                             <span class="subscription-current-badge hidden" data-i18n="subscription_current">Plano Atual</span>
                             <h2 class="text-lg font-bold text-slate-800 dark:text-white">Starter</h2>
                             <p class="mt-4 text-3xl font-extrabold text-slate-900 dark:text-white">9,99€ <span class="text-sm font-normal text-slate-500" data-i18n="landing_month">/ mês</span></p>
+                            <p class="mb-4 text-sm text-slate-600 dark:text-slate-300" data-i18n="landing_starter_description">Para várias casas e uma equipa pequena, sem andar atrás de mensagens.</p>
                             <ul class="my-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                                 <li data-i18n="landing_starter_properties">Até 4 imóveis</li>
                                 <li data-i18n="landing_starter_cleaners">Equipa até 3 pessoas</li>
+                                <li data-i18n="landing_starter_notes">Histórico e notas da operação</li>
                             </ul>
                         </div>
                         <button type="button" data-subscription-plan="starter" disabled onclick="subscribePlan('starter')" class="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700">Subscrever Starter</button>
@@ -983,9 +998,11 @@
                             <span class="subscription-current-badge hidden" data-i18n="subscription_current">Plano Atual</span>
                             <h2 class="text-lg font-bold text-slate-800 dark:text-white">Pro</h2>
                             <p class="mt-4 text-3xl font-extrabold text-slate-900 dark:text-white">19,99€ <span class="text-sm font-normal text-slate-500" data-i18n="landing_month">/ mês</span></p>
+                            <p class="mb-4 text-sm text-slate-600 dark:text-slate-300" data-i18n="landing_pro_description">Para quem já tem equipa a crescer e precisa de ter horas e contas em ordem.</p>
                             <ul class="my-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                                 <li data-i18n="landing_pro_properties">Até 10 imóveis</li>
                                 <li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li>
+                                <li data-i18n="landing_pro_finances">Finanças, documentos e horas por pessoa</li>
                             </ul>
                         </div>
                         <button type="button" data-subscription-plan="pro" disabled onclick="subscribePlan('pro')" class="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-teal-700">Subscrever Pro</button>
@@ -996,16 +1013,18 @@
                             <span class="subscription-current-badge hidden" data-i18n="subscription_current">Plano Atual</span>
                             <h2 class="text-lg font-bold text-slate-800 dark:text-white">Business</h2>
                             <p class="mt-4 text-3xl font-extrabold text-slate-900 dark:text-white">49,99€ <span class="text-sm font-normal text-slate-500" data-i18n="landing_month">/ mês</span></p>
+                            <p class="mb-4 text-sm text-slate-600 dark:text-slate-300" data-i18n="landing_business_description">Para operações maiores, sem limites de casas nem de equipa.</p>
                             <ul class="my-4 space-y-2.5 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                                 <li data-i18n="landing_business_properties">Imóveis ilimitados</li>
                                 <li data-i18n="landing_unlimited_cleaners">Equipa ilimitada</li>
+                                <li data-i18n="landing_business_control">Controlo completo de toda a operação</li>
                             </ul>
                         </div>
                         <button type="button" data-subscription-plan="business" disabled onclick="subscribePlan('business')" class="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900">Subscrever Business</button>
                     </article>
                             </div>
                             <div class="pt-2 text-center">
-                                <p class="mb-2 text-xs text-slate-500" data-i18n="subscription_no_lock_in">Sem fidelização. Pode cancelar a subscrição quando quiser.</p>
+                                <p class="mb-2 text-xs text-slate-500" data-i18n="subscription_no_lock_in">Sem fidelização. Podes cancelar quando quiseres.</p>
                                 <button type="button" onclick="openCancellationPolicyModal()" aria-controls="cancellation-policy-modal" class="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-600 hover:decoration-teal-400">
                                     Política de Cancelamento e Reembolso
                                 </button>
